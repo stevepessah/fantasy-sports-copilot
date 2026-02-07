@@ -118,17 +118,17 @@ export default function ChatInterface({ leagueId, userId, initialMessages = [] }
             <ul className="mt-4 space-y-2 text-left max-w-md mx-auto">
               {currentSport === 'football' ? (
                 <>
-                  <li className="text-slate-300">• "Create a 12-team PPR league"</li>
-                  <li className="text-slate-300">• "Set my best lineup"</li>
-                  <li className="text-slate-300">• "Who should I draft?"</li>
-                  <li className="text-slate-300">• "Drop Player X for Player Y"</li>
+                  <li className="text-slate-300">• &ldquo;Create a 12-team PPR league&rdquo;</li>
+                  <li className="text-slate-300">• &ldquo;Set my best lineup&rdquo;</li>
+                  <li className="text-slate-300">• &ldquo;Who should I draft?&rdquo;</li>
+                  <li className="text-slate-300">• &ldquo;Drop Player X for Player Y&rdquo;</li>
                 </>
               ) : (
                 <>
-                  <li className="text-slate-300">• "Create a 12-team roto league"</li>
-                  <li className="text-slate-300">• "Set my best lineup"</li>
-                  <li className="text-slate-300">• "Who should I draft?"</li>
-                  <li className="text-slate-300">• "Drop Player X for Player Y"</li>
+                  <li className="text-slate-300">• &ldquo;Create a 12-team roto league&rdquo;</li>
+                  <li className="text-slate-300">• &ldquo;Set my best lineup&rdquo;</li>
+                  <li className="text-slate-300">• &ldquo;Who should I draft?&rdquo;</li>
+                  <li className="text-slate-300">• &ldquo;Drop Player X for Player Y&rdquo;</li>
                 </>
               )}
             </ul>
