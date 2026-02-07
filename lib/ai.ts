@@ -233,18 +233,18 @@ Available actions:
         },
       }
     }
-      if (lowerMessage.includes('hitter') || lowerMessage.includes('batter') || lowerMessage.includes('position player')) {
-        return {
-          message: "Hitters provide the offensive categories: average, home runs, RBIs, runs, and stolen bases. Let me check the best available hitters...",
-          action: {
-            type: 'draft_pick',
-          },
-        }
+    
+    if (lowerMessage.includes('hitter') || lowerMessage.includes('batter') || lowerMessage.includes('position player')) {
+      return {
+        message: "Hitters provide the offensive categories: average, home runs, RBIs, runs, and stolen bases. Let me check the best available hitters...",
+        action: {
+          type: 'draft_pick',
+        },
       }
     }
     
     return {
-      message: `I'll help you with your ${sport} draft! Based on your current roster and available players, here are my recommendations...`,
+      message: "I'll help you with your baseball draft! Based on your current roster and available players, here are my recommendations...",
       action: {
         type: 'draft_pick',
       },
