@@ -2,7 +2,6 @@
 
 import { useState, useRef, useEffect, useMemo } from 'react'
 import { ChatMessage, Sport, Player, Roster } from '@/types'
-import SportToggle from './SportToggle'
 import { EnhancedCards } from './EnhancedCards'
 
 interface ChatInterfaceProps {
@@ -15,7 +14,7 @@ export default function EnhancedChatInterface({ leagueId, userId, initialMessage
   const [messages, setMessages] = useState<ChatMessage[]>(initialMessages)
   const [input, setInput] = useState('')
   const [isLoading, setIsLoading] = useState(false)
-  const [currentSport, setCurrentSport] = useState<Sport>('baseball')
+  const [currentSport] = useState<Sport>('baseball') // Baseball only
   const [mobilePanel, setMobilePanel] = useState<'chat' | 'roster'>('chat')
   const [roster, setRoster] = useState<Player[]>([])
   const [isNarrow, setIsNarrow] = useState(false)
@@ -162,9 +161,9 @@ export default function EnhancedChatInterface({ leagueId, userId, initialMessage
       {/* Header */}
       <header className="px-4 py-3 border-b border-slate-700 bg-slate-800/50 flex justify-between items-center">
         <div className="min-w-0">
-          <h1 className="text-lg font-bold truncate">Fantasy Sports Copilot</h1>
+          <h1 className="text-lg font-bold truncate">Fantasy Baseball Copilot</h1>
           <p className="text-xs text-slate-400">
-            {currentSport === 'football' ? '🏈 Football' : '⚾ Baseball'}
+            ⚾ Baseball
           </p>
         </div>
         <div className="text-right">
@@ -257,34 +256,19 @@ export default function EnhancedChatInterface({ leagueId, userId, initialMessage
         {(!isNarrow || mobilePanel === 'chat') && (
           <main className="flex-1 flex flex-col min-w-0">
             <div className="flex-1 overflow-auto p-4 space-y-4">
-              <div className="max-w-4xl mx-auto">
-                <SportToggle currentSport={currentSport} onSportChange={setCurrentSport} />
-              </div>
-
               {messages.length === 0 && (
                 <div className="text-center text-slate-400 mt-12 max-w-2xl mx-auto">
-                  <h2 className="text-2xl font-bold mb-4 text-white">Fantasy Sports Copilot</h2>
-                  <p className="mb-2">Your AI-powered fantasy sports assistant</p>
+                  <h2 className="text-2xl font-bold mb-4 text-white">Fantasy Baseball Copilot</h2>
+                  <p className="mb-2">Your AI-powered fantasy baseball assistant</p>
                   <p className="text-sm mb-4">
-                    Currently viewing: {currentSport === 'football' ? '🏈 Football' : '⚾ Baseball'}
+                    ⚾ Baseball
                   </p>
                   <p className="text-sm">Try asking:</p>
                   <ul className="mt-4 space-y-2 text-left max-w-md mx-auto">
-                    {currentSport === 'football' ? (
-                      <>
-                        <li className="text-slate-300">• &quot;Create a 12-team PPR league&quot;</li>
-                        <li className="text-slate-300">• &quot;Set my best lineup&quot;</li>
-                        <li className="text-slate-300">• &quot;Who should I draft?&quot;</li>
-                        <li className="text-slate-300">• &quot;Drop Player X for Player Y&quot;</li>
-                      </>
-                    ) : (
-                      <>
-                        <li className="text-slate-300">• &quot;Create a 12-team roto league&quot;</li>
-                        <li className="text-slate-300">• &quot;Set my best lineup&quot;</li>
-                        <li className="text-slate-300">• &quot;Who should I draft?&quot;</li>
-                        <li className="text-slate-300">• &quot;Drop Player X for Player Y&quot;</li>
-                      </>
-                    )}
+                    <li className="text-slate-300">• &quot;Create a 12-team roto league&quot;</li>
+                    <li className="text-slate-300">• &quot;Set my best lineup&quot;</li>
+                    <li className="text-slate-300">• &quot;Who should I draft?&quot;</li>
+                    <li className="text-slate-300">• &quot;Drop Player X for Player Y&quot;</li>
                   </ul>
                 </div>
               )}

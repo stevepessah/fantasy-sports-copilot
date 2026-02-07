@@ -46,22 +46,21 @@ export class FantasyAI {
   }
 
   private buildSystemPrompt(context: AIContext): string {
-    const sport = context.sport || 'football'
-    const sportName = sport === 'football' ? 'football' : 'baseball'
+    const sport = context.sport || 'baseball'
     
-    let prompt = `You are Fantasy Sports Copilot, an AI assistant for fantasy ${sportName}. 
+    let prompt = `You are Fantasy Baseball Copilot, an AI assistant for fantasy baseball. 
 You help users manage their fantasy teams through natural conversation.
 
 Core principles:
 - Be conversational, helpful, and explain your reasoning
 - Always explain WHY you're recommending something
 - Use plain English, not fantasy jargon unless the user does
-- Be proactive about potential issues (injuries, byes/schedule, matchups)
+- Be proactive about potential issues (injuries, schedule, matchups)
 - When suggesting actions, explain the impact
-- Remember you're helping with ${sportName}, not the other sport
+- Remember you're helping with baseball
 
 Current context:
-- Sport: ${sportName}
+- Sport: baseball
 `
 
     if (context.league) {
@@ -77,18 +76,7 @@ Current context:
       prompt += `- Current week: ${context.week}\n`
     }
 
-    if (sport === 'football') {
-      prompt += `
-Available actions:
-- Create league: "Create a 12-team PPR league"
-- Set lineup: "Set my best lineup" or "Who should I start?"
-- View teams: "Show all teams" or "View all teams" or "List teams"
-- Add/drop players: "Drop Player X for Player Y"
-- Draft help: "Who should I draft?" or "Best RB available?"
-- Trade evaluation: "Is this trade fair?"
-- General questions: Answer about fantasy football strategy, players, matchups`
-    } else {
-      prompt += `
+    prompt += `
 Available actions:
 - Create league: "Create a 12-team roto league"
 - Set lineup: "Set my best lineup" or "Who should I start?"
@@ -97,7 +85,6 @@ Available actions:
 - Draft help: "Who should I draft?" or "Best SP available?"
 - Trade evaluation: "Is this trade fair?"
 - General questions: Answer about fantasy baseball strategy, players, matchups`
-    }
 
     prompt += `\n\nAlways respond in a friendly, conversational tone. Explain your reasoning clearly.`
 
@@ -179,27 +166,15 @@ Available actions:
   }
 
   private handleLeagueCreation(message: string, context: AIContext): AIResponse {
-    const sport = context.sport || 'football'
+    const sport = context.sport || 'baseball'
     const numTeamsMatch = message.match(/(\d+)[\s-]?team/i)
     
-    let scoringMatch: RegExpMatchArray | null = null
-    let scoringType: string
-    
-    if (sport === 'football') {
-      scoringMatch = message.match(/(standard|ppr|half[\s-]?ppr)/i)
-      scoringType = scoringMatch 
-        ? (scoringMatch[1].toLowerCase().includes('ppr') 
-            ? (scoringMatch[1].toLowerCase().includes('half') ? 'half-ppr' : 'ppr')
-            : 'standard')
-        : 'ppr'
-    } else {
-      scoringMatch = message.match(/(roto|points|head[\s-]?to[\s-]?head|h2h)/i)
-      scoringType = scoringMatch 
-        ? (scoringMatch[1].toLowerCase().includes('roto') ? 'roto'
-          : scoringMatch[1].toLowerCase().includes('point') ? 'points'
-          : 'head-to-head')
-        : 'roto'
-    }
+    const scoringMatch = message.match(/(roto|points|head[\s-]?to[\s-]?head|h2h)/i)
+    const scoringType = scoringMatch 
+      ? (scoringMatch[1].toLowerCase().includes('roto') ? 'roto'
+        : scoringMatch[1].toLowerCase().includes('point') ? 'points'
+        : 'head-to-head')
+      : 'roto'
     
     const numTeams = numTeamsMatch ? parseInt(numTeamsMatch[1]) : 12
 
@@ -209,32 +184,21 @@ Available actions:
       }
     }
 
-    const sportName = sport === 'football' ? 'football' : 'baseball'
-    let explanation = ''
-    
-    if (sport === 'football') {
-      explanation = scoringType === 'ppr' 
-        ? 'reception-heavy players' 
-        : scoringType === 'half-ppr' 
-        ? 'a balanced approach' 
-        : 'touchdowns and yardage'
-    } else {
-      explanation = scoringType === 'roto'
-        ? 'category-based scoring across multiple stats'
-        : scoringType === 'points'
-        ? 'point-based scoring'
-        : 'head-to-head weekly matchups'
-    }
+    const explanation = scoringType === 'roto'
+      ? 'category-based scoring across multiple stats'
+      : scoringType === 'points'
+      ? 'point-based scoring'
+      : 'head-to-head weekly matchups'
 
     return {
-      message: `Got it! I'll create a ${numTeams}-team ${scoringType.toUpperCase()} ${sportName} league for you. This league will reward ${explanation}. Ready to set it up?`,
+      message: `Got it! I'll create a ${numTeams}-team ${scoringType.toUpperCase()} baseball league for you. This league will reward ${explanation}. Ready to set it up?`,
       action: {
         type: 'create_league',
         data: {
           numTeams,
           scoringType,
           draftType: 'snake',
-          sport,
+          sport: 'baseball',
         },
       },
     }
@@ -259,35 +223,16 @@ Available actions:
   }
 
   private handleDraftHelp(message: string, context: AIContext): AIResponse {
-    const sport = context.sport || 'football'
     const lowerMessage = message.toLowerCase()
     
-    if (sport === 'football') {
-      if (lowerMessage.includes('rb') || lowerMessage.includes('running back')) {
-        return {
-          message: "I'll help you find the best available running backs. RBs are crucial for fantasy football - they provide both rushing yards and touchdowns. Let me check who's available...",
-          action: {
-            type: 'draft_pick',
-          },
-        }
+    if (lowerMessage.includes('sp') || lowerMessage.includes('starting pitcher') || lowerMessage.includes('pitcher')) {
+      return {
+        message: "Starting pitchers are the foundation of fantasy baseball. They provide wins, strikeouts, ERA, and WHIP. Let me find the best available SPs...",
+        action: {
+          type: 'draft_pick',
+        },
       }
-      if (lowerMessage.includes('qb') || lowerMessage.includes('quarterback')) {
-        return {
-          message: "Quarterback strategy depends on your league size. In 12-team leagues, you can often wait on QB since there's depth. Let me analyze your options...",
-          action: {
-            type: 'draft_pick',
-          },
-        }
-      }
-    } else {
-      if (lowerMessage.includes('sp') || lowerMessage.includes('starting pitcher') || lowerMessage.includes('pitcher')) {
-        return {
-          message: "Starting pitchers are the foundation of fantasy baseball. They provide wins, strikeouts, ERA, and WHIP. Let me find the best available SPs...",
-          action: {
-            type: 'draft_pick',
-          },
-        }
-      }
+    }
       if (lowerMessage.includes('hitter') || lowerMessage.includes('batter') || lowerMessage.includes('position player')) {
         return {
           message: "Hitters provide the offensive categories: average, home runs, RBIs, runs, and stolen bases. Let me check the best available hitters...",
