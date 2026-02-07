@@ -46,7 +46,7 @@ export class LeagueManager {
           isStarter: rp.isStarter,
         }
       })
-      .filter((p): p is Player & { slot?: string; isStarter: boolean } => p !== null)
+      .filter((p): p is Player & { slot: string | undefined; isStarter: boolean } => p !== null)
 
     // Filter out injured/out players
     const healthyPlayers = players.filter(
