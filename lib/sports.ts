@@ -15,9 +15,37 @@ export const SPORT_CONFIGS: Record<Sport, LineupConfig> = {
     totalRosterSize: 15,
   },
   baseball: {
-    positions: ['C', '1B', '2B', '3B', 'SS', 'OF1', 'OF2', 'OF3', 'UTIL', 'SP1', 'SP2', 'RP1', 'RP2'],
+    positions: [
+      'C',           // Catcher
+      '1B',          // First Base
+      '2B',          // Second Base
+      '3B',          // Third Base
+      'SS',          // Shortstop
+      'OF1',         // Outfield
+      'OF2',         // Outfield
+      'OF3',         // Outfield
+      'UTIL1',       // Utility
+      'UTIL2',       // Utility
+      'SP1',         // Starting Pitcher
+      'SP2',         // Starting Pitcher
+      'RP1',         // Reliever
+      'RP2',         // Reliever
+      'P1',          // All Pitcher (SP or RP)
+      'P2',          // All Pitcher (SP or RP)
+      'P3',          // All Pitcher (SP or RP)
+      'P4',          // All Pitcher (SP or RP)
+      'IL1',         // Injured List
+      'IL2',         // Injured List
+      'IL3',         // Injured List
+      'NA',          // Not Active
+      'BN1',         // Bench
+      'BN2',         // Bench
+      'BN3',         // Bench
+      'BN4',         // Bench
+      'BN5',         // Bench
+    ],
     benchSlots: 5,
-    totalRosterSize: 18,
+    totalRosterSize: 27, // 9 position + 2 SP + 2 RP + 4 P + 3 IL + 1 NA + 5 BN
   },
 }
 
@@ -58,7 +86,11 @@ export function getPositionGroup(sport: Sport): Record<string, string[]> {
       OF: ['OF'],
       SP: ['SP'],
       RP: ['RP'],
+      P: ['SP', 'RP'], // All Pitcher slots can be SP or RP
       UTIL: ['C', '1B', '2B', '3B', 'SS', 'OF'],
+      IL: ['C', '1B', '2B', '3B', 'SS', 'OF', 'SP', 'RP'], // IL can hold any position
+      NA: ['C', '1B', '2B', '3B', 'SS', 'OF', 'SP', 'RP'], // NA can hold any position
+      BN: ['C', '1B', '2B', '3B', 'SS', 'OF', 'SP', 'RP'], // Bench can hold any position
     }
   }
 }

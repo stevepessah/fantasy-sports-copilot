@@ -66,11 +66,10 @@ export class LeagueManager {
 
     // Fill position-specific slots first
     for (const slot of slots) {
-      // Skip flex/util slots for now
-      if (slot.position === 'FLEX' || slot.position === 'UTIL') continue
-
-      // Extract base position (RB1 -> RB, OF1 -> OF)
+      // Skip flex/util/pitcher/il/na/bench slots for now - handle separately
       const basePosition = slot.position.replace(/\d+/, '')
+      if (['FLEX', 'UTIL', 'P', 'IL', 'NA', 'BN'].includes(basePosition)) continue
+
       const validPositions = positionGroups[basePosition] || [basePosition]
 
       const available = sorted.filter(
@@ -111,23 +110,92 @@ export class LeagueManager {
         used.add(flexPlayer.id)
       }
     } else {
-      // Baseball UTIL
-      const utilCandidates = sorted.filter(
-        (p) =>
-          !used.has(p.id) &&
-          ['C', '1B', '2B', '3B', 'SS', 'OF'].includes(p.position) &&
-          p.injuryStatus !== 'out' &&
-          p.injuryStatus !== 'IL'
-      )
+      // Baseball UTIL slots (UTIL1, UTIL2)
+      const utilSlots = slots.filter(s => s.position.startsWith('UTIL'))
+      for (const utilSlot of utilSlots) {
+        const utilCandidates = sorted.filter(
+          (p) =>
+            !used.has(p.id) &&
+            ['C', '1B', '2B', '3B', 'SS', 'OF'].includes(p.position) &&
+            p.injuryStatus !== 'out' &&
+            p.injuryStatus !== 'IL'
+        )
 
-      if (utilCandidates.length > 0) {
-        const utilPlayer = utilCandidates[0]
-        starters.push({
-          position: 'UTIL',
-          playerId: utilPlayer.id,
-          projectedPoints: utilPlayer.projectedPoints || 0,
+        if (utilCandidates.length > 0) {
+          const utilPlayer = utilCandidates[0]
+          starters.push({
+            position: utilSlot.position,
+            playerId: utilPlayer.id,
+            projectedPoints: utilPlayer.projectedPoints || 0,
+          })
+          used.add(utilPlayer.id)
+        }
+      }
+
+      // Fill All Pitcher slots (P1, P2, P3, P4) - can be SP or RP
+      const pitcherSlots = slots.filter(s => s.position.startsWith('P') && s.position !== 'RP1' && s.position !== 'RP2' && s.position !== 'SP1' && s.position !== 'SP2')
+      for (const pitcherSlot of pitcherSlots) {
+        const pitcherCandidates = sorted.filter(
+          (p) =>
+            !used.has(p.id) &&
+            ['SP', 'RP'].includes(p.position) &&
+            p.injuryStatus !== 'out' &&
+            p.injuryStatus !== 'IL'
+        )
+
+        if (pitcherCandidates.length > 0) {
+          const pitcher = pitcherCandidates[0]
+          starters.push({
+            position: pitcherSlot.position,
+            playerId: pitcher.id,
+            projectedPoints: pitcher.projectedPoints || 0,
+          })
+          used.add(pitcher.id)
+        }
+      }
+    }
+
+    // Handle IL, NA, and Bench slots for baseball
+    if (league.sport === 'baseball') {
+      // IL slots - for injured players
+      const ilSlots = slots.filter(s => s.position.startsWith('IL'))
+      const ilPlayers = sorted.filter(p => p.injuryStatus === 'IL' || p.injuryStatus === 'out')
+      for (let i = 0; i < Math.min(ilSlots.length, ilPlayers.length); i++) {
+        if (!used.has(ilPlayers[i].id)) {
+          starters.push({
+            position: ilSlots[i].position,
+            playerId: ilPlayers[i].id,
+            projectedPoints: 0, // IL players don't score
+          })
+          used.add(ilPlayers[i].id)
+        }
+      }
+
+      // NA slot - for not active players
+      const naSlot = slots.find(s => s.position === 'NA')
+      if (naSlot) {
+        const naCandidates = sorted.filter(
+          (p) => !used.has(p.id) && p.injuryStatus === 'out'
+        )
+        if (naCandidates.length > 0) {
+          starters.push({
+            position: 'NA',
+            playerId: naCandidates[0].id,
+            projectedPoints: 0,
+          })
+          used.add(naCandidates[0].id)
+        }
+      }
+
+      // Bench slots
+      const benchSlots = slots.filter(s => s.position.startsWith('BN'))
+      const benchCandidates = sorted.filter(p => !used.has(p.id))
+      for (let i = 0; i < Math.min(benchSlots.length, benchCandidates.length); i++) {
+        bench.push({
+          playerId: benchCandidates[i].id,
+          projectedPoints: benchCandidates[i].projectedPoints || 0,
         })
-        used.add(utilPlayer.id)
+        used.add(benchCandidates[i].id)
       }
     }
 
