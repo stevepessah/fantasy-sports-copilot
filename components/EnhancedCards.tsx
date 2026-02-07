@@ -3,7 +3,7 @@
 import { Player, Sport } from '@/types'
 
 interface Card {
-  type: 'lineup' | 'matchup' | 'player' | 'waivers' | 'trade' | 'draft'
+  type: 'lineup' | 'matchup' | 'player' | 'waivers' | 'trade' | 'draft' | 'teams'
   title: string
   payload: any
 }
@@ -335,6 +335,42 @@ export function EnhancedCards({ card, onAction, sport }: EnhancedCardsProps) {
               ))}
             </ul>
           )}
+        </CardShell>
+      )
+    }
+
+    case 'teams': {
+      const p = card.payload
+      return (
+        <CardShell title={card.title}>
+          <div className="text-xs text-slate-400 mb-4">
+            {p.leagueName} • {p.teams?.length || 0} teams
+          </div>
+          <div className="space-y-2">
+            {p.teams?.map((team: any) => (
+              <div key={team.rank} className="flex items-center gap-3 py-2 border-b border-slate-700/50 last:border-0">
+                <div className="w-8 text-sm font-bold text-slate-400">
+                  #{team.rank}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="font-medium truncate">{team.name}</div>
+                  <div className="text-xs text-slate-400 mt-1">
+                    {team.wins}-{team.losses}{team.ties > 0 ? `-${team.ties}` : ''} • 
+                    Win%: {team.winPercentage} • 
+                    PF: {team.pointsFor?.toFixed(1) || '0.0'} • 
+                    PA: {team.pointsAgainst?.toFixed(1) || '0.0'}
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  {team.rank <= 3 && (
+                    <span className="px-2 py-0.5 text-xs rounded-full bg-yellow-600/20 text-yellow-400 border border-yellow-600/30">
+                      Top 3
+                    </span>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
         </CardShell>
       )
     }

@@ -10,6 +10,7 @@ export interface ParsedIntent {
   isTrade: boolean
   isDraft: boolean
   isPlayerLookup: boolean
+  isViewTeams: boolean
   playerName?: string
   dropPlayer?: string
   addPlayer?: string
@@ -28,7 +29,8 @@ export function parseIntent(input: string): ParsedIntent {
     isAddDrop: s.startsWith('add ') || s.startsWith('drop ') || (s.includes('drop') && s.includes('for')),
     isTrade: s.includes('trade') || s.startsWith('/trade') || s.includes('propose trade') || s.includes('suggest trade'),
     isDraft: s.includes('draft') || s.startsWith('/draft') || s.includes('draft advice'),
-    isPlayerLookup: !s.includes('set') && !s.includes('show') && !s.includes('matchup') && !s.includes('waiver') && !s.includes('trade') && !s.includes('draft') && s.length > 0,
+    isViewTeams: s.includes('show all teams') || s.includes('view all teams') || s.includes('list teams') || s.includes('all teams') || s.includes('teams in league') || s === 'teams',
+    isPlayerLookup: !s.includes('set') && !s.includes('show') && !s.includes('matchup') && !s.includes('waiver') && !s.includes('trade') && !s.includes('draft') && !s.includes('teams') && s.length > 0,
     playerName: extractPlayerName(s),
     dropPlayer: extractDropPlayer(s),
     addPlayer: extractAddPlayer(s),

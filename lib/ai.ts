@@ -82,6 +82,7 @@ Current context:
 Available actions:
 - Create league: "Create a 12-team PPR league"
 - Set lineup: "Set my best lineup" or "Who should I start?"
+- View teams: "Show all teams" or "View all teams" or "List teams"
 - Add/drop players: "Drop Player X for Player Y"
 - Draft help: "Who should I draft?" or "Best RB available?"
 - Trade evaluation: "Is this trade fair?"
@@ -91,6 +92,7 @@ Available actions:
 Available actions:
 - Create league: "Create a 12-team roto league"
 - Set lineup: "Set my best lineup" or "Who should I start?"
+- View teams: "Show all teams" or "View all teams" or "List teams"
 - Add/drop players: "Drop Player X for Player Y"
 - Draft help: "Who should I draft?" or "Best SP available?"
 - Trade evaluation: "Is this trade fair?"
@@ -163,9 +165,16 @@ Available actions:
       return this.handleTrade(userMessage, context)
     }
 
+    // View teams
+    if (lowerMessage.includes('teams') && (lowerMessage.includes('show') || lowerMessage.includes('view') || lowerMessage.includes('list') || lowerMessage.includes('all'))) {
+      return {
+        message: "I'll show you all the teams in your league. Check the card below for the full standings!",
+      }
+    }
+
     // Default response
     return {
-      message: "I'm here to help with your fantasy team! You can ask me to:\n\n• Create a league\n• Set your lineup\n• Help with drafting\n• Add or drop players\n• Evaluate trades\n\nWhat would you like to do?",
+      message: "I'm here to help with your fantasy team! You can ask me to:\n\n• Create a league\n• Set your lineup\n• View all teams\n• Help with drafting\n• Add or drop players\n• Evaluate trades\n\nWhat would you like to do?",
     }
   }
 

@@ -127,6 +127,45 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    if (intent.isViewTeams && context.leagueId) {
+      try {
+        const allTeams = teamDB.getByLeague(context.leagueId)
+        if (allTeams.length > 0) {
+          // Sort teams by wins (descending), then by points for
+          const sortedTeams = [...allTeams].sort((a, b) => {
+            if (b.wins !== a.wins) return b.wins - a.wins
+            if (b.pointsFor !== a.pointsFor) return b.pointsFor - a.pointsFor
+            return a.losses - b.losses
+          })
+
+          response.cards.push({
+            type: 'teams',
+            title: 'League Standings',
+            payload: {
+              leagueName: context.league?.name || 'League',
+              teams: sortedTeams.map((team, index) => ({
+                rank: index + 1,
+                name: team.name,
+                wins: team.wins,
+                losses: team.losses,
+                ties: team.ties,
+                pointsFor: team.pointsFor,
+                pointsAgainst: team.pointsAgainst,
+                winPercentage: team.wins + team.losses + team.ties > 0 
+                  ? ((team.wins + team.ties * 0.5) / (team.wins + team.losses + team.ties)).toFixed(3)
+                  : '0.000',
+              })),
+            },
+          })
+          response.message = `Here are all ${allTeams.length} teams in your league:`
+        } else {
+          response.message = "No teams found in this league."
+        }
+      } catch (error) {
+        console.error('Error generating teams card:', error)
+      }
+    }
+
     if (intent.isPlayerLookup && intent.playerName) {
       const players = playerDB.getAll().filter((p) => p.sport === currentSport)
       const player = findPlayerByNameApprox(intent.playerName, players)
