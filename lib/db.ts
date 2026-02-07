@@ -2,6 +2,7 @@
 // In production, replace with PostgreSQL, MongoDB, or similar
 
 import { League, Team, Player, Roster, DraftPick, Trade, Matchup } from '@/types'
+import { loadMLBPlayersFromCSV } from './loadPlayersFromCSV'
 
 // In-memory stores
 const leagues: Map<string, League> = new Map()
@@ -190,6 +191,9 @@ export function initializeSampleData(sport?: 'football' | 'baseball') {
   }
 }
 
+// Track if baseball players have been loaded from CSV
+let baseballPlayersLoaded = false
+
 function initializeFootballPlayers() {
   // Sample NFL players - expanded roster for MVP
   const samplePlayers: Player[] = [
@@ -241,7 +245,28 @@ function initializeFootballPlayers() {
 }
 
 function initializeBaseballPlayers() {
-  // Sample MLB players for MVP
+  // Only load once to avoid duplicates
+  if (baseballPlayersLoaded) {
+    return
+  }
+
+  try {
+    // Try to load from CSV first
+    const csvPlayers = loadMLBPlayersFromCSV()
+    
+    if (csvPlayers.length > 0) {
+      console.log(`Loading ${csvPlayers.length} MLB players from CSV...`)
+      csvPlayers.forEach((player) => {
+        playerDB.create(player)
+      })
+      baseballPlayersLoaded = true
+      return
+    }
+  } catch (error) {
+    console.warn('Could not load players from CSV, falling back to sample data:', error)
+  }
+
+  // Fallback to sample data if CSV loading fails
   const samplePlayers: Player[] = [
     // Catchers
     { id: 'b1', name: 'Adley Rutschman', sport: 'baseball', position: 'C', team: 'BAL', projectedPoints: 12.5, adp: 45 },
@@ -313,4 +338,6 @@ function initializeBaseballPlayers() {
     }
     playerDB.create(player)
   })
+  
+  baseballPlayersLoaded = true
 }
