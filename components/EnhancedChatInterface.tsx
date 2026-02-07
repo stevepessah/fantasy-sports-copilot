@@ -15,7 +15,7 @@ export default function EnhancedChatInterface({ leagueId, userId, initialMessage
   const [messages, setMessages] = useState<ChatMessage[]>(initialMessages)
   const [input, setInput] = useState('')
   const [isLoading, setIsLoading] = useState(false)
-  const [currentSport, setCurrentSport] = useState<Sport>('football')
+  const [currentSport, setCurrentSport] = useState<Sport>('baseball')
   const [mobilePanel, setMobilePanel] = useState<'chat' | 'roster'>('chat')
   const [roster, setRoster] = useState<Player[]>([])
   const [isNarrow, setIsNarrow] = useState(false)
@@ -157,7 +157,7 @@ export default function EnhancedChatInterface({ leagueId, userId, initialMessage
   ]
 
   return (
-    <div className="min-h-screen bg-slate-900 text-white flex flex-col">
+    <div className="h-screen bg-slate-900 text-white flex flex-col overflow-hidden">
       {/* Header */}
       <header className="px-4 py-3 border-b border-slate-700 bg-slate-800/50 flex justify-between items-center">
         <div className="min-w-0">

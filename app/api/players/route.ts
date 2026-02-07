@@ -10,7 +10,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const position = searchParams.get('position')
     const search = searchParams.get('search')
-    const sport = (searchParams.get('sport') as Sport) || 'football'
+    const sport = (searchParams.get('sport') as Sport) || 'baseball'
 
     // Initialize data for the requested sport if not already done
     if (!initializedSports.has(sport)) {

@@ -17,7 +17,7 @@ export default function DraftRoom({ leagueId, userId, teamId }: DraftRoomProps) 
   const [isYourTurn, setIsYourTurn] = useState(false)
   const [league, setLeague] = useState<League | null>(null)
   const [draftAssistant, setDraftAssistant] = useState<string>('')
-  const [currentSport, setCurrentSport] = useState<Sport>('football')
+  const [currentSport, setCurrentSport] = useState<Sport>('baseball')
 
   useEffect(() => {
       loadDraftData()

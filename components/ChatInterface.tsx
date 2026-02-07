@@ -14,7 +14,7 @@ export default function ChatInterface({ leagueId, userId, initialMessages = [] }
   const [messages, setMessages] = useState<ChatMessage[]>(initialMessages)
   const [input, setInput] = useState('')
   const [isLoading, setIsLoading] = useState(false)
-  const [currentSport, setCurrentSport] = useState<Sport>('football')
+  const [currentSport, setCurrentSport] = useState<Sport>('baseball')
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   const scrollToBottom = () => {
@@ -103,8 +103,8 @@ export default function ChatInterface({ leagueId, userId, initialMessages = [] }
   }
 
   return (
-    <div className="chat-container bg-slate-900 text-white">
-      <div className="chat-messages p-6 space-y-4">
+    <div className="h-screen bg-slate-900 text-white flex flex-col overflow-hidden">
+      <div className="chat-messages flex-1 overflow-y-auto p-6 space-y-4">
         <div className="max-w-4xl mx-auto">
           <SportToggle currentSport={currentSport} onSportChange={setCurrentSport} />
         </div>
