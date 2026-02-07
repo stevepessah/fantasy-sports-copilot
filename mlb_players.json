@@ -1,0 +1,3134 @@
+[
+  {
+    "name": "Angel Ba tardo",
+    "position": "RP"
+  },
+  {
+    "name": "Jo e Berrio",
+    "position": "SP"
+  },
+  {
+    "name": "Shane Bieber",
+    "position": "SP"
+  },
+  {
+    "name": "Jake Blo",
+    "position": "SP"
+  },
+  {
+    "name": "Dylan Cea e",
+    "position": "SP"
+  },
+  {
+    "name": "Lazaro E trada",
+    "position": "SP"
+  },
+  {
+    "name": "Braydon Fi her",
+    "position": "RP"
+  },
+  {
+    "name": "Ma on Fluharty",
+    "position": "RP"
+  },
+  {
+    "name": "Bowden Franci",
+    "position": "SP"
+  },
+  {
+    "name": "Yimi Garcia",
+    "position": "RP"
+  },
+  {
+    "name": "Kevin Gau man",
+    "position": "SP"
+  },
+  {
+    "name": "Jeff Hoffman",
+    "position": "RP"
+  },
+  {
+    "name": "Eric Lauer",
+    "position": "SP"
+  },
+  {
+    "name": "Cha e Lee",
+    "position": "RP"
+  },
+  {
+    "name": "Brendon Little",
+    "position": "RP"
+  },
+  {
+    "name": "Adam Macko",
+    "position": "SP"
+  },
+  {
+    "name": "Tommy Nance",
+    "position": "RP"
+  },
+  {
+    "name": "Cody Ponce",
+    "position": "SP"
+  },
+  {
+    "name": "Tyler Roger",
+    "position": "RP"
+  },
+  {
+    "name": "Ricky Tiedemann",
+    "position": "SP"
+  },
+  {
+    "name": "Loui Varland",
+    "position": "RP"
+  },
+  {
+    "name": "Trey Ye avage",
+    "position": "SP"
+  },
+  {
+    "name": "Tyler Heineman",
+    "position": "C"
+  },
+  {
+    "name": "Alejandro Kirk",
+    "position": "C"
+  },
+  {
+    "name": "Brandon Valenzuela",
+    "position": "C"
+  },
+  {
+    "name": "Leo Jimenez",
+    "position": "SS"
+  },
+  {
+    "name": "Jonatan Cla e",
+    "position": "LF"
+  },
+  {
+    "name": "Joey Loperfido",
+    "position": "LF"
+  },
+  {
+    "name": "Nathan Luke",
+    "position": "RF"
+  },
+  {
+    "name": "Anthony Santander",
+    "position": "RF"
+  },
+  {
+    "name": "Davi Schneider",
+    "position": "LF"
+  },
+  {
+    "name": "George Springer",
+    "position": "RF"
+  },
+  {
+    "name": "Myle Straw",
+    "position": "CF"
+  },
+  {
+    "name": "Daulton Var ho",
+    "position": "CF"
+  },
+  {
+    "name": "Tyler Alexander",
+    "position": "RP"
+  },
+  {
+    "name": "Cody Bradford",
+    "position": "SP"
+  },
+  {
+    "name": "Marc Church",
+    "position": "RP"
+  },
+  {
+    "name": "Jo e Corniell",
+    "position": "SP"
+  },
+  {
+    "name": "Lui Curvelo",
+    "position": "RP"
+  },
+  {
+    "name": "Jacob deGrom",
+    "position": "SP"
+  },
+  {
+    "name": "Alexi Diaz",
+    "position": "RP"
+  },
+  {
+    "name": "Nathan Eovaldi",
+    "position": "SP"
+  },
+  {
+    "name": "Robert Garcia",
+    "position": "RP"
+  },
+  {
+    "name": "MacKenzie Gore",
+    "position": "SP"
+  },
+  {
+    "name": "Jakob Juni",
+    "position": "RP"
+  },
+  {
+    "name": "Zak Kent",
+    "position": "RP"
+  },
+  {
+    "name": "Jacob Latz",
+    "position": "RP"
+  },
+  {
+    "name": "Jack Leiter",
+    "position": "SP"
+  },
+  {
+    "name": "Chri Martin",
+    "position": "RP"
+  },
+  {
+    "name": "Michel Otanez",
+    "position": "RP"
+  },
+  {
+    "name": "Kumar Rocker",
+    "position": "SP"
+  },
+  {
+    "name": "Win ton Santo",
+    "position": "SP"
+  },
+  {
+    "name": "Emiliano Teodo",
+    "position": "SP"
+  },
+  {
+    "name": "Cole Winn",
+    "position": "RP"
+  },
+  {
+    "name": "Kyle Higa hioka",
+    "position": "C"
+  },
+  {
+    "name": "Danny Jan en",
+    "position": "C"
+  },
+  {
+    "name": "Willie MacIver",
+    "position": "C"
+  },
+  {
+    "name": "Ezequiel Duran",
+    "position": "SS"
+  },
+  {
+    "name": "Corey Seager",
+    "position": "SS"
+  },
+  {
+    "name": "Jo h Smith",
+    "position": "SS"
+  },
+  {
+    "name": "Evan Carter",
+    "position": "CF"
+  },
+  {
+    "name": "Sam Haggerty",
+    "position": "CF"
+  },
+  {
+    "name": "Michael Helman",
+    "position": "CF"
+  },
+  {
+    "name": "Wyatt Langford",
+    "position": "LF"
+  },
+  {
+    "name": "Brandon Nimmo",
+    "position": "LF"
+  },
+  {
+    "name": "Alejandro O una",
+    "position": "LF"
+  },
+  {
+    "name": "Bryan Baker",
+    "position": "RP"
+  },
+  {
+    "name": "Hunter Bigge",
+    "position": "RP"
+  },
+  {
+    "name": "Joe Boyle",
+    "position": "SP"
+  },
+  {
+    "name": "Garrett Cleavinger",
+    "position": "RP"
+  },
+  {
+    "name": "Alexander Cook",
+    "position": "RP"
+  },
+  {
+    "name": "Ma on Englert",
+    "position": "RP"
+  },
+  {
+    "name": "Yoendry Gomez",
+    "position": "SP"
+  },
+  {
+    "name": "Griffin Jax",
+    "position": "RP"
+  },
+  {
+    "name": "Kevin Kelly",
+    "position": "RP"
+  },
+  {
+    "name": "Steven Matz",
+    "position": "RP"
+  },
+  {
+    "name": "Shane McClanahan",
+    "position": "SP"
+  },
+  {
+    "name": "Ryan Pepiot",
+    "position": "SP"
+  },
+  {
+    "name": "Drew Ra mu en",
+    "position": "SP"
+  },
+  {
+    "name": "Joe Rock",
+    "position": "SP"
+  },
+  {
+    "name": "Manuel Rodriguez",
+    "position": "RP"
+  },
+  {
+    "name": "Je e Scholten",
+    "position": "RP"
+  },
+  {
+    "name": "Ian Seymour",
+    "position": "RP"
+  },
+  {
+    "name": "Cole Sul er",
+    "position": "RP"
+  },
+  {
+    "name": "Edwin Uceta",
+    "position": "RP"
+  },
+  {
+    "name": "Forre t Whitley",
+    "position": "RP"
+  },
+  {
+    "name": "Steven Wil on",
+    "position": "RP"
+  },
+  {
+    "name": "Hunter Feduccia",
+    "position": "C"
+  },
+  {
+    "name": "Nick Forte",
+    "position": "C"
+  },
+  {
+    "name": "Dominic Keegan",
+    "position": "C"
+  },
+  {
+    "name": "Taylor Wall",
+    "position": "SS"
+  },
+  {
+    "name": "Car on William",
+    "position": "SS"
+  },
+  {
+    "name": "Jonny DeLuca",
+    "position": "CF"
+  },
+  {
+    "name": "Jake Fraley",
+    "position": "RF"
+  },
+  {
+    "name": "Gavin Lux",
+    "position": "LF"
+  },
+  {
+    "name": "Ju tyn-Henry Malloy",
+    "position": "RF"
+  },
+  {
+    "name": "Jacob Melton",
+    "position": "LF"
+  },
+  {
+    "name": "Victor Me a Jr.",
+    "position": "CF"
+  },
+  {
+    "name": "Cedric Mullin",
+    "position": "CF"
+  },
+  {
+    "name": "Au tin Overn",
+    "position": "OF"
+  },
+  {
+    "name": "Richie Palacio",
+    "position": "LF"
+  },
+  {
+    "name": "Chandler Simp on",
+    "position": "CF"
+  },
+  {
+    "name": "Ryan Vilade",
+    "position": "RF"
+  },
+  {
+    "name": "Ju tin Bruihl",
+    "position": "RP"
+  },
+  {
+    "name": "Hunter Dobbin",
+    "position": "SP"
+  },
+  {
+    "name": "Ryan Fernandez",
+    "position": "RP"
+  },
+  {
+    "name": "Richard Fitt",
+    "position": "SP"
+  },
+  {
+    "name": "Gordon Graceffo",
+    "position": "RP"
+  },
+  {
+    "name": "Andre Granillo",
+    "position": "RP"
+  },
+  {
+    "name": "Tink Hence",
+    "position": "RP"
+  },
+  {
+    "name": "Cooper Hjerpe",
+    "position": "SP"
+  },
+  {
+    "name": "Kyle Leahy",
+    "position": "RP"
+  },
+  {
+    "name": "Matthew Liberatore",
+    "position": "SP"
+  },
+  {
+    "name": "Brycen Mautz",
+    "position": "RP"
+  },
+  {
+    "name": "Du tin May",
+    "position": "SP"
+  },
+  {
+    "name": "Michael McGreevy",
+    "position": "SP"
+  },
+  {
+    "name": "Riley O'Brien",
+    "position": "RP"
+  },
+  {
+    "name": "Andre Pallante",
+    "position": "SP"
+  },
+  {
+    "name": "Matthew Pu hard",
+    "position": "RP"
+  },
+  {
+    "name": "Nick Raquet",
+    "position": "RP"
+  },
+  {
+    "name": "Tekoah Roby",
+    "position": "SP"
+  },
+  {
+    "name": "JoJo Romero",
+    "position": "RP"
+  },
+  {
+    "name": "Chri Roycroft",
+    "position": "RP"
+  },
+  {
+    "name": "Ryne Stanek",
+    "position": "RP"
+  },
+  {
+    "name": "Matt Svan on",
+    "position": "RP"
+  },
+  {
+    "name": "Ryan Tepera",
+    "position": "RP"
+  },
+  {
+    "name": "Leonardo Bernal",
+    "position": "C"
+  },
+  {
+    "name": "Jimmy Crook",
+    "position": "C"
+  },
+  {
+    "name": "Ivan Herrera",
+    "position": "C"
+  },
+  {
+    "name": "Pedro Page",
+    "position": "C"
+  },
+  {
+    "name": "Yohel Pozo",
+    "position": "C"
+  },
+  {
+    "name": "Ma yn Winn",
+    "position": "SS"
+  },
+  {
+    "name": "Jo hua Baez",
+    "position": "RF"
+  },
+  {
+    "name": "Nathan Church",
+    "position": "LF"
+  },
+  {
+    "name": "Lar Nootbaar",
+    "position": "LF"
+  },
+  {
+    "name": "Victor Scott II",
+    "position": "CF"
+  },
+  {
+    "name": "Bryan Torre",
+    "position": "OF"
+  },
+  {
+    "name": "Jordan Walker",
+    "position": "RF"
+  },
+  {
+    "name": "Eduard Bazardo",
+    "position": "RP"
+  },
+  {
+    "name": "Matt Bra h",
+    "position": "RP"
+  },
+  {
+    "name": "Bla Ca tano",
+    "position": "SP"
+  },
+  {
+    "name": "Lui Ca tillo",
+    "position": "SP"
+  },
+  {
+    "name": "Cooper Cri well",
+    "position": "RP"
+  },
+  {
+    "name": "Logan Evan",
+    "position": "SP"
+  },
+  {
+    "name": "Jo e Ferrer",
+    "position": "RP"
+  },
+  {
+    "name": "Logan Gilbert",
+    "position": "SP"
+  },
+  {
+    "name": "Domingo Gonzalez",
+    "position": "SP"
+  },
+  {
+    "name": "Emer on Hancock",
+    "position": "SP"
+  },
+  {
+    "name": "George Kirby",
+    "position": "SP"
+  },
+  {
+    "name": "Ca ey Legumina",
+    "position": "RP"
+  },
+  {
+    "name": "Ryan Louto",
+    "position": "RP"
+  },
+  {
+    "name": "Bryce Miller",
+    "position": "SP"
+  },
+  {
+    "name": "Andre Munoz",
+    "position": "RP"
+  },
+  {
+    "name": "Robin on Ortiz",
+    "position": "SP"
+  },
+  {
+    "name": "Gabe Speier",
+    "position": "RP"
+  },
+  {
+    "name": "Troy Taylor",
+    "position": "RP"
+  },
+  {
+    "name": "Carlo Varga",
+    "position": "RP"
+  },
+  {
+    "name": "Cole Wilcox",
+    "position": "RP"
+  },
+  {
+    "name": "Bryan Woo",
+    "position": "SP"
+  },
+  {
+    "name": "Yo ver Zulueta",
+    "position": "RP"
+  },
+  {
+    "name": "Andrew Knizner",
+    "position": "C"
+  },
+  {
+    "name": "Jhonny Pereda",
+    "position": "C"
+  },
+  {
+    "name": "Cal Raleigh",
+    "position": "C"
+  },
+  {
+    "name": "J.P. Crawford",
+    "position": "SS"
+  },
+  {
+    "name": "Randy Arozarena",
+    "position": "LF"
+  },
+  {
+    "name": "Dominic Canzone",
+    "position": "RF"
+  },
+  {
+    "name": "Luke Raley",
+    "position": "RF"
+  },
+  {
+    "name": "Rob Ref nyder",
+    "position": "RF"
+  },
+  {
+    "name": "Victor Roble",
+    "position": "RF"
+  },
+  {
+    "name": "Julio Rodriguez",
+    "position": "CF"
+  },
+  {
+    "name": "Rhylan Thoma",
+    "position": "LF"
+  },
+  {
+    "name": "Tri tan Beck",
+    "position": "RP"
+  },
+  {
+    "name": "Hayden Bird ong",
+    "position": "RP"
+  },
+  {
+    "name": "Spencer Biven",
+    "position": "RP"
+  },
+  {
+    "name": "JT Brubaker",
+    "position": "RP"
+  },
+  {
+    "name": "Jo e Butto",
+    "position": "RP"
+  },
+  {
+    "name": "Ja on Foley",
+    "position": "RP"
+  },
+  {
+    "name": "Matt Gage",
+    "position": "RP"
+  },
+  {
+    "name": "Sam Hentge",
+    "position": "RP"
+  },
+  {
+    "name": "Adrian Hou er",
+    "position": "SP"
+  },
+  {
+    "name": "Tyler Mahle",
+    "position": "SP"
+  },
+  {
+    "name": "Trevor McDonald",
+    "position": "SP"
+  },
+  {
+    "name": "Erik Miller",
+    "position": "RP"
+  },
+  {
+    "name": "Joel Peguero",
+    "position": "RP"
+  },
+  {
+    "name": "Robbie Ray",
+    "position": "SP"
+  },
+  {
+    "name": "Randy Rodriguez",
+    "position": "RP"
+  },
+  {
+    "name": "Landen Roupp",
+    "position": "SP"
+  },
+  {
+    "name": "Reiver Sanmartin",
+    "position": "RP"
+  },
+  {
+    "name": "Car on Seymour",
+    "position": "RP"
+  },
+  {
+    "name": "Blade Tidwell",
+    "position": "SP"
+  },
+  {
+    "name": "Ryan Walker",
+    "position": "RP"
+  },
+  {
+    "name": "Logan Webb",
+    "position": "SP"
+  },
+  {
+    "name": "Car on Whi enhunt",
+    "position": "SP"
+  },
+  {
+    "name": "Keaton Winn",
+    "position": "RP"
+  },
+  {
+    "name": "Patrick Bailey",
+    "position": "C"
+  },
+  {
+    "name": "Je u Rodriguez",
+    "position": "C"
+  },
+  {
+    "name": "Daniel Su ac",
+    "position": "C"
+  },
+  {
+    "name": "Willy Adame",
+    "position": "SS"
+  },
+  {
+    "name": "Harri on Bader",
+    "position": "LF"
+  },
+  {
+    "name": "Jerar Encarnacion",
+    "position": "RF"
+  },
+  {
+    "name": "Drew Gilbert",
+    "position": "CF"
+  },
+  {
+    "name": "Jung Hoo Lee",
+    "position": "CF"
+  },
+  {
+    "name": "Lui Mato",
+    "position": "RF"
+  },
+  {
+    "name": "Grant McCray",
+    "position": "CF"
+  },
+  {
+    "name": "Heliot Ramo",
+    "position": "LF"
+  },
+  {
+    "name": "Rafael Dever",
+    "position": "DH"
+  },
+  {
+    "name": "Dai on Aco ta",
+    "position": "RP"
+  },
+  {
+    "name": "Ja on Adam",
+    "position": "RP"
+  },
+  {
+    "name": "Ty Adcock",
+    "position": "RP"
+  },
+  {
+    "name": "Jhony Brito",
+    "position": "RP"
+  },
+  {
+    "name": "Yu Darvi h",
+    "position": "SP"
+  },
+  {
+    "name": "Jeremiah E trada",
+    "position": "RP"
+  },
+  {
+    "name": "Kyle Hart",
+    "position": "RP"
+  },
+  {
+    "name": "Garrett Hawkin",
+    "position": "RP"
+  },
+  {
+    "name": "Bryan Hoeing",
+    "position": "RP"
+  },
+  {
+    "name": "Alek Jacob",
+    "position": "RP"
+  },
+  {
+    "name": "Michael King",
+    "position": "SP"
+  },
+  {
+    "name": "Ron Marinaccio",
+    "position": "RP"
+  },
+  {
+    "name": "Yuki Mat ui",
+    "position": "RP"
+  },
+  {
+    "name": "Miguel Mendez",
+    "position": "SP"
+  },
+  {
+    "name": "Ma on Miller",
+    "position": "RP"
+  },
+  {
+    "name": "Adrian Morejon",
+    "position": "RP"
+  },
+  {
+    "name": "David Morgan",
+    "position": "RP"
+  },
+  {
+    "name": "Joe Mu grove",
+    "position": "SP"
+  },
+  {
+    "name": "Wandy Peralta",
+    "position": "RP"
+  },
+  {
+    "name": "Nick Pivetta",
+    "position": "SP"
+  },
+  {
+    "name": "Bradgley Rodriguez",
+    "position": "SP"
+  },
+  {
+    "name": "JP Sear",
+    "position": "SP"
+  },
+  {
+    "name": "Randy Va quez",
+    "position": "SP"
+  },
+  {
+    "name": "Matt Waldron",
+    "position": "SP"
+  },
+  {
+    "name": "Lui Campu ano",
+    "position": "C"
+  },
+  {
+    "name": "Freddy Fermin",
+    "position": "C"
+  },
+  {
+    "name": "Xander Bogaert",
+    "position": "SS"
+  },
+  {
+    "name": "Bryce John on",
+    "position": "CF"
+  },
+  {
+    "name": "Ramon Laureano",
+    "position": "RF"
+  },
+  {
+    "name": "Jack on Merrill",
+    "position": "CF"
+  },
+  {
+    "name": "Tir o Ornela",
+    "position": "LF"
+  },
+  {
+    "name": "Gavin Sheet",
+    "position": "LF"
+  },
+  {
+    "name": "Fernando Tati Jr.",
+    "position": "RF"
+  },
+  {
+    "name": "Braxton A hcraft",
+    "position": "RP"
+  },
+  {
+    "name": "Hunter Barco",
+    "position": "SP"
+  },
+  {
+    "name": "Brandan Bidoi",
+    "position": "RP"
+  },
+  {
+    "name": "Bubba Chandler",
+    "position": "RP"
+  },
+  {
+    "name": "Wilber Dotel",
+    "position": "SP"
+  },
+  {
+    "name": "Ryan Harbin",
+    "position": "RP"
+  },
+  {
+    "name": "Thoma Harrington",
+    "position": "SP"
+  },
+  {
+    "name": "Jared Jone",
+    "position": "SP"
+  },
+  {
+    "name": "Mitch Keller",
+    "position": "SP"
+  },
+  {
+    "name": "Antwone Kelly",
+    "position": "SP"
+  },
+  {
+    "name": "Ju tin Lawrence",
+    "position": "RP"
+  },
+  {
+    "name": "I aac Matt on",
+    "position": "RP"
+  },
+  {
+    "name": "Carmen Mlodzin ki",
+    "position": "RP"
+  },
+  {
+    "name": "Ma on Montgomery",
+    "position": "RP"
+  },
+  {
+    "name": "Kyle Nicola",
+    "position": "RP"
+  },
+  {
+    "name": "Yohan Ramirez",
+    "position": "RP"
+  },
+  {
+    "name": "Cam Sander",
+    "position": "RP"
+  },
+  {
+    "name": "Denni Santana",
+    "position": "RP"
+  },
+  {
+    "name": "Evan Si k",
+    "position": "RP"
+  },
+  {
+    "name": "Paul Skene",
+    "position": "SP"
+  },
+  {
+    "name": "Gregory Soto",
+    "position": "RP"
+  },
+  {
+    "name": "Joey Bart",
+    "position": "C"
+  },
+  {
+    "name": "Henry Davi",
+    "position": "C"
+  },
+  {
+    "name": "Rafael Flore",
+    "position": "C"
+  },
+  {
+    "name": "Jack Brannigan",
+    "position": "SS"
+  },
+  {
+    "name": "Jared Triolo",
+    "position": "SS"
+  },
+  {
+    "name": "Billy Cook",
+    "position": "OF"
+  },
+  {
+    "name": "Oneil Cruz",
+    "position": "CF"
+  },
+  {
+    "name": "Jho tynxon Garcia",
+    "position": "CF"
+  },
+  {
+    "name": "Jake Mangum",
+    "position": "LF"
+  },
+  {
+    "name": "Bryan Reynold",
+    "position": "RF"
+  },
+  {
+    "name": "Jack Suwin ki",
+    "position": "RF"
+  },
+  {
+    "name": "E merlyn Valdez",
+    "position": "OF"
+  },
+  {
+    "name": "Jo e Alvarado",
+    "position": "RP"
+  },
+  {
+    "name": "Kyle Backhu",
+    "position": "RP"
+  },
+  {
+    "name": "Tanner Bank",
+    "position": "RP"
+  },
+  {
+    "name": "Jonathan Bowlan",
+    "position": "RP"
+  },
+  {
+    "name": "Jean Cabrera",
+    "position": "SP"
+  },
+  {
+    "name": "Moi e Chace",
+    "position": "SP"
+  },
+  {
+    "name": "Yoniel Curet",
+    "position": "SP"
+  },
+  {
+    "name": "Jhoan Duran",
+    "position": "RP"
+  },
+  {
+    "name": "Nolan Hoffman",
+    "position": "RP"
+  },
+  {
+    "name": "Seth John on",
+    "position": "SP"
+  },
+  {
+    "name": "Brad Keller",
+    "position": "RP"
+  },
+  {
+    "name": "Orion Kerkering",
+    "position": "RP"
+  },
+  {
+    "name": "Max Lazar",
+    "position": "RP"
+  },
+  {
+    "name": "Je u Luzardo",
+    "position": "SP"
+  },
+  {
+    "name": "Zachary McCambley",
+    "position": "SP"
+  },
+  {
+    "name": "Aaron Nola",
+    "position": "SP"
+  },
+  {
+    "name": "Andrew Painter",
+    "position": "SP"
+  },
+  {
+    "name": "Zach Pop",
+    "position": "RP"
+  },
+  {
+    "name": "Alan Rangel",
+    "position": "RP"
+  },
+  {
+    "name": "Cri topher Sanchez",
+    "position": "SP"
+  },
+  {
+    "name": "Cha e Shugart",
+    "position": "RP"
+  },
+  {
+    "name": "Taijuan Walker",
+    "position": "SP"
+  },
+  {
+    "name": "Zack Wheeler",
+    "position": "SP"
+  },
+  {
+    "name": "Rafael Marchan",
+    "position": "C"
+  },
+  {
+    "name": "J.T. Realmuto",
+    "position": "C"
+  },
+  {
+    "name": "Garrett Stubb",
+    "position": "C"
+  },
+  {
+    "name": "Trea Turner",
+    "position": "SS"
+  },
+  {
+    "name": "Nick Ca tellano",
+    "position": "RF"
+  },
+  {
+    "name": "Adoli Garcia",
+    "position": "RF"
+  },
+  {
+    "name": "Pedro Leon",
+    "position": "RF"
+  },
+  {
+    "name": "Brandon Mar h",
+    "position": "CF"
+  },
+  {
+    "name": "Gabriel Rincone Jr.",
+    "position": "RF"
+  },
+  {
+    "name": "Johan Roja",
+    "position": "CF"
+  },
+  {
+    "name": "Kyle Schwarber",
+    "position": "LF"
+  },
+  {
+    "name": "David Bednar",
+    "position": "RP"
+  },
+  {
+    "name": "O valdo Bido",
+    "position": "RP"
+  },
+  {
+    "name": "Jake Bird",
+    "position": "RP"
+  },
+  {
+    "name": "Paul Blackburn",
+    "position": "RP"
+  },
+  {
+    "name": "Kervin Ca tro",
+    "position": "RP"
+  },
+  {
+    "name": "Angel Chivilli",
+    "position": "RP"
+  },
+  {
+    "name": "Gerrit Cole",
+    "position": "SP"
+  },
+  {
+    "name": "Fernando Cruz",
+    "position": "RP"
+  },
+  {
+    "name": "Elmer Cruz-Rodriguez",
+    "position": "SP"
+  },
+  {
+    "name": "Yerry De lo Santo",
+    "position": "RP"
+  },
+  {
+    "name": "Camilo Doval",
+    "position": "RP"
+  },
+  {
+    "name": "Max Fried",
+    "position": "SP"
+  },
+  {
+    "name": "Lui Gil",
+    "position": "SP"
+  },
+  {
+    "name": "Cha e Hampton",
+    "position": "SP"
+  },
+  {
+    "name": "Brent Headrick",
+    "position": "RP"
+  },
+  {
+    "name": "Tim Hill",
+    "position": "RP"
+  },
+  {
+    "name": "Carlo Rodon",
+    "position": "SP"
+  },
+  {
+    "name": "Cam Schlittler",
+    "position": "SP"
+  },
+  {
+    "name": "Clarke Schmidt",
+    "position": "SP"
+  },
+  {
+    "name": "Will Warren",
+    "position": "SP"
+  },
+  {
+    "name": "Ryan Weather",
+    "position": "SP"
+  },
+  {
+    "name": "Cade Winque t",
+    "position": "RP"
+  },
+  {
+    "name": "Ryan Yarbrough",
+    "position": "RP"
+  },
+  {
+    "name": "J.C. E carra",
+    "position": "C"
+  },
+  {
+    "name": "Au tin Well",
+    "position": "C"
+  },
+  {
+    "name": "Jo e Caballero",
+    "position": "SS"
+  },
+  {
+    "name": "Anthony Volpe",
+    "position": "SS"
+  },
+  {
+    "name": "Cody Bellinger",
+    "position": "LF"
+  },
+  {
+    "name": "Ja on Dominguez",
+    "position": "LF"
+  },
+  {
+    "name": "Yanquiel Fernandez",
+    "position": "RF"
+  },
+  {
+    "name": "Trent Gri ham",
+    "position": "CF"
+  },
+  {
+    "name": "Spencer Jone",
+    "position": "CF"
+  },
+  {
+    "name": "Aaron Judge",
+    "position": "RF"
+  },
+  {
+    "name": "Giancarlo Stanton",
+    "position": "DH"
+  },
+  {
+    "name": "Hua car Brazoban",
+    "position": "RP"
+  },
+  {
+    "name": "Alejandro Carrillo",
+    "position": "RP"
+  },
+  {
+    "name": "Lui Garcia",
+    "position": "RP"
+  },
+  {
+    "name": "Reed Garrett",
+    "position": "RP"
+  },
+  {
+    "name": "Joey Gerber",
+    "position": "RP"
+  },
+  {
+    "name": "Ju tin Hagenman",
+    "position": "RP"
+  },
+  {
+    "name": "Clay Holme",
+    "position": "SP"
+  },
+  {
+    "name": "Sean Manaea",
+    "position": "SP"
+  },
+  {
+    "name": "Nolan McLean",
+    "position": "SP"
+  },
+  {
+    "name": "Tylor Megill",
+    "position": "SP"
+  },
+  {
+    "name": "A.J. Minter",
+    "position": "RP"
+  },
+  {
+    "name": "Tobia Myer",
+    "position": "RP"
+  },
+  {
+    "name": "Dedniel Nunez",
+    "position": "RP"
+  },
+  {
+    "name": "Freddy Peralta",
+    "position": "SP"
+  },
+  {
+    "name": "David Peter on",
+    "position": "SP"
+  },
+  {
+    "name": "Jonathan Pintaro",
+    "position": "RP"
+  },
+  {
+    "name": "Brook Raley",
+    "position": "RP"
+  },
+  {
+    "name": "Dylan Ro",
+    "position": "RP"
+  },
+  {
+    "name": "Chri tian Scott",
+    "position": "SP"
+  },
+  {
+    "name": "Kodai Senga",
+    "position": "SP"
+  },
+  {
+    "name": "Jonah Tong",
+    "position": "SP"
+  },
+  {
+    "name": "Au tin Warren",
+    "position": "RP"
+  },
+  {
+    "name": "Luke Weaver",
+    "position": "RP"
+  },
+  {
+    "name": "Devin William",
+    "position": "RP"
+  },
+  {
+    "name": "Franci co Alvarez",
+    "position": "C"
+  },
+  {
+    "name": "Hayden Senger",
+    "position": "C"
+  },
+  {
+    "name": "Lui Torren",
+    "position": "C"
+  },
+  {
+    "name": "Bo Bichette",
+    "position": "SS"
+  },
+  {
+    "name": "Franci co Lindor",
+    "position": "SS"
+  },
+  {
+    "name": "Nick Morabito",
+    "position": "CF"
+  },
+  {
+    "name": "Lui Robert Jr.",
+    "position": "CF"
+  },
+  {
+    "name": "Juan Soto",
+    "position": "RF"
+  },
+  {
+    "name": "Tyrone Taylor",
+    "position": "CF"
+  },
+  {
+    "name": "Jared Young",
+    "position": "LF"
+  },
+  {
+    "name": "Mick Abel",
+    "position": "SP"
+  },
+  {
+    "name": "Travi Adam",
+    "position": "RP"
+  },
+  {
+    "name": "Taj Bradley",
+    "position": "SP"
+  },
+  {
+    "name": "David Fe ta",
+    "position": "SP"
+  },
+  {
+    "name": "Kody Funderburk",
+    "position": "RP"
+  },
+  {
+    "name": "John Klein",
+    "position": "SP"
+  },
+  {
+    "name": "Jack on Kowar",
+    "position": "RP"
+  },
+  {
+    "name": "Pablo Lopez",
+    "position": "SP"
+  },
+  {
+    "name": "Andrew Morri",
+    "position": "SP"
+  },
+  {
+    "name": "Bailey Ober",
+    "position": "SP"
+  },
+  {
+    "name": "Eric Orze",
+    "position": "RP"
+  },
+  {
+    "name": "Marco Raya",
+    "position": "SP"
+  },
+  {
+    "name": "Taylor Roger",
+    "position": "RP"
+  },
+  {
+    "name": "Kendry Roja",
+    "position": "SP"
+  },
+  {
+    "name": "Joe Ryan",
+    "position": "SP"
+  },
+  {
+    "name": "Cole Sand",
+    "position": "RP"
+  },
+  {
+    "name": "Ju tin Topa",
+    "position": "RP"
+  },
+  {
+    "name": "Simeon Wood Richard on",
+    "position": "SP"
+  },
+  {
+    "name": "Victor Caratini",
+    "position": "C"
+  },
+  {
+    "name": "Alex Jack on",
+    "position": "C"
+  },
+  {
+    "name": "Ryan Jeffer",
+    "position": "C"
+  },
+  {
+    "name": "Byron Buxton",
+    "position": "CF"
+  },
+  {
+    "name": "Gabriel Gonzalez",
+    "position": "RF"
+  },
+  {
+    "name": "Ryan Kreidler",
+    "position": "CF"
+  },
+  {
+    "name": "Trevor Larnach",
+    "position": "RF"
+  },
+  {
+    "name": "Au tin Martin",
+    "position": "CF"
+  },
+  {
+    "name": "Hendry Mendez",
+    "position": "OF"
+  },
+  {
+    "name": "Jame Outman",
+    "position": "CF"
+  },
+  {
+    "name": "Alan Roden",
+    "position": "LF"
+  },
+  {
+    "name": "Emmanuel Rodriguez",
+    "position": "CF"
+  },
+  {
+    "name": "Matt Wallner",
+    "position": "RF"
+  },
+  {
+    "name": "Grant Ander on",
+    "position": "RP"
+  },
+  {
+    "name": "Aaron A hby",
+    "position": "RP"
+  },
+  {
+    "name": "Coleman Crow",
+    "position": "SP"
+  },
+  {
+    "name": "Robert Ga er",
+    "position": "SP"
+  },
+  {
+    "name": "DL Hall",
+    "position": "RP"
+  },
+  {
+    "name": "Logan Hender on",
+    "position": "SP"
+  },
+  {
+    "name": "Jared Koenig",
+    "position": "RP"
+  },
+  {
+    "name": "Ea ton McGee",
+    "position": "SP"
+  },
+  {
+    "name": "Trevor Megill",
+    "position": "RP"
+  },
+  {
+    "name": "Jacob Mi iorow ki",
+    "position": "SP"
+  },
+  {
+    "name": "Chad Patrick",
+    "position": "SP"
+  },
+  {
+    "name": "Sammy Peralta",
+    "position": "RP"
+  },
+  {
+    "name": "Quinn Prie ter",
+    "position": "SP"
+  },
+  {
+    "name": "Carlo Rodriguez",
+    "position": "RP"
+  },
+  {
+    "name": "Brandon Sproat",
+    "position": "SP"
+  },
+  {
+    "name": "Abner Uribe",
+    "position": "RP"
+  },
+  {
+    "name": "Brandon Woodruff",
+    "position": "SP"
+  },
+  {
+    "name": "Craig Yoho",
+    "position": "RP"
+  },
+  {
+    "name": "Rob Za tryzny",
+    "position": "RP"
+  },
+  {
+    "name": "Angel Zerpa",
+    "position": "RP"
+  },
+  {
+    "name": "William Contrera",
+    "position": "C"
+  },
+  {
+    "name": "Jefer on Quero",
+    "position": "C"
+  },
+  {
+    "name": "Andruw Mona terio",
+    "position": "SS"
+  },
+  {
+    "name": "Joey Ortiz",
+    "position": "SS"
+  },
+  {
+    "name": "Akil Baddoo",
+    "position": "LF"
+  },
+  {
+    "name": "Steward Berroa",
+    "position": "RF"
+  },
+  {
+    "name": "Jack on Chourio",
+    "position": "CF"
+  },
+  {
+    "name": "Sal Frelick",
+    "position": "RF"
+  },
+  {
+    "name": "Brandon Lockridge",
+    "position": "LF"
+  },
+  {
+    "name": "Garrett Mitchell",
+    "position": "CF"
+  },
+  {
+    "name": "Blake Perkin",
+    "position": "CF"
+  },
+  {
+    "name": "Chri tian Yelich",
+    "position": "LF"
+  },
+  {
+    "name": "Garrett Acton",
+    "position": "RP"
+  },
+  {
+    "name": "Sandy Alcantara",
+    "position": "SP"
+  },
+  {
+    "name": "Lake Bachar",
+    "position": "RP"
+  },
+  {
+    "name": "Anthony Bender",
+    "position": "RP"
+  },
+  {
+    "name": "Bradley Blalock",
+    "position": "SP"
+  },
+  {
+    "name": "Pete Fairbank",
+    "position": "RP"
+  },
+  {
+    "name": "Calvin Faucher",
+    "position": "RP"
+  },
+  {
+    "name": "Dax Fulton",
+    "position": "SP"
+  },
+  {
+    "name": "Braxton Garrett",
+    "position": "SP"
+  },
+  {
+    "name": "Cade Gib on",
+    "position": "RP"
+  },
+  {
+    "name": "Ryan Gu to",
+    "position": "SP"
+  },
+  {
+    "name": "Ronny Henriquez",
+    "position": "RP"
+  },
+  {
+    "name": "Jan on Junk",
+    "position": "SP"
+  },
+  {
+    "name": "William Kempner",
+    "position": "RP"
+  },
+  {
+    "name": "Adam Mazur",
+    "position": "SP"
+  },
+  {
+    "name": "Max Meyer",
+    "position": "SP"
+  },
+  {
+    "name": "Andrew Nardi",
+    "position": "RP"
+  },
+  {
+    "name": "Eury Perez",
+    "position": "SP"
+  },
+  {
+    "name": "Michael Peter en",
+    "position": "RP"
+  },
+  {
+    "name": "Tyler Phillip",
+    "position": "RP"
+  },
+  {
+    "name": "Jo h Simp on",
+    "position": "RP"
+  },
+  {
+    "name": "Jo hua White",
+    "position": "RP"
+  },
+  {
+    "name": "Liam Hick",
+    "position": "C"
+  },
+  {
+    "name": "Joe Mack",
+    "position": "C"
+  },
+  {
+    "name": "Agu tin Ramirez",
+    "position": "C"
+  },
+  {
+    "name": "Maximo Aco ta",
+    "position": "SS"
+  },
+  {
+    "name": "Xavier Edward",
+    "position": "SS"
+  },
+  {
+    "name": "Jared Serna",
+    "position": "SS"
+  },
+  {
+    "name": "Owen Cai ie",
+    "position": "RF"
+  },
+  {
+    "name": "Griffin Conine",
+    "position": "LF"
+  },
+  {
+    "name": "Heriberto Hernandez",
+    "position": "LF"
+  },
+  {
+    "name": "Jakob Mar ee",
+    "position": "CF"
+  },
+  {
+    "name": "Chri topher Morel",
+    "position": "LF"
+  },
+  {
+    "name": "E teury Ruiz",
+    "position": "LF"
+  },
+  {
+    "name": "Kyle Stower",
+    "position": "LF"
+  },
+  {
+    "name": "Ben Ca pariu",
+    "position": "RP"
+  },
+  {
+    "name": "Edwin Diaz",
+    "position": "RP"
+  },
+  {
+    "name": "Jack Dreyer",
+    "position": "RP"
+  },
+  {
+    "name": "Paul Gerva e",
+    "position": "RP"
+  },
+  {
+    "name": "Tyler Gla now",
+    "position": "SP"
+  },
+  {
+    "name": "Bru dar Graterol",
+    "position": "RP"
+  },
+  {
+    "name": "Edgardo Henriquez",
+    "position": "RP"
+  },
+  {
+    "name": "Kyle Hurt",
+    "position": "RP"
+  },
+  {
+    "name": "Will Klein",
+    "position": "RP"
+  },
+  {
+    "name": "Landon Knack",
+    "position": "SP"
+  },
+  {
+    "name": "Ronan Kopp",
+    "position": "RP"
+  },
+  {
+    "name": "Bobby Miller",
+    "position": "SP"
+  },
+  {
+    "name": "River Ryan",
+    "position": "SP"
+  },
+  {
+    "name": "Roki Sa aki",
+    "position": "SP"
+  },
+  {
+    "name": "Tanner Scott",
+    "position": "RP"
+  },
+  {
+    "name": "Emmet Sheehan",
+    "position": "SP"
+  },
+  {
+    "name": "Blake Snell",
+    "position": "SP"
+  },
+  {
+    "name": "Brock Stewart",
+    "position": "RP"
+  },
+  {
+    "name": "Gavin Stone",
+    "position": "SP"
+  },
+  {
+    "name": "Blake Treinen",
+    "position": "RP"
+  },
+  {
+    "name": "Alex Ve ia",
+    "position": "RP"
+  },
+  {
+    "name": "Ju tin Wroble ki",
+    "position": "RP"
+  },
+  {
+    "name": "Yo hinobu Yamamoto",
+    "position": "SP"
+  },
+  {
+    "name": "Ben Rortvedt",
+    "position": "C"
+  },
+  {
+    "name": "Dalton Ru hing",
+    "position": "C"
+  },
+  {
+    "name": "Will Smith",
+    "position": "C"
+  },
+  {
+    "name": "Mookie Bett",
+    "position": "SS"
+  },
+  {
+    "name": "Alex Freeland",
+    "position": "SS"
+  },
+  {
+    "name": "Alex Call",
+    "position": "RF"
+  },
+  {
+    "name": "Teo car Hernandez",
+    "position": "RF"
+  },
+  {
+    "name": "Andy Page",
+    "position": "CF"
+  },
+  {
+    "name": "Michael Siani",
+    "position": "CF"
+  },
+  {
+    "name": "Kyle Tucker",
+    "position": "RF"
+  },
+  {
+    "name": "Ryan Ward",
+    "position": "LF"
+  },
+  {
+    "name": "Shohei Ohtani",
+    "position": "DH"
+  },
+  {
+    "name": "Sam Aldegheri",
+    "position": "SP"
+  },
+  {
+    "name": "Sam Bachman",
+    "position": "RP"
+  },
+  {
+    "name": "Caden Dana",
+    "position": "SP"
+  },
+  {
+    "name": "Reid Detmer",
+    "position": "RP"
+  },
+  {
+    "name": "Mitch Farri",
+    "position": "SP"
+  },
+  {
+    "name": "Jo e Fermin",
+    "position": "RP"
+  },
+  {
+    "name": "Ryan John on",
+    "position": "RP"
+  },
+  {
+    "name": "Ben Joyce",
+    "position": "RP"
+  },
+  {
+    "name": "Yu ei Kikuchi",
+    "position": "SP"
+  },
+  {
+    "name": "Jack Kochanowicz",
+    "position": "SP"
+  },
+  {
+    "name": "Alek Manoah",
+    "position": "SP"
+  },
+  {
+    "name": "Victor Medero",
+    "position": "SP"
+  },
+  {
+    "name": "Drew Pomeranz",
+    "position": "RP"
+  },
+  {
+    "name": "Gray on Rodriguez",
+    "position": "SP"
+  },
+  {
+    "name": "Jordan Romano",
+    "position": "RP"
+  },
+  {
+    "name": "Jayvien Sandridge",
+    "position": "RP"
+  },
+  {
+    "name": "Cha e Sil eth",
+    "position": "RP"
+  },
+  {
+    "name": "Jo e Soriano",
+    "position": "SP"
+  },
+  {
+    "name": "Robert Stephen on",
+    "position": "RP"
+  },
+  {
+    "name": "Brent Suter",
+    "position": "RP"
+  },
+  {
+    "name": "Walbert Urena",
+    "position": "SP"
+  },
+  {
+    "name": "Kirby Yate",
+    "position": "RP"
+  },
+  {
+    "name": "Ryan Zeferjahn",
+    "position": "RP"
+  },
+  {
+    "name": "Travi d'Arnaud",
+    "position": "C"
+  },
+  {
+    "name": "Logan O'Hoppe",
+    "position": "C"
+  },
+  {
+    "name": "Denzer Guzman",
+    "position": "SS"
+  },
+  {
+    "name": "Zach Neto",
+    "position": "SS"
+  },
+  {
+    "name": "Jo Adell",
+    "position": "CF"
+  },
+  {
+    "name": "Jo h Lowe",
+    "position": "RF"
+  },
+  {
+    "name": "Matthew Lugo",
+    "position": "LF"
+  },
+  {
+    "name": "Jorge Soler",
+    "position": "RF"
+  },
+  {
+    "name": "Bryce Teodo io",
+    "position": "CF"
+  },
+  {
+    "name": "Mike Trout",
+    "position": "RF"
+  },
+  {
+    "name": "Luinder Avila",
+    "position": "RP"
+  },
+  {
+    "name": "Ryan Bergert",
+    "position": "SP"
+  },
+  {
+    "name": "Ma on Black",
+    "position": "SP"
+  },
+  {
+    "name": "Kri Bubic",
+    "position": "SP"
+  },
+  {
+    "name": "Noah Cameron",
+    "position": "SP"
+  },
+  {
+    "name": "Eric Cerantola",
+    "position": "RP"
+  },
+  {
+    "name": "Steven Cruz",
+    "position": "RP"
+  },
+  {
+    "name": "Luca Erceg",
+    "position": "RP"
+  },
+  {
+    "name": "Carlo E tevez",
+    "position": "RP"
+  },
+  {
+    "name": "Bailey Falter",
+    "position": "SP"
+  },
+  {
+    "name": "Stephen Kolek",
+    "position": "SP"
+  },
+  {
+    "name": "Ben Kudrna",
+    "position": "SP"
+  },
+  {
+    "name": "Alex Lange",
+    "position": "RP"
+  },
+  {
+    "name": "Seth Lugo",
+    "position": "SP"
+  },
+  {
+    "name": "Daniel Lynch IV",
+    "position": "RP"
+  },
+  {
+    "name": "Alec Mar h",
+    "position": "SP"
+  },
+  {
+    "name": "Jame McArthur",
+    "position": "RP"
+  },
+  {
+    "name": "Nick Mear",
+    "position": "RP"
+  },
+  {
+    "name": "Cole Ragan",
+    "position": "SP"
+  },
+  {
+    "name": "John Schreiber",
+    "position": "RP"
+  },
+  {
+    "name": "Matt Strahm",
+    "position": "RP"
+  },
+  {
+    "name": "Michael Wacha",
+    "position": "SP"
+  },
+  {
+    "name": "Kyle Wright",
+    "position": "SP"
+  },
+  {
+    "name": "Steven Zobac",
+    "position": "SP"
+  },
+  {
+    "name": "Carter Jen en",
+    "position": "C"
+  },
+  {
+    "name": "Salvador Perez",
+    "position": "C"
+  },
+  {
+    "name": "Bobby Witt Jr.",
+    "position": "SS"
+  },
+  {
+    "name": "Dairon Blanco",
+    "position": "CF"
+  },
+  {
+    "name": "Jac Caglianone",
+    "position": "RF"
+  },
+  {
+    "name": "I aac Collin",
+    "position": "LF"
+  },
+  {
+    "name": "Kyle I bel",
+    "position": "CF"
+  },
+  {
+    "name": "Nick Loftin",
+    "position": "LF"
+  },
+  {
+    "name": "Kameron Mi ner",
+    "position": "CF"
+  },
+  {
+    "name": "John Rave",
+    "position": "RF"
+  },
+  {
+    "name": "Lane Thoma",
+    "position": "CF"
+  },
+  {
+    "name": "Drew Water",
+    "position": "LF"
+  },
+  {
+    "name": "Bryan Abreu",
+    "position": "RP"
+  },
+  {
+    "name": "Ja on Alexander",
+    "position": "SP"
+  },
+  {
+    "name": "Spencer Arrighetti",
+    "position": "SP"
+  },
+  {
+    "name": "Ronel Blanco",
+    "position": "SP"
+  },
+  {
+    "name": "AJ Blubaugh",
+    "position": "RP"
+  },
+  {
+    "name": "Hunter Brown",
+    "position": "SP"
+  },
+  {
+    "name": "Mike Burrow",
+    "position": "SP"
+  },
+  {
+    "name": "Enyel De Lo Santo",
+    "position": "RP"
+  },
+  {
+    "name": "J.P. France",
+    "position": "SP"
+  },
+  {
+    "name": "Colton Gordon",
+    "position": "SP"
+  },
+  {
+    "name": "Jo h Hader",
+    "position": "RP"
+  },
+  {
+    "name": "Tat uya Imai",
+    "position": "SP"
+  },
+  {
+    "name": "Cri tian Javier",
+    "position": "SP"
+  },
+  {
+    "name": "Bryan King",
+    "position": "RP"
+  },
+  {
+    "name": "Lance McCuller Jr.",
+    "position": "SP"
+  },
+  {
+    "name": "Roddery Munoz",
+    "position": "RP"
+  },
+  {
+    "name": "Jayden Murray",
+    "position": "RP"
+  },
+  {
+    "name": "Steven Okert",
+    "position": "RP"
+  },
+  {
+    "name": "Nate Pear on",
+    "position": "RP"
+  },
+  {
+    "name": "Bennett Sou a",
+    "position": "RP"
+  },
+  {
+    "name": "Kai-Wei Teng",
+    "position": "SP"
+  },
+  {
+    "name": "Miguel Ullola",
+    "position": "SP"
+  },
+  {
+    "name": "Brandon Walter",
+    "position": "SP"
+  },
+  {
+    "name": "Ryan Wei",
+    "position": "RP"
+  },
+  {
+    "name": "Hayden We ne ki",
+    "position": "SP"
+  },
+  {
+    "name": "Yainer Diaz",
+    "position": "C"
+  },
+  {
+    "name": "Ce ar Salazar",
+    "position": "C"
+  },
+  {
+    "name": "Nick Allen",
+    "position": "SS"
+  },
+  {
+    "name": "Carlo Correa",
+    "position": "SS"
+  },
+  {
+    "name": "Brice Matthew",
+    "position": "SS"
+  },
+  {
+    "name": "Jeremy Pena",
+    "position": "SS"
+  },
+  {
+    "name": "Jo e Altuve",
+    "position": "LF"
+  },
+  {
+    "name": "Yordan Alvarez",
+    "position": "LF"
+  },
+  {
+    "name": "Zach Cole",
+    "position": "CF"
+  },
+  {
+    "name": "Zach Dezenzo",
+    "position": "LF"
+  },
+  {
+    "name": "Jake Meyer",
+    "position": "CF"
+  },
+  {
+    "name": "Je u Sanchez",
+    "position": "RF"
+  },
+  {
+    "name": "Cam Smith",
+    "position": "RF"
+  },
+  {
+    "name": "Shay Whitcomb",
+    "position": "LF"
+  },
+  {
+    "name": "Drew Ander on",
+    "position": "RP"
+  },
+  {
+    "name": "Beau Brie ke",
+    "position": "RP"
+  },
+  {
+    "name": "Kyle Finnegan",
+    "position": "RP"
+  },
+  {
+    "name": "Jack Flaherty",
+    "position": "SP"
+  },
+  {
+    "name": "Sawyer Gip on-Long",
+    "position": "RP"
+  },
+  {
+    "name": "Brenan Hanifee",
+    "position": "RP"
+  },
+  {
+    "name": "Tyler Holton",
+    "position": "RP"
+  },
+  {
+    "name": "Bailey Horn",
+    "position": "RP"
+  },
+  {
+    "name": "Brant Hurter",
+    "position": "RP"
+  },
+  {
+    "name": "Kenley Jan en",
+    "position": "RP"
+  },
+  {
+    "name": "Jack on Jobe",
+    "position": "SP"
+  },
+  {
+    "name": "Ty Madden",
+    "position": "SP"
+  },
+  {
+    "name": "Troy Melton",
+    "position": "RP"
+  },
+  {
+    "name": "Jake Miller",
+    "position": "SP"
+  },
+  {
+    "name": "Ca ey Mize",
+    "position": "SP"
+  },
+  {
+    "name": "Keider Montero",
+    "position": "SP"
+  },
+  {
+    "name": "Ree e Ol on",
+    "position": "SP"
+  },
+  {
+    "name": "Tarik Skubal",
+    "position": "SP"
+  },
+  {
+    "name": "Dylan Smith",
+    "position": "RP"
+  },
+  {
+    "name": "Drew Sommer",
+    "position": "RP"
+  },
+  {
+    "name": "Will Ve t",
+    "position": "RP"
+  },
+  {
+    "name": "Dillon Dingler",
+    "position": "C"
+  },
+  {
+    "name": "Thayron Liranzo",
+    "position": "C"
+  },
+  {
+    "name": "Jake Roger",
+    "position": "C"
+  },
+  {
+    "name": "Eduardo Valencia",
+    "position": "C"
+  },
+  {
+    "name": "Trey Sweeney",
+    "position": "SS"
+  },
+  {
+    "name": "Javier Baez",
+    "position": "CF"
+  },
+  {
+    "name": "Kerry Carpenter",
+    "position": "RF"
+  },
+  {
+    "name": "Trei Cruz",
+    "position": "CF"
+  },
+  {
+    "name": "Riley Greene",
+    "position": "LF"
+  },
+  {
+    "name": "Jahmai Jone",
+    "position": "RF"
+  },
+  {
+    "name": "Parker Meadow",
+    "position": "CF"
+  },
+  {
+    "name": "Wenceel Perez",
+    "position": "RF"
+  },
+  {
+    "name": "Matt Vierling",
+    "position": "CF"
+  },
+  {
+    "name": "Zach Agno",
+    "position": "RP"
+  },
+  {
+    "name": "Brennan Bernardino",
+    "position": "RP"
+  },
+  {
+    "name": "McCade Brown",
+    "position": "SP"
+  },
+  {
+    "name": "Roan y Contrera",
+    "position": "RP"
+  },
+  {
+    "name": "Jeff Cri well",
+    "position": "RP"
+  },
+  {
+    "name": "Cha e Dollander",
+    "position": "SP"
+  },
+  {
+    "name": "Ryan Feltner",
+    "position": "SP"
+  },
+  {
+    "name": "Kyle Freeland",
+    "position": "SP"
+  },
+  {
+    "name": "Tanner Gordon",
+    "position": "SP"
+  },
+  {
+    "name": "Seth Halvor en",
+    "position": "RP"
+  },
+  {
+    "name": "Jimmy Herget",
+    "position": "RP"
+  },
+  {
+    "name": "Jaden Hill",
+    "position": "RP"
+  },
+  {
+    "name": "Gabriel Hughe",
+    "position": "SP"
+  },
+  {
+    "name": "Michael Lorenzen",
+    "position": "SP"
+  },
+  {
+    "name": "Juan Mejia",
+    "position": "RP"
+  },
+  {
+    "name": "Pier on Ohl",
+    "position": "RP"
+  },
+  {
+    "name": "Car on Palmqui t",
+    "position": "SP"
+  },
+  {
+    "name": "Lui Peralta",
+    "position": "RP"
+  },
+  {
+    "name": "RJ Petit",
+    "position": "RP"
+  },
+  {
+    "name": "Antonio Senzatela",
+    "position": "SP"
+  },
+  {
+    "name": "Keegan Thomp on",
+    "position": "RP"
+  },
+  {
+    "name": "Victor Vodnik",
+    "position": "RP"
+  },
+  {
+    "name": "Braxton Fulford",
+    "position": "C"
+  },
+  {
+    "name": "Hunter Goodman",
+    "position": "C"
+  },
+  {
+    "name": "Ryan Ritter",
+    "position": "SS"
+  },
+  {
+    "name": "Ezequiel Tovar",
+    "position": "SS"
+  },
+  {
+    "name": "Jordan Beck",
+    "position": "LF"
+  },
+  {
+    "name": "Willi Ca tro",
+    "position": "LF"
+  },
+  {
+    "name": "Brenton Doyle",
+    "position": "CF"
+  },
+  {
+    "name": "Tyler Freeman",
+    "position": "RF"
+  },
+  {
+    "name": "Troy John ton",
+    "position": "OF"
+  },
+  {
+    "name": "Jake McCarthy",
+    "position": "CF"
+  },
+  {
+    "name": "Mickey Moniak",
+    "position": "RF"
+  },
+  {
+    "name": "Sterlin Thomp on",
+    "position": "OF"
+  },
+  {
+    "name": "Zac Veen",
+    "position": "LF"
+  },
+  {
+    "name": "Kri Bryant",
+    "position": "DH"
+  },
+  {
+    "name": "Franco Aleman",
+    "position": "RP"
+  },
+  {
+    "name": "Logan Allen",
+    "position": "SP"
+  },
+  {
+    "name": "Shawn Arm trong",
+    "position": "RP"
+  },
+  {
+    "name": "Tanner Bibee",
+    "position": "SP"
+  },
+  {
+    "name": "Connor Brogdon",
+    "position": "RP"
+  },
+  {
+    "name": "Joey Cantillo",
+    "position": "RP"
+  },
+  {
+    "name": "Slade Cecconi",
+    "position": "SP"
+  },
+  {
+    "name": "Daniel E pino",
+    "position": "SP"
+  },
+  {
+    "name": "Matt Fe ta",
+    "position": "RP"
+  },
+  {
+    "name": "Hunter Gaddi",
+    "position": "RP"
+  },
+  {
+    "name": "Yorman Gomez",
+    "position": "SP"
+  },
+  {
+    "name": "Tim Herrin",
+    "position": "RP"
+  },
+  {
+    "name": "Colin Holderman",
+    "position": "RP"
+  },
+  {
+    "name": "Parker Me ick",
+    "position": "SP"
+  },
+  {
+    "name": "Doug Nikhazy",
+    "position": "SP"
+  },
+  {
+    "name": "Peyton Pallette",
+    "position": "RP"
+  },
+  {
+    "name": "Au tin Peter on",
+    "position": "SP"
+  },
+  {
+    "name": "Erik Sabrow ki",
+    "position": "RP"
+  },
+  {
+    "name": "Cade Smith",
+    "position": "RP"
+  },
+  {
+    "name": "Andrew Walter",
+    "position": "RP"
+  },
+  {
+    "name": "Gavin William",
+    "position": "SP"
+  },
+  {
+    "name": "Au tin Hedge",
+    "position": "C"
+  },
+  {
+    "name": "Bo Naylor",
+    "position": "C"
+  },
+  {
+    "name": "Gabriel Aria",
+    "position": "SS"
+  },
+  {
+    "name": "Juan Brito",
+    "position": "SS"
+  },
+  {
+    "name": "Brayan Rocchio",
+    "position": "SS"
+  },
+  {
+    "name": "Cha e DeLauter",
+    "position": "RF"
+  },
+  {
+    "name": "Petey Halpin",
+    "position": "CF"
+  },
+  {
+    "name": "Nolan Jone",
+    "position": "RF"
+  },
+  {
+    "name": "Steven Kwan",
+    "position": "LF"
+  },
+  {
+    "name": "Angel Martinez",
+    "position": "CF"
+  },
+  {
+    "name": "Johnathan Rodriguez",
+    "position": "RF"
+  },
+  {
+    "name": "George Valera",
+    "position": "RF"
+  },
+  {
+    "name": "Kahlil Wat on",
+    "position": "LF"
+  },
+  {
+    "name": "Andrew Abbott",
+    "position": "SP"
+  },
+  {
+    "name": "Julian Aguiar",
+    "position": "SP"
+  },
+  {
+    "name": "Graham A hcraft",
+    "position": "RP"
+  },
+  {
+    "name": "Brock Burke",
+    "position": "RP"
+  },
+  {
+    "name": "Cha e Burn",
+    "position": "SP"
+  },
+  {
+    "name": "Caleb Fergu on",
+    "position": "RP"
+  },
+  {
+    "name": "Jo e Franco",
+    "position": "SP"
+  },
+  {
+    "name": "Hunter Greene",
+    "position": "SP"
+  },
+  {
+    "name": "Pierce John on",
+    "position": "RP"
+  },
+  {
+    "name": "Nick Lodolo",
+    "position": "SP"
+  },
+  {
+    "name": "Rhett Lowder",
+    "position": "SP"
+  },
+  {
+    "name": "Lui Mey",
+    "position": "RP"
+  },
+  {
+    "name": "Sam Moll",
+    "position": "RP"
+  },
+  {
+    "name": "Emilio Pagan",
+    "position": "RP"
+  },
+  {
+    "name": "Cha e Petty",
+    "position": "SP"
+  },
+  {
+    "name": "Connor Phillip",
+    "position": "RP"
+  },
+  {
+    "name": "Tony Santillan",
+    "position": "RP"
+  },
+  {
+    "name": "Brady Singer",
+    "position": "SP"
+  },
+  {
+    "name": "Brandon William on",
+    "position": "SP"
+  },
+  {
+    "name": "Tyler Stephen on",
+    "position": "C"
+  },
+  {
+    "name": "Jo e Trevino",
+    "position": "C"
+  },
+  {
+    "name": "Edwin Arroyo",
+    "position": "SS"
+  },
+  {
+    "name": "Leonado Balcazar",
+    "position": "SS"
+  },
+  {
+    "name": "Elly De La Cruz",
+    "position": "SS"
+  },
+  {
+    "name": "Will Ben on",
+    "position": "LF"
+  },
+  {
+    "name": "JJ Bleday",
+    "position": "CF"
+  },
+  {
+    "name": "Tyler Callihan",
+    "position": "LF"
+  },
+  {
+    "name": "Blake Dunn",
+    "position": "LF"
+  },
+  {
+    "name": "TJ Friedl",
+    "position": "CF"
+  },
+  {
+    "name": "Rece Hind",
+    "position": "RF"
+  },
+  {
+    "name": "Noelvi Marte",
+    "position": "OF"
+  },
+  {
+    "name": "Dane Myer",
+    "position": "CF"
+  },
+  {
+    "name": "Hector Rodriguez",
+    "position": "LF"
+  },
+  {
+    "name": "Javier A ad",
+    "position": "SP"
+  },
+  {
+    "name": "Matthew Boyd",
+    "position": "SP"
+  },
+  {
+    "name": "Ben Brown",
+    "position": "SP"
+  },
+  {
+    "name": "Edward Cabrera",
+    "position": "SP"
+  },
+  {
+    "name": "Hunter Harvey",
+    "position": "RP"
+  },
+  {
+    "name": "Porter Hodge",
+    "position": "RP"
+  },
+  {
+    "name": "Gavin Hollowell",
+    "position": "RP"
+  },
+  {
+    "name": "Cade Horton",
+    "position": "SP"
+  },
+  {
+    "name": "Shota Imanaga",
+    "position": "SP"
+  },
+  {
+    "name": "Luke Little",
+    "position": "RP"
+  },
+  {
+    "name": "Riley Martin",
+    "position": "RP"
+  },
+  {
+    "name": "Hoby Milner",
+    "position": "RP"
+  },
+  {
+    "name": "Jack Neely",
+    "position": "RP"
+  },
+  {
+    "name": "Daniel Palencia",
+    "position": "RP"
+  },
+  {
+    "name": "Colin Rea",
+    "position": "SP"
+  },
+  {
+    "name": "Ethan Robert",
+    "position": "RP"
+  },
+  {
+    "name": "Ryan Roli on",
+    "position": "RP"
+  },
+  {
+    "name": "Ju tin Steele",
+    "position": "SP"
+  },
+  {
+    "name": "Jame on Taillon",
+    "position": "SP"
+  },
+  {
+    "name": "Caleb Thielbar",
+    "position": "RP"
+  },
+  {
+    "name": "Jacob Webb",
+    "position": "RP"
+  },
+  {
+    "name": "Jordan Wick",
+    "position": "RP"
+  },
+  {
+    "name": "Miguel Amaya",
+    "position": "C"
+  },
+  {
+    "name": "Moi e Balle tero",
+    "position": "C"
+  },
+  {
+    "name": "Car on Kelly",
+    "position": "C"
+  },
+  {
+    "name": "Dan by Swan on",
+    "position": "SS"
+  },
+  {
+    "name": "Kevin Alcantara",
+    "position": "RF"
+  },
+  {
+    "name": "Pete Crow-Arm trong",
+    "position": "CF"
+  },
+  {
+    "name": "Ju tin Dean",
+    "position": "CF"
+  },
+  {
+    "name": "Ian Happ",
+    "position": "LF"
+  },
+  {
+    "name": "Seiya Suzuki",
+    "position": "RF"
+  }
+]
