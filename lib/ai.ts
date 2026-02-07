@@ -1,6 +1,6 @@
 // AI integration layer for conversational fantasy sports
 
-import { AIResponse, League, Team, Player, Roster } from '@/types'
+import { AIResponse, League, Team, Player, Roster, Sport } from '@/types'
 
 export interface AIContext {
   userId?: string
@@ -11,6 +11,7 @@ export interface AIContext {
   roster?: Roster
   availablePlayers?: Player[]
   week?: number
+  sport?: Sport
 }
 
 export class FantasyAI {
