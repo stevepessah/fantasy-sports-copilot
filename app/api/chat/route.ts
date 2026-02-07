@@ -3,6 +3,7 @@ import { fantasyAI } from '@/lib/ai'
 import { leagueDB, teamDB, rosterDB, playerDB } from '@/lib/db'
 import { LeagueManager } from '@/lib/league'
 import { parseIntent, findPlayerByNameApprox } from '@/lib/commandParser'
+import { setupBaseballLeague } from '@/lib/setupBaseballLeague'
 
 export async function POST(request: NextRequest) {
   try {
@@ -15,7 +16,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const currentSport = sport || 'football'
+    const currentSport = sport || 'baseball'
 
     // Build context
     const context: any = {
@@ -24,14 +25,26 @@ export async function POST(request: NextRequest) {
       sport: currentSport,
     }
 
-    if (leagueId) {
-      const league = leagueDB.get(leagueId)
+    // If no leagueId provided, try to get the first baseball league
+    let effectiveLeagueId = leagueId
+    if (!effectiveLeagueId) {
+      const allLeagues = leagueDB.getAll()
+      const baseballLeague = allLeagues.find((l) => l.sport === 'baseball')
+      if (baseballLeague) {
+        effectiveLeagueId = baseballLeague.id
+        context.leagueId = effectiveLeagueId
+      }
+    }
+
+    if (effectiveLeagueId) {
+      const league = leagueDB.get(effectiveLeagueId)
       if (league) {
         context.league = league
+        context.leagueId = effectiveLeagueId
 
         // Get user's team if available
         if (userId) {
-          const allTeams = teamDB.getByLeague(leagueId)
+          const allTeams = teamDB.getByLeague(effectiveLeagueId)
           const userTeam = allTeams.find((t) => t.ownerId === userId)
           if (userTeam) {
             context.team = userTeam
@@ -127,9 +140,34 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    if (intent.isViewTeams && context.leagueId) {
+    if (intent.isViewTeams) {
       try {
-        const allTeams = teamDB.getByLeague(context.leagueId)
+        // Use the leagueId from context (which may have been auto-detected)
+        let leagueIdToUse = context.leagueId
+        if (!leagueIdToUse) {
+          // Try to get any baseball league
+          const allLeagues = leagueDB.getAll()
+          const baseballLeague = allLeagues.find((l) => l.sport === 'baseball')
+          if (baseballLeague) {
+            leagueIdToUse = baseballLeague.id
+            context.leagueId = leagueIdToUse
+            context.league = baseballLeague
+          } else {
+            // Auto-create the league if it doesn't exist
+            try {
+              const setupResult = setupBaseballLeague()
+              leagueIdToUse = setupResult.league.id
+              context.leagueId = leagueIdToUse
+              context.league = setupResult.league
+            } catch (setupError) {
+              console.error('Error auto-creating league:', setupError)
+              response.message = "No league found and could not create one automatically. Please create a league first."
+              return NextResponse.json(response)
+            }
+          }
+        }
+
+        const allTeams = teamDB.getByLeague(leagueIdToUse)
         if (allTeams.length > 0) {
           // Sort teams by wins (descending), then by points for
           const sortedTeams = [...allTeams].sort((a, b) => {
