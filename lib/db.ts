@@ -194,49 +194,48 @@ function initializeFootballPlayers() {
   // Sample NFL players - expanded roster for MVP
   const samplePlayers: Player[] = [
     // QBs
-    { id: 'p1', name: 'Josh Allen', position: 'QB', team: 'BUF', projectedPoints: 22.5, adp: 25 },
-    { id: 'p2', name: 'Lamar Jackson', position: 'QB', team: 'BAL', projectedPoints: 21.8, adp: 30 },
-    { id: 'p3', name: 'Patrick Mahomes', position: 'QB', team: 'KC', projectedPoints: 21.5, adp: 20 },
-    { id: 'p4', name: 'Jalen Hurts', position: 'QB', team: 'PHI', projectedPoints: 21.2, adp: 22 },
-    { id: 'p5', name: 'Joe Burrow', position: 'QB', team: 'CIN', projectedPoints: 20.8, adp: 28 },
+    { id: 'p1', name: 'Josh Allen', sport: 'football', position: 'QB', team: 'BUF', projectedPoints: 22.5, adp: 25 },
+    { id: 'p2', name: 'Lamar Jackson', sport: 'football', position: 'QB', team: 'BAL', projectedPoints: 21.8, adp: 30 },
+    { id: 'p3', name: 'Patrick Mahomes', sport: 'football', position: 'QB', team: 'KC', projectedPoints: 21.5, adp: 20 },
+    { id: 'p4', name: 'Jalen Hurts', sport: 'football', position: 'QB', team: 'PHI', projectedPoints: 21.2, adp: 22 },
+    { id: 'p5', name: 'Joe Burrow', sport: 'football', position: 'QB', team: 'CIN', projectedPoints: 20.8, adp: 28 },
     
     // RBs
-    { id: 'p6', name: 'Christian McCaffrey', position: 'RB', team: 'SF', projectedPoints: 18.5, adp: 1 },
-    { id: 'p7', name: 'Austin Ekeler', position: 'RB', team: 'LAC', projectedPoints: 17.2, adp: 5 },
-    { id: 'p8', name: 'Derrick Henry', position: 'RB', team: 'TEN', projectedPoints: 16.8, adp: 8 },
-    { id: 'p9', name: 'Saquon Barkley', position: 'RB', team: 'NYG', projectedPoints: 16.5, adp: 7 },
-    { id: 'p10', name: 'Josh Jacobs', position: 'RB', team: 'LV', projectedPoints: 16.2, adp: 9 },
-    { id: 'p11', name: 'Jonathan Taylor', position: 'RB', team: 'IND', projectedPoints: 15.8, adp: 12 },
-    { id: 'p12', name: 'Nick Chubb', position: 'RB', team: 'CLE', projectedPoints: 15.5, adp: 11 },
-    { id: 'p13', name: 'Tony Pollard', position: 'RB', team: 'DAL', projectedPoints: 15.2, adp: 15 },
+    { id: 'p6', name: 'Christian McCaffrey', sport: 'football', position: 'RB', team: 'SF', projectedPoints: 18.5, adp: 1 },
+    { id: 'p7', name: 'Austin Ekeler', sport: 'football', position: 'RB', team: 'LAC', projectedPoints: 17.2, adp: 5 },
+    { id: 'p8', name: 'Derrick Henry', sport: 'football', position: 'RB', team: 'TEN', projectedPoints: 16.8, adp: 8 },
+    { id: 'p9', name: 'Saquon Barkley', sport: 'football', position: 'RB', team: 'NYG', projectedPoints: 16.5, adp: 7 },
+    { id: 'p10', name: 'Josh Jacobs', sport: 'football', position: 'RB', team: 'LV', projectedPoints: 16.2, adp: 9 },
+    { id: 'p11', name: 'Jonathan Taylor', sport: 'football', position: 'RB', team: 'IND', projectedPoints: 15.8, adp: 12 },
+    { id: 'p12', name: 'Nick Chubb', sport: 'football', position: 'RB', team: 'CLE', projectedPoints: 15.5, adp: 11 },
+    { id: 'p13', name: 'Tony Pollard', sport: 'football', position: 'RB', team: 'DAL', projectedPoints: 15.2, adp: 15 },
     
     // WRs
-    { id: 'p14', name: 'Tyreek Hill', position: 'WR', team: 'MIA', projectedPoints: 16.5, adp: 3 },
-    { id: 'p15', name: 'Justin Jefferson', position: 'WR', team: 'MIN', projectedPoints: 16.2, adp: 2 },
-    { id: 'p16', name: 'CeeDee Lamb', position: 'WR', team: 'DAL', projectedPoints: 15.8, adp: 6 },
-    { id: 'p17', name: 'Davante Adams', position: 'WR', team: 'LV', projectedPoints: 15.5, adp: 13 },
-    { id: 'p18', name: 'Stefon Diggs', position: 'WR', team: 'BUF', projectedPoints: 15.2, adp: 14 },
-    { id: 'p19', name: 'Amon-Ra St. Brown', position: 'WR', team: 'DET', projectedPoints: 14.8, adp: 18 },
-    { id: 'p20', name: 'Cooper Kupp', position: 'WR', team: 'LAR', projectedPoints: 14.5, adp: 16 },
-    { id: 'p21', name: 'AJ Brown', position: 'WR', team: 'PHI', projectedPoints: 14.2, adp: 17 },
+    { id: 'p14', name: 'Tyreek Hill', sport: 'football', position: 'WR', team: 'MIA', projectedPoints: 16.5, adp: 3 },
+    { id: 'p15', name: 'Justin Jefferson', sport: 'football', position: 'WR', team: 'MIN', projectedPoints: 16.2, adp: 2 },
+    { id: 'p16', name: 'CeeDee Lamb', sport: 'football', position: 'WR', team: 'DAL', projectedPoints: 15.8, adp: 6 },
+    { id: 'p17', name: 'Davante Adams', sport: 'football', position: 'WR', team: 'LV', projectedPoints: 15.5, adp: 13 },
+    { id: 'p18', name: 'Stefon Diggs', sport: 'football', position: 'WR', team: 'BUF', projectedPoints: 15.2, adp: 14 },
+    { id: 'p19', name: 'Amon-Ra St. Brown', sport: 'football', position: 'WR', team: 'DET', projectedPoints: 14.8, adp: 18 },
+    { id: 'p20', name: 'Cooper Kupp', sport: 'football', position: 'WR', team: 'LAR', projectedPoints: 14.5, adp: 16 },
+    { id: 'p21', name: 'AJ Brown', sport: 'football', position: 'WR', team: 'PHI', projectedPoints: 14.2, adp: 17 },
     
     // TEs
-    { id: 'p22', name: 'Travis Kelce', position: 'TE', team: 'KC', projectedPoints: 14.5, adp: 10 },
-    { id: 'p23', name: 'Mark Andrews', position: 'TE', team: 'BAL', projectedPoints: 12.2, adp: 35 },
-    { id: 'p24', name: 'T.J. Hockenson', position: 'TE', team: 'MIN', projectedPoints: 11.8, adp: 40 },
-    { id: 'p25', name: 'Darren Waller', position: 'TE', team: 'NYG', projectedPoints: 11.5, adp: 45 },
+    { id: 'p22', name: 'Travis Kelce', sport: 'football', position: 'TE', team: 'KC', projectedPoints: 14.5, adp: 10 },
+    { id: 'p23', name: 'Mark Andrews', sport: 'football', position: 'TE', team: 'BAL', projectedPoints: 12.2, adp: 35 },
+    { id: 'p24', name: 'T.J. Hockenson', sport: 'football', position: 'TE', team: 'MIN', projectedPoints: 11.8, adp: 40 },
+    { id: 'p25', name: 'Darren Waller', sport: 'football', position: 'TE', team: 'NYG', projectedPoints: 11.5, adp: 45 },
     
     // Ks
-    { id: 'p26', name: 'Justin Tucker', position: 'K', team: 'BAL', projectedPoints: 9.5, adp: 120 },
-    { id: 'p27', name: 'Daniel Carlson', position: 'K', team: 'LV', projectedPoints: 9.2, adp: 125 },
+    { id: 'p26', name: 'Justin Tucker', sport: 'football', position: 'K', team: 'BAL', projectedPoints: 9.5, adp: 120 },
+    { id: 'p27', name: 'Daniel Carlson', sport: 'football', position: 'K', team: 'LV', projectedPoints: 9.2, adp: 125 },
     
     // DEFs
-    { id: 'p28', name: 'Buffalo Bills', position: 'DEF', team: 'BUF', projectedPoints: 8.5, adp: 110 },
-    { id: 'p29', name: 'San Francisco 49ers', position: 'DEF', team: 'SF', projectedPoints: 8.2, adp: 115 },
+    { id: 'p28', name: 'Buffalo Bills', sport: 'football', position: 'DEF', team: 'BUF', projectedPoints: 8.5, adp: 110 },
+    { id: 'p29', name: 'San Francisco 49ers', sport: 'football', position: 'DEF', team: 'SF', projectedPoints: 8.2, adp: 115 },
   ]
 
   samplePlayers.forEach((player) => {
-    player.sport = 'football'
     playerDB.create(player)
   })
 }
@@ -245,56 +244,55 @@ function initializeBaseballPlayers() {
   // Sample MLB players for MVP
   const samplePlayers: Player[] = [
     // Catchers
-    { id: 'b1', name: 'Adley Rutschman', position: 'C', team: 'BAL', projectedPoints: 12.5, adp: 45 },
-    { id: 'b2', name: 'J.T. Realmuto', position: 'C', team: 'PHI', projectedPoints: 11.8, adp: 60 },
-    { id: 'b3', name: 'Will Smith', position: 'C', team: 'LAD', projectedPoints: 11.5, adp: 55 },
+    { id: 'b1', name: 'Adley Rutschman', sport: 'baseball', position: 'C', team: 'BAL', projectedPoints: 12.5, adp: 45 },
+    { id: 'b2', name: 'J.T. Realmuto', sport: 'baseball', position: 'C', team: 'PHI', projectedPoints: 11.8, adp: 60 },
+    { id: 'b3', name: 'Will Smith', sport: 'baseball', position: 'C', team: 'LAD', projectedPoints: 11.5, adp: 55 },
     
     // First Base
-    { id: 'b4', name: 'Vladimir Guerrero Jr.', position: '1B', team: 'TOR', projectedPoints: 15.2, adp: 25 },
-    { id: 'b5', name: 'Freddie Freeman', position: '1B', team: 'LAD', projectedPoints: 14.8, adp: 20 },
-    { id: 'b6', name: 'Pete Alonso', position: '1B', team: 'NYM', projectedPoints: 14.5, adp: 22 },
+    { id: 'b4', name: 'Vladimir Guerrero Jr.', sport: 'baseball', position: '1B', team: 'TOR', projectedPoints: 15.2, adp: 25 },
+    { id: 'b5', name: 'Freddie Freeman', sport: 'baseball', position: '1B', team: 'LAD', projectedPoints: 14.8, adp: 20 },
+    { id: 'b6', name: 'Pete Alonso', sport: 'baseball', position: '1B', team: 'NYM', projectedPoints: 14.5, adp: 22 },
     
     // Second Base
-    { id: 'b7', name: 'Jose Altuve', position: '2B', team: 'HOU', projectedPoints: 13.5, adp: 30 },
-    { id: 'b8', name: 'Marcus Semien', position: '2B', team: 'TEX', projectedPoints: 13.2, adp: 35 },
-    { id: 'b9', name: 'Ozzie Albies', position: '2B', team: 'ATL', projectedPoints: 12.8, adp: 40 },
+    { id: 'b7', name: 'Jose Altuve', sport: 'baseball', position: '2B', team: 'HOU', projectedPoints: 13.5, adp: 30 },
+    { id: 'b8', name: 'Marcus Semien', sport: 'baseball', position: '2B', team: 'TEX', projectedPoints: 13.2, adp: 35 },
+    { id: 'b9', name: 'Ozzie Albies', sport: 'baseball', position: '2B', team: 'ATL', projectedPoints: 12.8, adp: 40 },
     
     // Third Base
-    { id: 'b10', name: 'Jose Ramirez', position: '3B', team: 'CLE', projectedPoints: 15.5, adp: 15 },
-    { id: 'b11', name: 'Manny Machado', position: '3B', team: 'SD', projectedPoints: 14.2, adp: 28 },
-    { id: 'b12', name: 'Rafael Devers', position: '3B', team: 'BOS', projectedPoints: 14.0, adp: 32 },
+    { id: 'b10', name: 'Jose Ramirez', sport: 'baseball', position: '3B', team: 'CLE', projectedPoints: 15.5, adp: 15 },
+    { id: 'b11', name: 'Manny Machado', sport: 'baseball', position: '3B', team: 'SD', projectedPoints: 14.2, adp: 28 },
+    { id: 'b12', name: 'Rafael Devers', sport: 'baseball', position: '3B', team: 'BOS', projectedPoints: 14.0, adp: 32 },
     
     // Shortstop
-    { id: 'b13', name: 'Trea Turner', position: 'SS', team: 'PHI', projectedPoints: 16.2, adp: 8 },
-    { id: 'b14', name: 'Bo Bichette', position: 'SS', team: 'TOR', projectedPoints: 15.8, adp: 12 },
-    { id: 'b15', name: 'Fernando Tatis Jr.', position: 'SS', team: 'SD', projectedPoints: 15.5, adp: 10 },
+    { id: 'b13', name: 'Trea Turner', sport: 'baseball', position: 'SS', team: 'PHI', projectedPoints: 16.2, adp: 8 },
+    { id: 'b14', name: 'Bo Bichette', sport: 'baseball', position: 'SS', team: 'TOR', projectedPoints: 15.8, adp: 12 },
+    { id: 'b15', name: 'Fernando Tatis Jr.', sport: 'baseball', position: 'SS', team: 'SD', projectedPoints: 15.5, adp: 10 },
     
     // Outfielders
-    { id: 'b16', name: 'Ronald Acuna Jr.', position: 'OF', team: 'ATL', projectedPoints: 17.5, adp: 1 },
-    { id: 'b17', name: 'Juan Soto', position: 'OF', team: 'NYY', projectedPoints: 16.8, adp: 3 },
-    { id: 'b18', name: 'Mookie Betts', position: 'OF', team: 'LAD', projectedPoints: 16.5, adp: 5 },
-    { id: 'b19', name: 'Aaron Judge', position: 'OF', team: 'NYY', projectedPoints: 16.2, adp: 4 },
-    { id: 'b20', name: 'Mike Trout', position: 'OF', team: 'LAA', projectedPoints: 15.8, adp: 7 },
-    { id: 'b21', name: 'Kyle Tucker', position: 'OF', team: 'HOU', projectedPoints: 15.5, adp: 9 },
-    { id: 'b22', name: 'Julio Rodriguez', position: 'OF', team: 'SEA', projectedPoints: 15.2, adp: 11 },
-    { id: 'b23', name: 'Yordan Alvarez', position: 'OF', team: 'HOU', projectedPoints: 15.0, adp: 13 },
+    { id: 'b16', name: 'Ronald Acuna Jr.', sport: 'baseball', position: 'OF', team: 'ATL', projectedPoints: 17.5, adp: 1 },
+    { id: 'b17', name: 'Juan Soto', sport: 'baseball', position: 'OF', team: 'NYY', projectedPoints: 16.8, adp: 3 },
+    { id: 'b18', name: 'Mookie Betts', sport: 'baseball', position: 'OF', team: 'LAD', projectedPoints: 16.5, adp: 5 },
+    { id: 'b19', name: 'Aaron Judge', sport: 'baseball', position: 'OF', team: 'NYY', projectedPoints: 16.2, adp: 4 },
+    { id: 'b20', name: 'Mike Trout', sport: 'baseball', position: 'OF', team: 'LAA', projectedPoints: 15.8, adp: 7 },
+    { id: 'b21', name: 'Kyle Tucker', sport: 'baseball', position: 'OF', team: 'HOU', projectedPoints: 15.5, adp: 9 },
+    { id: 'b22', name: 'Julio Rodriguez', sport: 'baseball', position: 'OF', team: 'SEA', projectedPoints: 15.2, adp: 11 },
+    { id: 'b23', name: 'Yordan Alvarez', sport: 'baseball', position: 'OF', team: 'HOU', projectedPoints: 15.0, adp: 13 },
     
     // Starting Pitchers
-    { id: 'b24', name: 'Gerrit Cole', position: 'SP', team: 'NYY', projectedPoints: 18.5, adp: 18 },
-    { id: 'b25', name: 'Spencer Strider', position: 'SP', team: 'ATL', projectedPoints: 18.2, adp: 16 },
-    { id: 'b26', name: 'Corbin Burnes', position: 'SP', team: 'MIL', projectedPoints: 17.8, adp: 19 },
-    { id: 'b27', name: 'Jacob deGrom', position: 'SP', team: 'TEX', projectedPoints: 17.5, adp: 21 },
-    { id: 'b28', name: 'Shane McClanahan', position: 'SP', team: 'TB', projectedPoints: 17.2, adp: 24 },
-    { id: 'b29', name: 'Zac Gallen', position: 'SP', team: 'ARI', projectedPoints: 16.8, adp: 26 },
+    { id: 'b24', name: 'Gerrit Cole', sport: 'baseball', position: 'SP', team: 'NYY', projectedPoints: 18.5, adp: 18 },
+    { id: 'b25', name: 'Spencer Strider', sport: 'baseball', position: 'SP', team: 'ATL', projectedPoints: 18.2, adp: 16 },
+    { id: 'b26', name: 'Corbin Burnes', sport: 'baseball', position: 'SP', team: 'MIL', projectedPoints: 17.8, adp: 19 },
+    { id: 'b27', name: 'Jacob deGrom', sport: 'baseball', position: 'SP', team: 'TEX', projectedPoints: 17.5, adp: 21 },
+    { id: 'b28', name: 'Shane McClanahan', sport: 'baseball', position: 'SP', team: 'TB', projectedPoints: 17.2, adp: 24 },
+    { id: 'b29', name: 'Zac Gallen', sport: 'baseball', position: 'SP', team: 'ARI', projectedPoints: 16.8, adp: 26 },
     
     // Relief Pitchers
-    { id: 'b30', name: 'Josh Hader', position: 'RP', team: 'HOU', projectedPoints: 14.5, adp: 50 },
-    { id: 'b31', name: 'Emmanuel Clase', position: 'RP', team: 'CLE', projectedPoints: 14.2, adp: 52 },
-    { id: 'b32', name: 'Devin Williams', position: 'RP', team: 'MIL', projectedPoints: 13.8, adp: 58 },
+    { id: 'b30', name: 'Josh Hader', sport: 'baseball', position: 'RP', team: 'HOU', projectedPoints: 14.5, adp: 50 },
+    { id: 'b31', name: 'Emmanuel Clase', sport: 'baseball', position: 'RP', team: 'CLE', projectedPoints: 14.2, adp: 52 },
+    { id: 'b32', name: 'Devin Williams', sport: 'baseball', position: 'RP', team: 'MIL', projectedPoints: 13.8, adp: 58 },
   ]
 
   samplePlayers.forEach((player) => {
-    player.sport = 'baseball'
     // Add some projected stats for baseball
     if (player.position === 'SP' || player.position === 'RP') {
       player.projectedStats = {
