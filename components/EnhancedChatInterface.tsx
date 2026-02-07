@@ -43,6 +43,7 @@ export default function EnhancedChatInterface({ leagueId, userId, initialMessage
   useEffect(() => {
     // Load roster when league/team is available
     loadRoster()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentSport])
 
   useEffect(() => {
@@ -269,17 +270,17 @@ export default function EnhancedChatInterface({ leagueId, userId, initialMessage
                   <ul className="mt-4 space-y-2 text-left max-w-md mx-auto">
                     {currentSport === 'football' ? (
                       <>
-                        <li className="text-slate-300">• "Create a 12-team PPR league"</li>
-                        <li className="text-slate-300">• "Set my best lineup"</li>
-                        <li className="text-slate-300">• "Who should I draft?"</li>
-                        <li className="text-slate-300">• "Drop Player X for Player Y"</li>
+                        <li className="text-slate-300">• &quot;Create a 12-team PPR league&quot;</li>
+                        <li className="text-slate-300">• &quot;Set my best lineup&quot;</li>
+                        <li className="text-slate-300">• &quot;Who should I draft?&quot;</li>
+                        <li className="text-slate-300">• &quot;Drop Player X for Player Y&quot;</li>
                       </>
                     ) : (
                       <>
-                        <li className="text-slate-300">• "Create a 12-team roto league"</li>
-                        <li className="text-slate-300">• "Set my best lineup"</li>
-                        <li className="text-slate-300">• "Who should I draft?"</li>
-                        <li className="text-slate-300">• "Drop Player X for Player Y"</li>
+                        <li className="text-slate-300">• &quot;Create a 12-team roto league&quot;</li>
+                        <li className="text-slate-300">• &quot;Set my best lineup&quot;</li>
+                        <li className="text-slate-300">• &quot;Who should I draft?&quot;</li>
+                        <li className="text-slate-300">• &quot;Drop Player X for Player Y&quot;</li>
                       </>
                     )}
                   </ul>
@@ -339,7 +340,7 @@ export default function EnhancedChatInterface({ leagueId, userId, initialMessage
                   type="text"
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
-                  placeholder='Try: "set my optimal lineup"'
+                  placeholder={'Try: "set my optimal lineup"'}
                   className="flex-1 bg-slate-800 border border-slate-700 text-white rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
                   disabled={isLoading}
                   onKeyDown={(e) => {
