@@ -157,6 +157,8 @@ export class YahooFantasyAPI {
     }
     let yahooGameKey = gameKeyMap[gameKey.toLowerCase()] || gameKey
     
+    console.log(`[Yahoo API] getLeagues called with gameKey="${gameKey}", mapped to yahooGameKey="${yahooGameKey}"`)
+    
     // If MLB and no leagues found, we might need to try 2023 season (406)
     // This will be handled by the caller if needed
     
