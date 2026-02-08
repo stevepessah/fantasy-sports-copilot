@@ -119,7 +119,7 @@ export function parseTeamsXML(xml: string): ParsedTeam[] {
           const match = managerBlock.match(regex)
           return match ? match[1].trim() : undefined
         }
-        const manager: ParsedTeam['managers']![0] = {
+        const manager = {
           manager_id: extractManagerValue('manager_id') || '',
           nickname: extractManagerValue('nickname'),
           guid: extractManagerValue('guid') || '',
