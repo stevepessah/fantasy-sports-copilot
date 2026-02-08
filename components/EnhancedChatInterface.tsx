@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect, useMemo } from 'react'
 import { ChatMessage, Sport, Player, Roster } from '@/types'
 import { EnhancedCards } from './EnhancedCards'
+import YahooAuth from './YahooAuth'
 
 interface ChatInterfaceProps {
   leagueId?: string
@@ -251,6 +252,11 @@ export default function EnhancedChatInterface({ leagueId, userId, initialMessage
                     </div>
                   </button>
                 ))}
+              </div>
+
+              <div className="mt-6">
+                <h2 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">Yahoo Fantasy</h2>
+                <YahooAuth />
               </div>
 
               <div className="mt-6">
