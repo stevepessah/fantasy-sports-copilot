@@ -204,9 +204,10 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    if (intent.isPlayerLookup && intent.playerName) {
+    if (intent.isPlayerLookup) {
       const players = playerDB.getAll().filter((p) => p.sport === currentSport)
-      const player = findPlayerByNameApprox(intent.playerName, players)
+      const playerQuery = intent.playerName || message
+      const player = findPlayerByNameApprox(playerQuery, players)
       if (player) {
         response.cards.push({
           type: 'player',
