@@ -132,17 +132,20 @@ export class YahooOAuth {
       oauth_callback: this.callbackUrl,
     })
 
-    // Convert params to form data format
+    // Convert params to form data format (use RFC 3986 encoding)
     const formData = Object.keys(params)
-      .map(key => `${encodeURIComponent(key)}=${encodeURIComponent(params[key])}`)
+      .map(key => `${this.rfc3986Encode(key)}=${this.rfc3986Encode(params[key])}`)
       .join('&')
 
+    // Log detailed request info for debugging
     console.log('Yahoo OAuth Request Details:', {
       url,
       callbackUrl: this.callbackUrl,
       consumerKey: this.consumerKey ? `${this.consumerKey.substring(0, 10)}...` : 'MISSING',
       hasConsumerSecret: !!this.consumerSecret,
       paramsCount: Object.keys(params).length,
+      paramKeys: Object.keys(params).sort(),
+      formDataPreview: formData.substring(0, 200) + '...',
     })
     
     const response = await fetch(url, {
