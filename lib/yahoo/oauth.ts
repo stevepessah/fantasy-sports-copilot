@@ -15,14 +15,22 @@ export class YahooOAuth {
     this.callbackUrl = YAHOO_CONFIG.callbackUrl
 
     if (!this.consumerKey || !this.consumerSecret) {
-      console.warn('Yahoo OAuth credentials not configured. Set YAHOO_CONSUMER_KEY and YAHOO_CONSUMER_SECRET in .env.local')
-    } else {
-      console.log('Yahoo OAuth initialized with callback URL:', this.callbackUrl)
+      const error = 'Yahoo OAuth credentials not configured. Set YAHOO_CONSUMER_KEY and YAHOO_CONSUMER_SECRET in environment variables.'
+      console.error(error)
+      console.error('Consumer Key present:', !!this.consumerKey)
+      console.error('Consumer Secret present:', !!this.consumerSecret)
+      throw new Error(error)
     }
+    
+    console.log('Yahoo OAuth initialized:', {
+      callbackUrl: this.callbackUrl,
+      consumerKeyPrefix: this.consumerKey.substring(0, 10) + '...',
+      hasSecret: !!this.consumerSecret,
+    })
   }
 
   /**
-   * Generate OAuth signature
+   * Generate OAuth signature according to OAuth 1.0a spec
    */
   private generateSignature(
     method: string,
@@ -30,29 +38,47 @@ export class YahooOAuth {
     params: Record<string, string>,
     tokenSecret: string = ''
   ): string {
-    // Create parameter string
-    const sortedParams = Object.keys(params)
-      .sort()
-      .map(key => `${encodeURIComponent(key)}=${encodeURIComponent(params[key])}`)
-      .join('&')
+    // Normalize URL (remove query params, normalize port)
+    const normalizedUrl = this.normalizeUrl(url)
+    
+    // Create parameter string - sort keys and encode properly
+    const sortedKeys = Object.keys(params).sort()
+    const paramPairs = sortedKeys.map(key => {
+      // OAuth 1.0a requires RFC 3986 encoding
+      return `${this.rfc3986Encode(key)}=${this.rfc3986Encode(params[key])}`
+    })
+    const paramString = paramPairs.join('&')
 
-    // Create signature base string
+    // Create signature base string: METHOD & normalized_url & normalized_parameters
     const signatureBaseString = [
       method.toUpperCase(),
-      encodeURIComponent(url),
-      encodeURIComponent(sortedParams),
+      this.rfc3986Encode(normalizedUrl),
+      this.rfc3986Encode(paramString),
     ].join('&')
 
-    // Create signing key
-    const signingKey = `${encodeURIComponent(this.consumerSecret)}&${encodeURIComponent(tokenSecret)}`
+    // Create signing key: consumer_secret & token_secret
+    const signingKey = `${this.rfc3986Encode(this.consumerSecret)}&${this.rfc3986Encode(tokenSecret)}`
 
-    // Generate signature
+    // Generate HMAC-SHA1 signature
     const signature = crypto
       .createHmac('sha1', signingKey)
       .update(signatureBaseString)
       .digest('base64')
 
     return signature
+  }
+
+  /**
+   * RFC 3986 encoding (OAuth 1.0a standard)
+   * Slightly different from encodeURIComponent - encodes more characters
+   */
+  private rfc3986Encode(str: string): string {
+    return encodeURIComponent(str)
+      .replace(/!/g, '%21')
+      .replace(/'/g, '%27')
+      .replace(/\(/g, '%28')
+      .replace(/\)/g, '%29')
+      .replace(/\*/g, '%2A')
   }
 
   /**
@@ -73,11 +99,27 @@ export class YahooOAuth {
       ...additionalParams,
     }
 
-    // Generate signature
+    // Generate signature (MUST be calculated WITHOUT oauth_signature in params)
     const signature = this.generateSignature(method, url, params, tokenSecret)
+    
+    // Add signature AFTER calculation
     params.oauth_signature = signature
 
     return params
+  }
+
+  /**
+   * Normalize URL for OAuth signature (remove query params, normalize)
+   */
+  private normalizeUrl(url: string): string {
+    try {
+      const urlObj = new URL(url)
+      // Return base URL without query or fragment
+      return `${urlObj.protocol}//${urlObj.host}${urlObj.pathname}`
+    } catch {
+      // If URL parsing fails, return as-is
+      return url
+    }
   }
 
   /**
@@ -95,13 +137,19 @@ export class YahooOAuth {
       .map(key => `${encodeURIComponent(key)}=${encodeURIComponent(params[key])}`)
       .join('&')
 
-    console.log('Requesting token from:', url)
-    console.log('Callback URL:', this.callbackUrl)
+    console.log('Yahoo OAuth Request Details:', {
+      url,
+      callbackUrl: this.callbackUrl,
+      consumerKey: this.consumerKey ? `${this.consumerKey.substring(0, 10)}...` : 'MISSING',
+      hasConsumerSecret: !!this.consumerSecret,
+      paramsCount: Object.keys(params).length,
+    })
     
     const response = await fetch(url, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
+        'User-Agent': 'Fantasy-Sports-Copilot/1.0',
       },
       body: formData,
     })
@@ -114,6 +162,7 @@ export class YahooOAuth {
         body: text,
         url,
         callbackUrl: this.callbackUrl,
+        headers: Object.fromEntries(response.headers.entries()),
       })
       throw new Error(`Failed to get request token: ${response.status} ${text}`)
     }
@@ -151,7 +200,7 @@ export class YahooOAuth {
 
     // Convert params to form data format
     const formData = Object.keys(params)
-      .map(key => `${encodeURIComponent(key)}=${encodeURIComponent(params[key])}`)
+      .map(key => `${this.rfc3986Encode(key)}=${this.rfc3986Encode(params[key])}`)
       .join('&')
 
     const response = await fetch(url, {
@@ -189,7 +238,7 @@ export class YahooOAuth {
 
     // Convert params to form data format
     const formData = Object.keys(params)
-      .map(key => `${encodeURIComponent(key)}=${encodeURIComponent(params[key])}`)
+      .map(key => `${this.rfc3986Encode(key)}=${this.rfc3986Encode(params[key])}`)
       .join('&')
 
     const response = await fetch(url, {
@@ -227,7 +276,7 @@ export class YahooOAuth {
     })
 
     const queryString = Object.keys(params)
-      .map(key => `${encodeURIComponent(key)}=${encodeURIComponent(params[key])}`)
+      .map(key => `${this.rfc3986Encode(key)}=${this.rfc3986Encode(params[key])}`)
       .join('&')
 
     const fullUrl = `${url}?${queryString}`
