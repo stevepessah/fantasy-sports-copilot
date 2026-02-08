@@ -1,8 +1,7 @@
 // Yahoo Fantasy Sports API Service
 // Handles fetching data from Yahoo Fantasy Sports API
 
-import { YahooOAuth } from './oauth'
-import { YahooAccessToken } from './config'
+import { YahooOAuth2 } from './oauth2'
 
 // Simple XML parser (for MVP - consider using xml2js in production)
 function parseXML(xml: string): any {
@@ -100,17 +99,17 @@ export interface YahooPlayer {
 }
 
 export class YahooFantasyAPI {
-  private oauth: YahooOAuth
-  private accessToken: YahooAccessToken | null = null
+  private oauth2: YahooOAuth2
+  private accessToken: string | null = null
 
   constructor() {
-    this.oauth = new YahooOAuth()
+    this.oauth2 = new YahooOAuth2()
   }
 
   /**
-   * Set access token (after OAuth flow)
+   * Set access token (after OAuth 2.0 flow)
    */
-  setAccessToken(token: YahooAccessToken) {
+  setAccessToken(token: string) {
     this.accessToken = token
   }
 
@@ -125,11 +124,10 @@ export class YahooFantasyAPI {
     const gameFilter = gameKeys ? `;game_keys=${gameKeys.join(',')}` : ''
     const endpoint = `/users;use_login=1/games${gameFilter}`
     
-    const response = await this.oauth.makeRequest(
+    const response = await this.oauth2.makeRequest(
       'GET',
       endpoint,
-      this.accessToken.oauth_token,
-      this.accessToken.oauth_token_secret
+      this.accessToken
     )
 
     return response
@@ -145,11 +143,10 @@ export class YahooFantasyAPI {
 
     const endpoint = `/users;use_login=1/games;game_keys=${gameKey}/leagues`
     
-    const response = await this.oauth.makeRequest(
+    const response = await this.oauth2.makeRequest(
       'GET',
       endpoint,
-      this.accessToken.oauth_token,
-      this.accessToken.oauth_token_secret
+      this.accessToken
     )
 
     // Parse response (Yahoo returns XML)
@@ -168,11 +165,10 @@ export class YahooFantasyAPI {
 
     const endpoint = `/league/${leagueKey}/teams`
     
-    const response = await this.oauth.makeRequest(
+    const response = await this.oauth2.makeRequest(
       'GET',
       endpoint,
-      this.accessToken.oauth_token,
-      this.accessToken.oauth_token_secret
+      this.accessToken
     )
 
     return this.parseTeamsResponse(response)
@@ -188,11 +184,10 @@ export class YahooFantasyAPI {
 
     const endpoint = `/team/${teamKey}/roster`
     
-    const response = await this.oauth.makeRequest(
+    const response = await this.oauth2.makeRequest(
       'GET',
       endpoint,
-      this.accessToken.oauth_token,
-      this.accessToken.oauth_token_secret
+      this.accessToken
     )
 
     return this.parsePlayersResponse(response)
@@ -209,11 +204,10 @@ export class YahooFantasyAPI {
     const weekFilter = week ? `;week=${week}` : ''
     const endpoint = `/league/${leagueKey}/scoreboard${weekFilter}`
     
-    const response = await this.oauth.makeRequest(
+    const response = await this.oauth2.makeRequest(
       'GET',
       endpoint,
-      this.accessToken.oauth_token,
-      this.accessToken.oauth_token_secret
+      this.accessToken
     )
 
     return response
@@ -229,11 +223,10 @@ export class YahooFantasyAPI {
 
     const endpoint = `/league/${leagueKey}/standings`
     
-    const response = await this.oauth.makeRequest(
+    const response = await this.oauth2.makeRequest(
       'GET',
       endpoint,
-      this.accessToken.oauth_token,
-      this.accessToken.oauth_token_secret
+      this.accessToken
     )
 
     return response
@@ -249,11 +242,10 @@ export class YahooFantasyAPI {
 
     const endpoint = `/league/${leagueKey}/players;start=${start};count=${count}`
     
-    const response = await this.oauth.makeRequest(
+    const response = await this.oauth2.makeRequest(
       'GET',
       endpoint,
-      this.accessToken.oauth_token,
-      this.accessToken.oauth_token_secret
+      this.accessToken
     )
 
     return response

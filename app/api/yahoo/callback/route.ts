@@ -1,6 +1,6 @@
-// Yahoo OAuth - Step 2: Handle callback from Yahoo
+// Yahoo OAuth 2.0 - Step 2: Handle callback from Yahoo
 import { NextRequest, NextResponse } from 'next/server'
-import { YahooOAuth } from '@/lib/yahoo/oauth'
+import { YahooOAuth2 } from '@/lib/yahoo/oauth2'
 import { cookies } from 'next/headers'
 
 export const dynamic = 'force-dynamic'
@@ -8,69 +8,63 @@ export const dynamic = 'force-dynamic'
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
-    const oauthToken = searchParams.get('oauth_token')
-    const oauthVerifier = searchParams.get('oauth_verifier')
+    const code = searchParams.get('code')
+    const state = searchParams.get('state')
+    const error = searchParams.get('error')
     
     // Get base URL from request
     const baseUrl = request.headers.get('origin') || request.nextUrl.origin
     const redirectUrl = `${baseUrl}/?yahoo_connected=true`
     
-    if (!oauthToken || !oauthVerifier) {
+    if (error) {
+      console.error('Yahoo OAuth 2.0 error:', error)
+      return NextResponse.redirect(`${baseUrl}/?error=oauth_denied`)
+    }
+    
+    if (!code) {
       return NextResponse.redirect(`${baseUrl}/?error=oauth_failed`)
     }
     
-    // Get stored request token secret from cookie
+    // Verify state for CSRF protection
     const cookieStore = await cookies()
-    const requestTokenSecret = cookieStore.get('yahoo_request_token_secret')?.value
-    const storedRequestToken = cookieStore.get('yahoo_request_token')?.value
+    const storedState = cookieStore.get('yahoo_oauth_state')?.value
     
-    if (!requestTokenSecret || storedRequestToken !== oauthToken) {
-      return NextResponse.redirect(`${baseUrl}/?error=invalid_token`)
+    if (!storedState || storedState !== state) {
+      console.error('State mismatch in OAuth callback')
+      return NextResponse.redirect(`${baseUrl}/?error=invalid_state`)
     }
     
-    const oauth = new YahooOAuth()
+    const oauth2 = new YahooOAuth2()
     
-    // Exchange request token for access token
-    const accessToken = await oauth.getAccessToken(
-      oauthToken,
-      requestTokenSecret,
-      oauthVerifier
-    )
+    // Exchange authorization code for access token
+    const tokens = await oauth2.getAccessToken(code)
     
     // Store access token in cookie (in production, use secure session storage)
     const response = NextResponse.redirect(redirectUrl)
     
-    // Store access token (in production, use encrypted session storage)
-    response.cookies.set('yahoo_access_token', accessToken.oauth_token, {
+    // Store access token
+    response.cookies.set('yahoo_access_token', tokens.access_token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
-      maxAge: 60 * 60 * 24 * 30, // 30 days
+      maxAge: tokens.expires_in || 60 * 60 * 24 * 30, // Use expires_in or default to 30 days
     })
     
-    response.cookies.set('yahoo_access_token_secret', accessToken.oauth_token_secret, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 60 * 60 * 24 * 30,
-    })
-    
-    if (accessToken.oauth_session_handle) {
-      response.cookies.set('yahoo_session_handle', accessToken.oauth_session_handle, {
+    if (tokens.refresh_token) {
+      response.cookies.set('yahoo_refresh_token', tokens.refresh_token, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'lax',
-        maxAge: 60 * 60 * 24 * 30,
+        maxAge: 60 * 60 * 24 * 90, // 90 days for refresh token
       })
     }
     
-    // Clear request token cookies
-    response.cookies.delete('yahoo_request_token')
-    response.cookies.delete('yahoo_request_token_secret')
+    // Clear state cookie
+    response.cookies.delete('yahoo_oauth_state')
     
     return response
   } catch (error) {
-    console.error('Yahoo OAuth callback error:', error)
+    console.error('Yahoo OAuth 2.0 callback error:', error)
     const baseUrl = request.headers.get('origin') || request.nextUrl.origin
     return NextResponse.redirect(`${baseUrl}/?error=oauth_callback_failed`)
   }

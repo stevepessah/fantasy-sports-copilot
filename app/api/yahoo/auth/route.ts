@@ -1,6 +1,6 @@
-// Yahoo OAuth - Step 1: Get request token and redirect to Yahoo
+// Yahoo OAuth 2.0 - Step 1: Redirect to Yahoo authorization
 import { NextRequest, NextResponse } from 'next/server'
-import { YahooOAuth } from '@/lib/yahoo/oauth'
+import { YahooOAuth2 } from '@/lib/yahoo/oauth2'
 
 export const dynamic = 'force-dynamic'
 
@@ -18,35 +18,27 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    const oauth = new YahooOAuth()
+    const oauth2 = new YahooOAuth2()
     
-    // Get request token
-    const requestToken = await oauth.getRequestToken()
+    // Generate state for CSRF protection
+    const state = crypto.randomBytes(16).toString('hex')
     
-    // Store request token secret in session/cookie for callback
-    // For MVP, we'll use a simple approach with cookies
-    const response = NextResponse.redirect(
-      oauth.getAuthorizationUrl(requestToken.oauth_token)
-    )
+    // Get authorization URL and redirect user
+    const authUrl = oauth2.getAuthorizationUrl(state)
     
-    // Store token secret in httpOnly cookie
-    response.cookies.set('yahoo_request_token_secret', requestToken.oauth_token_secret, {
+    // Store state in cookie for verification in callback
+    const response = NextResponse.redirect(authUrl)
+    
+    response.cookies.set('yahoo_oauth_state', state, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
       maxAge: 600, // 10 minutes
     })
     
-    response.cookies.set('yahoo_request_token', requestToken.oauth_token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 600,
-    })
-    
     return response
   } catch (error) {
-    console.error('Yahoo OAuth error:', error)
+    console.error('Yahoo OAuth 2.0 error:', error)
     return NextResponse.json(
       { error: 'Failed to initiate Yahoo OAuth', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
