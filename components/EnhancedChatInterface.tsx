@@ -19,6 +19,7 @@ export default function EnhancedChatInterface({ leagueId, userId, initialMessage
   const [roster, setRoster] = useState<Player[]>([])
   const [isNarrow, setIsNarrow] = useState(false)
   const [isTiny, setIsTiny] = useState(false)
+  const [showQuickActions, setShowQuickActions] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -50,6 +51,12 @@ export default function EnhancedChatInterface({ leagueId, userId, initialMessage
       setMobilePanel('chat')
     }
   }, [isNarrow])
+
+  useEffect(() => {
+    if (!isNarrow || mobilePanel !== 'chat') {
+      setShowQuickActions(false)
+    }
+  }, [isNarrow, mobilePanel])
 
   const loadRoster = async () => {
     try {
@@ -147,6 +154,18 @@ export default function EnhancedChatInterface({ leagueId, userId, initialMessage
     setTimeout(() => handleSubmit(), 0)
   }
 
+  const handleRosterClick = (player: Player) => {
+    runCommand(`tell me about ${player.name}`)
+    if (isNarrow) {
+      setMobilePanel('chat')
+    }
+  }
+
+  const handleQuickAction = (command: string) => {
+    runCommand(command)
+    setShowQuickActions(false)
+  }
+
   const quickActions = [
     { label: 'Set optimal lineup', command: 'set my optimal lineup' },
     { label: 'Show matchup', command: 'show matchup' },
@@ -208,7 +227,7 @@ export default function EnhancedChatInterface({ leagueId, userId, initialMessage
                 {roster.map((player) => (
                   <button
                     key={player.id}
-                    onClick={() => runCommand(player.name)}
+                    onClick={() => handleRosterClick(player)}
                     className="w-full text-left p-2 rounded-lg border border-slate-700 bg-slate-800/50 hover:bg-slate-700 transition-colors"
                   >
                     <div className="flex justify-between items-center gap-2">
@@ -240,7 +259,7 @@ export default function EnhancedChatInterface({ leagueId, userId, initialMessage
                   {quickActions.map((action) => (
                     <button
                       key={action.label}
-                      onClick={() => runCommand(action.command)}
+                      onClick={() => handleQuickAction(action.command)}
                       className="w-full text-left px-3 py-2 rounded-lg border border-slate-700 bg-slate-800/50 hover:bg-slate-700 transition-colors text-sm"
                     >
                       {action.label}
@@ -321,6 +340,34 @@ export default function EnhancedChatInterface({ leagueId, userId, initialMessage
 
             {/* Input Bar */}
             <div className="border-t border-slate-700 bg-slate-800/50 p-4">
+              {isNarrow && (
+                <div className="mb-3">
+                  <button
+                    type="button"
+                    onClick={() => setShowQuickActions((prev) => !prev)}
+                    aria-expanded={showQuickActions}
+                    aria-controls="quick-actions-panel"
+                    className="w-full flex items-center justify-between px-3 py-2 rounded-lg border border-slate-700 bg-slate-800/70 text-sm font-semibold text-slate-200"
+                  >
+                    <span>Quick actions</span>
+                    <span className="text-slate-400">{showQuickActions ? 'Hide' : 'Show'}</span>
+                  </button>
+                  {showQuickActions && (
+                    <div id="quick-actions-panel" className="mt-2 flex flex-wrap gap-2">
+                      {quickActions.map((action) => (
+                        <button
+                          key={action.label}
+                          type="button"
+                          onClick={() => handleQuickAction(action.command)}
+                          className="px-3 py-2 rounded-lg border border-slate-700 bg-slate-800/50 hover:bg-slate-700 transition-colors text-xs text-slate-200"
+                        >
+                          {action.label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
               <form onSubmit={handleSubmit} className="max-w-4xl mx-auto flex gap-2">
                 <input
                   type="text"
