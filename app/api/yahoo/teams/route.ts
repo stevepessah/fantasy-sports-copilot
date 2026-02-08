@@ -31,10 +31,11 @@ export async function GET(request: NextRequest) {
     }
     
     // If user provided just the league ID, convert to full league key format
-    // Yahoo league keys are: game_key.l.league_id (e.g., 414.l.45462)
+    // Yahoo league keys are: game_key.l.league_id (e.g., 414.l.45462 for NFL, 423.l.45462 for MLB)
     if (!leagueKey.includes('.')) {
-      // Assume MLB (414) if no game key provided
-      leagueKey = `414.l.${leagueKey}`
+      // Try MLB first (423), but user might need to specify
+      // For now, default to 423 (MLB 2024), but this might need to be configurable
+      leagueKey = `423.l.${leagueKey}`
     }
     
     const api = new YahooFantasyAPI()

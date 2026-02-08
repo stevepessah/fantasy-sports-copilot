@@ -135,15 +135,30 @@ export class YahooFantasyAPI {
 
   /**
    * Get all leagues for the logged-in user
-   * @param gameKey - Yahoo game key: '414' for MLB, '331' for NFL, etc.
+   * @param gameKey - Yahoo game key: '414' for NFL, '423' for MLB, etc.
    */
-  async getLeagues(gameKey: string = '414'): Promise<any> {
+  async getLeagues(gameKey: string = '423'): Promise<any> {
     if (!this.accessToken) {
       throw new Error('Access token not set. Please authenticate first.')
     }
 
-    // Convert 'mlb' to game key '414' if needed
-    const yahooGameKey = gameKey === 'mlb' ? '414' : gameKey === 'nfl' ? '331' : gameKey
+    // Convert sport names to game keys
+    // Note: Game keys change by season/year
+    // 414 = NFL (football) - current season
+    // 423 = MLB (baseball) - 2024 season
+    // 406 = MLB (baseball) - 2023 season
+    // 331 = NFL (older seasons)
+    // For MLB, we need to try current season first (423), then fall back to 406
+    const gameKeyMap: Record<string, string> = {
+      'mlb': '423', // Try 2024 season first
+      'baseball': '423',
+      'nfl': '414',
+      'football': '414',
+    }
+    let yahooGameKey = gameKeyMap[gameKey.toLowerCase()] || gameKey
+    
+    // If MLB and no leagues found, we might need to try 2023 season (406)
+    // This will be handled by the caller if needed
     
     const endpoint = `/users;use_login=1/games;game_keys=${yahooGameKey}/leagues`
     

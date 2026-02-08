@@ -21,7 +21,10 @@ export async function GET(request: NextRequest) {
     api.setAccessToken(accessToken)
     
     const { searchParams } = new URL(request.url)
-    const gameKey = searchParams.get('game') || '414' // 414 is MLB game key
+    // Game keys: 414 = NFL, 423 = MLB (2024), 406 = MLB (2023), etc.
+    // Use 'mlb' or 'baseball' to get current MLB season
+    // Default to MLB (423) since user mentioned they have a baseball league
+    const gameKey = searchParams.get('game') || '423'
     
     const response = await api.getLeagues(gameKey)
     
