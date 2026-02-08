@@ -2,9 +2,10 @@
 
 export const YAHOO_CONFIG = {
   // OAuth endpoints
-  requestTokenUrl: 'https://api.login.yahoo.com/oauth/v2/get_request_token',
-  authorizeUrl: 'https://api.login.yahoo.com/oauth/v2/request_auth',
-  accessTokenUrl: 'https://api.login.yahoo.com/oauth/v2/get_token',
+  // Try v1 endpoints first (Yahoo Fantasy Sports API might use v1, not v2)
+  requestTokenUrl: 'https://api.login.yahoo.com/oauth/v1/get_request_token',
+  authorizeUrl: 'https://api.login.yahoo.com/oauth/v1/request_auth',
+  accessTokenUrl: 'https://api.login.yahoo.com/oauth/v1/get_token',
   
   // API base URL
   apiBaseUrl: 'https://fantasysports.yahooapis.com/fantasy/v2',

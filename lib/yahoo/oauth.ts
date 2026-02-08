@@ -125,6 +125,8 @@ export class YahooOAuth {
   /**
    * Get request token (step 1 of OAuth flow)
    * Yahoo OAuth 1.0a requires POST with form data
+   * 
+   * Note: Yahoo Fantasy Sports API uses OAuth 1.0a, not OAuth 2.0
    */
   async getRequestToken(): Promise<YahooOAuthTokens> {
     const url = YAHOO_CONFIG.requestTokenUrl
