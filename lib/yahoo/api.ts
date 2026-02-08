@@ -156,16 +156,18 @@ export class YahooFantasyAPI {
 
     // Convert sport names to game keys
     // Note: Game keys change by season/year
-    // 414 = NFL (football) - current season
-    // 423 = MLB (baseball) - 2024 season
-    // 406 = MLB (baseball) - 2023 season
-    // 331 = NFL (older seasons)
-    // For MLB, we need to try current season first (423), then fall back to 406
+    // 469 = MLB (baseball) - 2026 season (current)
+    // 458 = MLB (baseball) - 2025 season
+    // 431 = MLB (baseball) - 2024 season
+    // 422 = MLB (baseball) - 2023 season
+    // 461 = NFL (football) - 2025 season (current)
+    // 449 = NFL (football) - 2024 season
+    // 414 = NFL (football) - 2022 season
     const gameKeyMap: Record<string, string> = {
-      'mlb': '423', // Try 2024 season first
-      'baseball': '423',
-      'nfl': '414',
-      'football': '414',
+      'mlb': '469', // 2026 season (current)
+      'baseball': '469',
+      'nfl': '461', // 2025 season (current)
+      'football': '461',
     }
     let yahooGameKey = gameKeyMap[gameKey.toLowerCase()] || gameKey
     
