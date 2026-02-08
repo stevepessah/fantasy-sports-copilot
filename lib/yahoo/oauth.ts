@@ -168,8 +168,8 @@ export class YahooOAuth {
     }
 
     const text = await response.text()
-    const params = this.parseOAuthResponse(text)
-    return this.toYahooAccessToken(params)
+    const responseParams = this.parseOAuthResponse(text)
+    return this.toYahooAccessToken(responseParams)
   }
 
   /**
@@ -206,8 +206,8 @@ export class YahooOAuth {
     }
 
     const text = await response.text()
-    const params = this.parseOAuthResponse(text)
-    return this.toYahooAccessToken(params)
+    const responseParams = this.parseOAuthResponse(text)
+    return this.toYahooAccessToken(responseParams)
   }
 
   /**
