@@ -30,9 +30,14 @@ export async function GET(request: NextRequest) {
     const api = new YahooFantasyAPI()
     api.setAccessToken(accessToken)
     
-    const roster = await api.getTeamRoster(teamKey)
+    const response = await api.getTeamRoster(teamKey)
     
-    return NextResponse.json({ roster })
+    // Return parsed roster as JSON
+    return NextResponse.json({ 
+      players: response.players,
+      teamKey,
+      count: response.players.length
+    })
   } catch (error) {
     console.error('Error fetching Yahoo roster:', error)
     return NextResponse.json(

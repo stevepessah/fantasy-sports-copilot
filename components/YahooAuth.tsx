@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useYahooLeagues } from '@/hooks/useYahooLeagues'
+import YahooTeams from './YahooTeams'
 
 export default function YahooAuth() {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
@@ -103,6 +104,13 @@ export default function YahooAuth() {
             </div>
           ) : (
             <div className="text-xs text-slate-400">No leagues found</div>
+          )}
+          
+          {/* Show teams and rosters when a league is selected */}
+          {selectedLeague && (
+            <div className="border-t border-slate-700 pt-3 mt-3">
+              <YahooTeams leagueKey={selectedLeague} />
+            </div>
           )}
         </>
       ) : (

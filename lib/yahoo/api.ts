@@ -2,7 +2,7 @@
 // Handles fetching data from Yahoo Fantasy Sports API
 
 import { YahooOAuth2 } from './oauth2'
-import { parseLeaguesXML, parseTeamsXML, ParsedLeague, ParsedTeam } from './xmlParser'
+import { parseLeaguesXML, parseTeamsXML, parseRosterXML, ParsedLeague, ParsedTeam, ParsedRosterPlayer } from './xmlParser'
 
 export interface YahooLeague {
   league_key: string
@@ -194,8 +194,9 @@ export class YahooFantasyAPI {
 
   /**
    * Get roster for a specific team
+   * @param teamKey - Full team key in format: 469.l.45462.t.1
    */
-  async getTeamRoster(teamKey: string): Promise<YahooPlayer[]> {
+  async getTeamRoster(teamKey: string): Promise<{ players: ParsedRosterPlayer[]; raw?: string }> {
     if (!this.accessToken) {
       throw new Error('Access token not set. Please authenticate first.')
     }
@@ -208,7 +209,13 @@ export class YahooFantasyAPI {
       this.accessToken
     )
 
-    return this.parsePlayersResponse(response)
+    // Parse XML response
+    let players: ParsedRosterPlayer[] = []
+    if (response.raw) {
+      players = parseRosterXML(response.raw)
+    }
+
+    return { players, raw: response.raw }
   }
 
   /**

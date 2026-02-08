@@ -33,6 +33,39 @@ export interface ParsedTeam {
   }>
 }
 
+export interface ParsedRosterPlayer {
+  player_key: string
+  player_id: string
+  name: {
+    full: string
+    first: string
+    last: string
+    ascii_first?: string
+    ascii_last?: string
+  }
+  position_type: string
+  eligible_positions: string[]
+  selected_position: {
+    position: string
+    is_flex?: string
+  }
+  status?: string
+  injury_status?: string
+  editorial_player_key?: string
+  editorial_team_key?: string
+  editorial_team_full_name?: string
+  editorial_team_abbr?: string
+  uniform_number?: string
+  display_position?: string
+  headshot?: {
+    url?: string
+    size?: string
+  }
+  image_url?: string
+  is_undroppable?: string
+  position?: string
+}
+
 /**
  * Simple XML parser for Yahoo Fantasy Sports API
  * For production, consider using a proper XML library like 'xml2js'
@@ -171,4 +204,84 @@ export function parseGamesXML(xml: string): Array<{ game_key: string; game_id: s
   }
   
   return games
+}
+
+/**
+ * Parse roster XML from Yahoo API
+ */
+export function parseRosterXML(xml: string): ParsedRosterPlayer[] {
+  const players: ParsedRosterPlayer[] = []
+  
+  // Extract all player blocks
+  const playerRegex = /<player>(.*?)<\/player>/gs
+  let playerMatch
+  
+  while ((playerMatch = playerRegex.exec(xml)) !== null) {
+    const playerBlock = playerMatch[1]
+    const player: Partial<ParsedRosterPlayer> = {}
+    
+    // Extract player properties
+    const extractValue = (tag: string, block: string = playerBlock): string | undefined => {
+      const regex = new RegExp(`<${tag}>(.*?)<\/${tag}>`, 's')
+      const match = block.match(regex)
+      return match ? match[1].trim() : undefined
+    }
+    
+    player.player_key = extractValue('player_key') || ''
+    player.player_id = extractValue('player_id') || ''
+    
+    // Extract name
+    const nameBlock = playerBlock.match(/<name>(.*?)<\/name>/s)?.[1]
+    if (nameBlock) {
+      player.name = {
+        full: extractValue('full', nameBlock) || '',
+        first: extractValue('first', nameBlock) || '',
+        last: extractValue('last', nameBlock) || '',
+        ascii_first: extractValue('ascii_first', nameBlock),
+        ascii_last: extractValue('ascii_last', nameBlock),
+      }
+    }
+    
+    // Extract position info
+    player.position_type = extractValue('position_type') || ''
+    player.position = extractValue('position')
+    player.display_position = extractValue('display_position')
+    
+    // Extract eligible positions
+    const eligiblePositionsBlock = playerBlock.match(/<eligible_positions>(.*?)<\/eligible_positions>/s)?.[1]
+    if (eligiblePositionsBlock) {
+      const positionRegex = /<position>(.*?)<\/position>/g
+      const positions: string[] = []
+      let posMatch
+      while ((posMatch = positionRegex.exec(eligiblePositionsBlock)) !== null) {
+        positions.push(posMatch[1].trim())
+      }
+      player.eligible_positions = positions
+    }
+    
+    // Extract selected position
+    const selectedPositionBlock = playerBlock.match(/<selected_position>(.*?)<\/selected_position>/s)?.[1]
+    if (selectedPositionBlock) {
+      player.selected_position = {
+        position: extractValue('position', selectedPositionBlock) || '',
+        is_flex: extractValue('is_flex', selectedPositionBlock),
+      }
+    }
+    
+    player.status = extractValue('status')
+    player.injury_status = extractValue('injury_status')
+    player.editorial_player_key = extractValue('editorial_player_key')
+    player.editorial_team_key = extractValue('editorial_team_key')
+    player.editorial_team_full_name = extractValue('editorial_team_full_name')
+    player.editorial_team_abbr = extractValue('editorial_team_abbr')
+    player.uniform_number = extractValue('uniform_number')
+    player.is_undroppable = extractValue('is_undroppable')
+    player.image_url = extractValue('image_url')
+    
+    if (player.player_key) {
+      players.push(player as ParsedRosterPlayer)
+    }
+  }
+  
+  return players
 }
