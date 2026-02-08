@@ -3,14 +3,20 @@ import { NextRequest, NextResponse } from 'next/server'
 import { YahooOAuth } from '@/lib/yahoo/oauth'
 import { cookies } from 'next/headers'
 
+export const dynamic = 'force-dynamic'
+
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const oauthToken = searchParams.get('oauth_token')
     const oauthVerifier = searchParams.get('oauth_verifier')
     
+    // Get base URL from request
+    const baseUrl = request.headers.get('origin') || request.nextUrl.origin
+    const redirectUrl = `${baseUrl}/?yahoo_connected=true`
+    
     if (!oauthToken || !oauthVerifier) {
-      return NextResponse.redirect('/?error=oauth_failed')
+      return NextResponse.redirect(`${baseUrl}/?error=oauth_failed`)
     }
     
     // Get stored request token secret from cookie
@@ -19,7 +25,7 @@ export async function GET(request: NextRequest) {
     const storedRequestToken = cookieStore.get('yahoo_request_token')?.value
     
     if (!requestTokenSecret || storedRequestToken !== oauthToken) {
-      return NextResponse.redirect('/?error=invalid_token')
+      return NextResponse.redirect(`${baseUrl}/?error=invalid_token`)
     }
     
     const oauth = new YahooOAuth()
@@ -32,7 +38,7 @@ export async function GET(request: NextRequest) {
     )
     
     // Store access token in cookie (in production, use secure session storage)
-    const response = NextResponse.redirect('/?yahoo_connected=true')
+    const response = NextResponse.redirect(redirectUrl)
     
     // Store access token (in production, use encrypted session storage)
     response.cookies.set('yahoo_access_token', accessToken.oauth_token, {
@@ -65,6 +71,7 @@ export async function GET(request: NextRequest) {
     return response
   } catch (error) {
     console.error('Yahoo OAuth callback error:', error)
-    return NextResponse.redirect('/?error=oauth_callback_failed')
+    const baseUrl = request.headers.get('origin') || request.nextUrl.origin
+    return NextResponse.redirect(`${baseUrl}/?error=oauth_callback_failed`)
   }
 }

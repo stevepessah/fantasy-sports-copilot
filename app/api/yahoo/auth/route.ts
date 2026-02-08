@@ -2,6 +2,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { YahooOAuth } from '@/lib/yahoo/oauth'
 
+export const dynamic = 'force-dynamic'
+
 export async function GET(request: NextRequest) {
   try {
     const oauth = new YahooOAuth()

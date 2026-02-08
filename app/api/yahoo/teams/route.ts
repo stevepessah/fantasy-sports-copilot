@@ -4,6 +4,8 @@ import { YahooFantasyAPI } from '@/lib/yahoo/api'
 import { YahooAccessToken } from '@/lib/yahoo/config'
 import { cookies } from 'next/headers'
 
+export const dynamic = 'force-dynamic'
+
 export async function GET(request: NextRequest) {
   try {
     const cookieStore = await cookies()
