@@ -135,13 +135,17 @@ export class YahooFantasyAPI {
 
   /**
    * Get all leagues for the logged-in user
+   * @param gameKey - Yahoo game key: '414' for MLB, '331' for NFL, etc.
    */
-  async getLeagues(gameKey: string = 'mlb'): Promise<YahooLeague[]> {
+  async getLeagues(gameKey: string = '414'): Promise<any> {
     if (!this.accessToken) {
       throw new Error('Access token not set. Please authenticate first.')
     }
 
-    const endpoint = `/users;use_login=1/games;game_keys=${gameKey}/leagues`
+    // Convert 'mlb' to game key '414' if needed
+    const yahooGameKey = gameKey === 'mlb' ? '414' : gameKey === 'nfl' ? '331' : gameKey
+    
+    const endpoint = `/users;use_login=1/games;game_keys=${yahooGameKey}/leagues`
     
     const response = await this.oauth2.makeRequest(
       'GET',
@@ -149,16 +153,15 @@ export class YahooFantasyAPI {
       this.accessToken
     )
 
-    // Parse response (Yahoo returns XML)
-    // For MVP, we'll return the raw response structure
-    // In production, properly parse XML
-    return this.parseLeaguesResponse(response)
+    // Return raw XML response for now - we'll parse it in the route
+    return response
   }
 
   /**
    * Get teams in a league
+   * @param leagueKey - Full league key in format: 414.l.LEAGUE_ID
    */
-  async getLeagueTeams(leagueKey: string): Promise<YahooTeam[]> {
+  async getLeagueTeams(leagueKey: string): Promise<any> {
     if (!this.accessToken) {
       throw new Error('Access token not set. Please authenticate first.')
     }
@@ -171,7 +174,8 @@ export class YahooFantasyAPI {
       this.accessToken
     )
 
-    return this.parseTeamsResponse(response)
+    // Return raw XML response
+    return response
   }
 
   /**
@@ -253,8 +257,10 @@ export class YahooFantasyAPI {
 
   // Helper methods to parse XML responses (simplified for MVP)
   private parseLeaguesResponse(response: any): YahooLeague[] {
-    // Simplified parsing - in production use proper XML parser
-    // For now, return mock structure
+    // Yahoo returns XML - for now, return empty array
+    // The raw XML is in response.raw
+    // TODO: Implement proper XML parsing with xml2js or similar
+    console.log('Yahoo API Response (raw XML):', response.raw?.substring(0, 500))
     return []
   }
 

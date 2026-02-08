@@ -21,11 +21,21 @@ export async function GET(request: NextRequest) {
     api.setAccessToken(accessToken)
     
     const { searchParams } = new URL(request.url)
-    const gameKey = searchParams.get('game') || 'mlb'
+    const gameKey = searchParams.get('game') || '414' // 414 is MLB game key
     
-    const leagues = await api.getLeagues(gameKey)
+    const response = await api.getLeagues(gameKey)
     
-    return NextResponse.json({ leagues })
+    // Return raw XML response for debugging
+    // Yahoo returns XML, so we'll return it as-is for now
+    return NextResponse.json({ 
+      raw: response.raw,
+      gameKey,
+      note: 'Yahoo returns XML. League keys are in format: 414.l.LEAGUE_ID'
+    }, {
+      headers: {
+        'Content-Type': 'application/json',
+      }
+    })
   } catch (error) {
     console.error('Error fetching Yahoo leagues:', error)
     return NextResponse.json(

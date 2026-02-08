@@ -18,21 +18,36 @@ export async function GET(request: NextRequest) {
     }
     
     const { searchParams } = new URL(request.url)
-    const leagueKey = searchParams.get('leagueKey')
+    let leagueKey = searchParams.get('leagueKey')
     
     if (!leagueKey) {
       return NextResponse.json(
-        { error: 'leagueKey parameter is required' },
+        { 
+          error: 'leagueKey parameter is required',
+          note: 'League key format: 414.l.LEAGUE_ID (e.g., 414.l.45462)'
+        },
         { status: 400 }
       )
+    }
+    
+    // If user provided just the league ID, convert to full league key format
+    // Yahoo league keys are: game_key.l.league_id (e.g., 414.l.45462)
+    if (!leagueKey.includes('.')) {
+      // Assume MLB (414) if no game key provided
+      leagueKey = `414.l.${leagueKey}`
     }
     
     const api = new YahooFantasyAPI()
     api.setAccessToken(accessToken)
     
-    const teams = await api.getLeagueTeams(leagueKey)
+    const response = await api.getLeagueTeams(leagueKey)
     
-    return NextResponse.json({ teams })
+    // Return raw XML response for debugging
+    return NextResponse.json({ 
+      raw: response.raw,
+      leagueKey,
+      note: 'Yahoo returns XML. Use the full league key format: 414.l.LEAGUE_ID'
+    })
   } catch (error) {
     console.error('Error fetching Yahoo teams:', error)
     return NextResponse.json(
