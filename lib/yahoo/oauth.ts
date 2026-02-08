@@ -168,7 +168,8 @@ export class YahooOAuth {
     }
 
     const text = await response.text()
-    return this.parseOAuthResponse(text) as YahooAccessToken
+    const params = this.parseOAuthResponse(text)
+    return this.toYahooAccessToken(params)
   }
 
   /**
@@ -205,7 +206,8 @@ export class YahooOAuth {
     }
 
     const text = await response.text()
-    return this.parseOAuthResponse(text) as YahooAccessToken
+    const params = this.parseOAuthResponse(text)
+    return this.toYahooAccessToken(params)
   }
 
   /**
@@ -260,6 +262,19 @@ export class YahooOAuth {
       }
     }
     return params
+  }
+
+  /**
+   * Convert parsed OAuth response to YahooAccessToken
+   */
+  private toYahooAccessToken(params: Record<string, string>): YahooAccessToken {
+    return {
+      oauth_token: params.oauth_token || '',
+      oauth_token_secret: params.oauth_token_secret || '',
+      oauth_session_handle: params.oauth_session_handle || '',
+      oauth_expires_in: params.oauth_expires_in,
+      xoauth_yahoo_guid: params.xoauth_yahoo_guid,
+    }
   }
 
   /**
