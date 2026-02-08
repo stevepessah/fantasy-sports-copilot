@@ -1,6 +1,7 @@
 // Yahoo OAuth 2.0 - Step 1: Redirect to Yahoo authorization
 import { NextRequest, NextResponse } from 'next/server'
 import { YahooOAuth2 } from '@/lib/yahoo/oauth2'
+import crypto from 'crypto'
 
 export const dynamic = 'force-dynamic'
 
