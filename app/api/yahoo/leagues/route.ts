@@ -22,9 +22,17 @@ export async function GET(request: NextRequest) {
     
     const { searchParams } = new URL(request.url)
     // Game keys: 414 = NFL, 423 = MLB (2024), 406 = MLB (2023), etc.
-    // Use 'mlb' or 'baseball' to get current MLB season
-    // Default to MLB (423) since user mentioned they have a baseball league
-    const gameKey = searchParams.get('game') || '423'
+    // For 2026 MLB, query all games to find the correct game key
+    // Use 'all' to get all leagues across all games/seasons
+    // Use 'mlb' or 'baseball' to get MLB leagues
+    // Use specific game key number (e.g., '450') for a specific season
+    let gameKey = searchParams.get('game')
+    
+    if (!gameKey) {
+      // Default to 'all' to see all available games/seasons
+      // This will help find the 2026 MLB game key
+      gameKey = 'all'
+    }
     
     const response = await api.getLeagues(gameKey)
     

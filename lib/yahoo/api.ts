@@ -136,10 +136,22 @@ export class YahooFantasyAPI {
   /**
    * Get all leagues for the logged-in user
    * @param gameKey - Yahoo game key: '414' for NFL, '423' for MLB, etc.
+   *                  If 'all' or empty, queries all available games
    */
   async getLeagues(gameKey: string = '423'): Promise<any> {
     if (!this.accessToken) {
       throw new Error('Access token not set. Please authenticate first.')
+    }
+
+    // If 'all', query all games without filtering
+    if (gameKey === 'all' || gameKey === '') {
+      const endpoint = `/users;use_login=1/games/leagues`
+      const response = await this.oauth2.makeRequest(
+        'GET',
+        endpoint,
+        this.accessToken
+      )
+      return response
     }
 
     // Convert sport names to game keys
