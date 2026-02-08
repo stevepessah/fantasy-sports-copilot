@@ -2,27 +2,7 @@
 // Handles fetching data from Yahoo Fantasy Sports API
 
 import { YahooOAuth2 } from './oauth2'
-
-// Simple XML parser (for MVP - consider using xml2js in production)
-function parseXML(xml: string): any {
-  // This is a simplified parser - for production, use a proper XML library
-  const result: any = {}
-  
-  // Extract basic data using regex (simplified approach)
-  // In production, use xml2js or similar
-  const tagRegex = /<(\w+)>(.*?)<\/\1>/g
-  let match
-  
-  while ((match = tagRegex.exec(xml)) !== null) {
-    const [, tag, content] = match
-    if (!result[tag]) {
-      result[tag] = []
-    }
-    result[tag].push(content.trim())
-  }
-  
-  return result
-}
+import { parseLeaguesXML, parseTeamsXML, ParsedLeague, ParsedTeam } from './xmlParser'
 
 export interface YahooLeague {
   league_key: string
@@ -138,45 +118,39 @@ export class YahooFantasyAPI {
    * @param gameKey - Yahoo game key: '414' for NFL, '423' for MLB, etc.
    *                  If 'all' or empty, queries all available games
    */
-  async getLeagues(gameKey: string = '423'): Promise<any> {
+  async getLeagues(gameKey: string = '469'): Promise<{ leagues: ParsedLeague[]; raw?: string }> {
     if (!this.accessToken) {
       throw new Error('Access token not set. Please authenticate first.')
     }
 
+    let endpoint: string
+    let allLeagues: ParsedLeague[] = []
+
     // If 'all', query all games without filtering
     if (gameKey === 'all' || gameKey === '') {
-      const endpoint = `/users;use_login=1/games/leagues`
-      const response = await this.oauth2.makeRequest(
-        'GET',
-        endpoint,
-        this.accessToken
-      )
-      return response
+      endpoint = `/users;use_login=1/games/leagues`
+    } else {
+      // Convert sport names to game keys
+      // Note: Game keys change by season/year
+      // 469 = MLB (baseball) - 2026 season (current)
+      // 458 = MLB (baseball) - 2025 season
+      // 431 = MLB (baseball) - 2024 season
+      // 422 = MLB (baseball) - 2023 season
+      // 461 = NFL (football) - 2025 season (current)
+      // 449 = NFL (football) - 2024 season
+      // 414 = NFL (football) - 2022 season
+      const gameKeyMap: Record<string, string> = {
+        'mlb': '469', // 2026 season (current)
+        'baseball': '469',
+        'nfl': '461', // 2025 season (current)
+        'football': '461',
+      }
+      const yahooGameKey = gameKeyMap[gameKey.toLowerCase()] || gameKey
+      
+      console.log(`[Yahoo API] getLeagues called with gameKey="${gameKey}", mapped to yahooGameKey="${yahooGameKey}"`)
+      
+      endpoint = `/users;use_login=1/games;game_keys=${yahooGameKey}/leagues`
     }
-
-    // Convert sport names to game keys
-    // Note: Game keys change by season/year
-    // 469 = MLB (baseball) - 2026 season (current)
-    // 458 = MLB (baseball) - 2025 season
-    // 431 = MLB (baseball) - 2024 season
-    // 422 = MLB (baseball) - 2023 season
-    // 461 = NFL (football) - 2025 season (current)
-    // 449 = NFL (football) - 2024 season
-    // 414 = NFL (football) - 2022 season
-    const gameKeyMap: Record<string, string> = {
-      'mlb': '469', // 2026 season (current)
-      'baseball': '469',
-      'nfl': '461', // 2025 season (current)
-      'football': '461',
-    }
-    let yahooGameKey = gameKeyMap[gameKey.toLowerCase()] || gameKey
-    
-    console.log(`[Yahoo API] getLeagues called with gameKey="${gameKey}", mapped to yahooGameKey="${yahooGameKey}"`)
-    
-    // If MLB and no leagues found, we might need to try 2023 season (406)
-    // This will be handled by the caller if needed
-    
-    const endpoint = `/users;use_login=1/games;game_keys=${yahooGameKey}/leagues`
     
     const response = await this.oauth2.makeRequest(
       'GET',
@@ -184,15 +158,19 @@ export class YahooFantasyAPI {
       this.accessToken
     )
 
-    // Return raw XML response for now - we'll parse it in the route
-    return response
+    // Parse XML response
+    if (response.raw) {
+      allLeagues = parseLeaguesXML(response.raw)
+    }
+
+    return { leagues: allLeagues, raw: response.raw }
   }
 
   /**
    * Get teams in a league
-   * @param leagueKey - Full league key in format: 414.l.LEAGUE_ID
+   * @param leagueKey - Full league key in format: 469.l.LEAGUE_ID
    */
-  async getLeagueTeams(leagueKey: string): Promise<any> {
+  async getLeagueTeams(leagueKey: string): Promise<{ teams: ParsedTeam[]; raw?: string }> {
     if (!this.accessToken) {
       throw new Error('Access token not set. Please authenticate first.')
     }
@@ -205,8 +183,13 @@ export class YahooFantasyAPI {
       this.accessToken
     )
 
-    // Return raw XML response
-    return response
+    // Parse XML response
+    let teams: ParsedTeam[] = []
+    if (response.raw) {
+      teams = parseTeamsXML(response.raw)
+    }
+
+    return { teams, raw: response.raw }
   }
 
   /**

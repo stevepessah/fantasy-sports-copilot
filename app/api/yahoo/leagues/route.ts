@@ -36,16 +36,11 @@ export async function GET(request: NextRequest) {
     
     const response = await api.getLeagues(gameKey)
     
-    // Return raw XML response for debugging
-    // Yahoo returns XML, so we'll return it as-is for now
+    // Return parsed leagues as JSON
     return NextResponse.json({ 
-      raw: response.raw,
+      leagues: response.leagues,
       gameKey,
-      note: 'Yahoo returns XML. League keys are in format: 414.l.LEAGUE_ID'
-    }, {
-      headers: {
-        'Content-Type': 'application/json',
-      }
+      count: response.leagues.length
     })
   } catch (error) {
     console.error('Error fetching Yahoo leagues:', error)
