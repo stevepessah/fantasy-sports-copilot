@@ -12,7 +12,7 @@ interface PlayerStatsProps {
 const BASEBALL_STAT_LABELS: Record<string, string> = {
   // Hitting stats
   'AB': 'At Bats',
-  'H': 'Hits',
+  'H': 'Hits', // Note: 'H' can mean "Hits" (hitting) or "Hits Allowed" (pitching) - handled contextually
   'R': 'Runs',
   'HR': 'Home Runs',
   'RBI': 'RBI',
@@ -26,13 +26,21 @@ const BASEBALL_STAT_LABELS: Record<string, string> = {
   'L': 'Losses',
   'SV': 'Saves',
   'IP': 'Innings Pitched',
-  'H': 'Hits Allowed',
+  'HA': 'Hits Allowed', // Alternative stat ID for hits allowed
   'ER': 'Earned Runs',
   'BB': 'Walks',
   'K': 'Strikeouts',
   'ERA': 'ERA',
   'WHIP': 'WHIP',
   'K/9': 'K/9',
+}
+
+// Context-aware stat labels (for stats that appear in both hitting and pitching)
+const getContextualStatLabel = (key: string, isPitching: boolean): string => {
+  if (key === 'H') {
+    return isPitching ? 'Hits Allowed' : 'Hits'
+  }
+  return BASEBALL_STAT_LABELS[key] || key
 }
 
 export function PlayerStats({ playerKey, leagueKey, playerName }: PlayerStatsProps) {
@@ -81,9 +89,9 @@ export function PlayerStats({ playerKey, leagueKey, playerName }: PlayerStatsPro
     return String(value)
   }
 
-  // Get stat label
-  const getStatLabel = (key: string): string => {
-    return BASEBALL_STAT_LABELS[key] || key
+  // Get stat label (with context for ambiguous stats)
+  const getStatLabel = (key: string, isPitching: boolean = false): string => {
+    return getContextualStatLabel(key, isPitching)
   }
 
   // Organize stats by category
@@ -108,7 +116,7 @@ export function PlayerStats({ playerKey, leagueKey, playerName }: PlayerStatsPro
           <div className="grid grid-cols-3 gap-2 text-xs">
             {hittingStats.map(({ key, value }) => (
               <div key={key}>
-                <div className="text-slate-400">{getStatLabel(key)}</div>
+                <div className="text-slate-400">{getStatLabel(key, false)}</div>
                 <div className="text-white font-semibold">{formatStat(value)}</div>
               </div>
             ))}
@@ -122,7 +130,7 @@ export function PlayerStats({ playerKey, leagueKey, playerName }: PlayerStatsPro
           <div className="grid grid-cols-3 gap-2 text-xs">
             {pitchingStats.map(({ key, value }) => (
               <div key={key}>
-                <div className="text-slate-400">{getStatLabel(key)}</div>
+                <div className="text-slate-400">{getStatLabel(key, true)}</div>
                 <div className="text-white font-semibold">{formatStat(value)}</div>
               </div>
             ))}
