@@ -211,8 +211,9 @@ export async function POST(request: NextRequest) {
       const playerQuery = intent.playerName || message
       let player = null
       let yahooPlayerKey: string | undefined = undefined
+      let yahooLeagueKey: string | undefined = undefined
       
-      // First, try to find player in Yahoo if authenticated and league is available
+      // First, try to find player in Yahoo if authenticated
       const cookieStore = await cookies()
       const yahooAccessToken = cookieStore.get('yahoo_access_token')?.value
       
@@ -227,6 +228,8 @@ export async function POST(request: NextRequest) {
           const yahooLeague = leagues.find(l => l.is_finished !== '1') || leagues[0]
           
           if (yahooLeague && yahooLeague.league_key) {
+            yahooLeagueKey = yahooLeague.league_key
+            
             // Search in rosters first
             const yahooPlayer = await searchPlayerInLeague(api, yahooLeague.league_key, playerQuery)
             
@@ -276,6 +279,20 @@ export async function POST(request: NextRequest) {
         const foundPlayer = findPlayerByNameApprox(playerQuery, players)
         if (foundPlayer) {
           player = foundPlayer
+          // Even if using mock player, try to get Yahoo player key if we have a league
+          if (yahooAccessToken && yahooLeagueKey && !player.yahooPlayerKey) {
+            try {
+              const api = new YahooFantasyAPI()
+              api.setAccessToken(yahooAccessToken)
+              // Try one more search with the mock player name
+              const yahooPlayer = await searchPlayerInFreeAgents(api, yahooLeagueKey, player.name)
+              if (yahooPlayer) {
+                yahooPlayerKey = yahooPlayer.player_key
+              }
+            } catch (error) {
+              console.error('Error searching for Yahoo player key:', error)
+            }
+          }
         }
       }
       
@@ -288,7 +305,7 @@ export async function POST(request: NextRequest) {
               ...player,
               yahooPlayerKey: yahooPlayerKey || player.yahooPlayerKey,
             },
-            leagueKey: effectiveLeagueId || undefined, // Include league key for stats fetching
+            leagueKey: yahooLeagueKey || undefined, // Use Yahoo league key, not mock league ID
             insights: [
               `Projected ${player.projectedPoints?.toFixed(1) || '0.0'} points this week.`,
               player.injuryStatus && player.injuryStatus !== 'healthy' 

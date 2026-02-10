@@ -52,8 +52,17 @@ export function PlayerStats({ playerKey, leagueKey, playerName }: PlayerStatsPro
   // Available seasons (last 5 years)
   const availableSeasons = Array.from({ length: 5 }, (_, i) => currentYear - i)
 
+  // Show message if no player key but we have a league (means player wasn't found in Yahoo)
   if (!playerKey) {
-    return null
+    return (
+      <div className="mt-4 p-3 bg-slate-800/50 rounded-lg">
+        <div className="text-sm text-slate-400">
+          {leagueKey 
+            ? 'Player not found in your Yahoo league. Stats are only available for players in your league.'
+            : 'Connect to Yahoo Fantasy to view player statistics.'}
+        </div>
+      </div>
+    )
   }
 
   if (isLoading) {
@@ -75,7 +84,11 @@ export function PlayerStats({ playerKey, leagueKey, playerName }: PlayerStatsPro
   if (!stats || !stats.season_stats) {
     return (
       <div className="mt-4 p-3 bg-slate-800/50 rounded-lg">
-        <div className="text-sm text-slate-400">No statistics available</div>
+        <div className="text-sm text-slate-400">
+          {!playerKey 
+            ? 'Player key not available. Make sure you\'re connected to Yahoo and the player is in your league.'
+            : 'No statistics available for this season. The player may not have played or stats may not be available yet.'}
+        </div>
       </div>
     )
   }

@@ -165,10 +165,10 @@ export function EnhancedCards({ card, onAction, sport }: EnhancedCardsProps) {
             )}
           </div>
 
-          {/* Player Statistics */}
-          {player.yahooPlayerKey && (
+          {/* Player Statistics - Always show if we have a player key or league key */}
+          {(player.yahooPlayerKey || p.leagueKey) && (
             <PlayerStats 
-              playerKey={player.yahooPlayerKey} 
+              playerKey={player.yahooPlayerKey || null} 
               leagueKey={p.leagueKey}
               playerName={player.name}
             />

@@ -21,19 +21,32 @@ export async function searchPlayerInLeague(
       
       // Try to find a matching player
       const normalizedQuery = playerName.toLowerCase().trim()
+      const queryParts = normalizedQuery.split(/\s+/).filter(Boolean)
+      
       const found = players.find((player) => {
         const fullName = player.name.full.toLowerCase()
         const firstName = player.name.first.toLowerCase()
         const lastName = player.name.last.toLowerCase()
         
-        // Check various name combinations
+        // Exact match
+        if (fullName === normalizedQuery) return true
+        
+        // Check if all query parts match
+        if (queryParts.length >= 2) {
+          const firstMatches = firstName.includes(queryParts[0]) || queryParts[0].includes(firstName)
+          const lastMatches = lastName.includes(queryParts[queryParts.length - 1]) || queryParts[queryParts.length - 1].includes(lastName)
+          if (firstMatches && lastMatches) return true
+        }
+        
+        // Partial matches
         return (
           fullName.includes(normalizedQuery) ||
+          normalizedQuery.includes(fullName) ||
           `${firstName} ${lastName}`.includes(normalizedQuery) ||
           lastName.includes(normalizedQuery) ||
-          (normalizedQuery.split(' ').length === 2 &&
-            firstName.includes(normalizedQuery.split(' ')[0]) &&
-            lastName.includes(normalizedQuery.split(' ')[1]))
+          (queryParts.length === 2 &&
+            (firstName.includes(queryParts[0]) || queryParts[0].includes(firstName)) &&
+            (lastName.includes(queryParts[1]) || queryParts[1].includes(lastName)))
         )
       })
       
@@ -56,7 +69,7 @@ export async function searchPlayerInFreeAgents(
   api: YahooFantasyAPI,
   leagueKey: string,
   playerName: string,
-  maxPages: number = 5
+  maxPages: number = 10  // Increased from 5 to search more players
 ): Promise<ParsedRosterPlayer | null> {
   try {
     const normalizedQuery = playerName.toLowerCase().trim()
@@ -70,18 +83,32 @@ export async function searchPlayerInFreeAgents(
       if (response.raw) {
         const players = parseRosterXML(response.raw)
         
+        const queryParts = normalizedQuery.split(/\s+/).filter(Boolean)
+        
         const found = players.find((player) => {
           const fullName = player.name.full.toLowerCase()
           const firstName = player.name.first.toLowerCase()
           const lastName = player.name.last.toLowerCase()
           
+          // Exact match
+          if (fullName === normalizedQuery) return true
+          
+          // Check if all query parts match
+          if (queryParts.length >= 2) {
+            const firstMatches = firstName.includes(queryParts[0]) || queryParts[0].includes(firstName)
+            const lastMatches = lastName.includes(queryParts[queryParts.length - 1]) || queryParts[queryParts.length - 1].includes(lastName)
+            if (firstMatches && lastMatches) return true
+          }
+          
+          // Partial matches
           return (
             fullName.includes(normalizedQuery) ||
+            normalizedQuery.includes(fullName) ||
             `${firstName} ${lastName}`.includes(normalizedQuery) ||
             lastName.includes(normalizedQuery) ||
-            (normalizedQuery.split(' ').length === 2 &&
-              firstName.includes(normalizedQuery.split(' ')[0]) &&
-              lastName.includes(normalizedQuery.split(' ')[1]))
+            (queryParts.length === 2 &&
+              (firstName.includes(queryParts[0]) || queryParts[0].includes(firstName)) &&
+              (lastName.includes(queryParts[1]) || queryParts[1].includes(lastName)))
           )
         })
         
