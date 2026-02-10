@@ -4,6 +4,9 @@ import { leagueDB, teamDB, rosterDB, playerDB } from '@/lib/db'
 import { LeagueManager } from '@/lib/league'
 import { parseIntent, findPlayerByNameApprox } from '@/lib/commandParser'
 import { setupBaseballLeague } from '@/lib/setupBaseballLeague'
+import { YahooFantasyAPI } from '@/lib/yahoo/api'
+import { searchPlayerInLeague, searchPlayerInFreeAgents } from '@/lib/yahoo/playerSearch'
+import { cookies } from 'next/headers'
 
 export async function POST(request: NextRequest) {
   try {
@@ -205,15 +208,86 @@ export async function POST(request: NextRequest) {
     }
 
     if (intent.isPlayerLookup) {
-      const players = playerDB.getAll().filter((p) => p.sport === currentSport)
       const playerQuery = intent.playerName || message
-      const player = findPlayerByNameApprox(playerQuery, players)
+      let player = null
+      let yahooPlayerKey: string | undefined = undefined
+      
+      // First, try to find player in Yahoo if authenticated and league is available
+      const cookieStore = await cookies()
+      const yahooAccessToken = cookieStore.get('yahoo_access_token')?.value
+      
+      if (yahooAccessToken) {
+        try {
+          const api = new YahooFantasyAPI()
+          api.setAccessToken(yahooAccessToken)
+          
+          // Get leagues to find an active league
+          const { leagues } = await api.getLeagues('mlb')
+          // Find the first active (not finished) league
+          const yahooLeague = leagues.find(l => l.is_finished !== '1' && l.is_finished !== 1) || leagues[0]
+          
+          if (yahooLeague && yahooLeague.league_key) {
+            // Search in rosters first
+            const yahooPlayer = await searchPlayerInLeague(api, yahooLeague.league_key, playerQuery)
+            
+            if (yahooPlayer) {
+              yahooPlayerKey = yahooPlayer.player_key
+              // Convert Yahoo player to our Player format
+              player = {
+                id: yahooPlayer.player_id,
+                name: yahooPlayer.name.full,
+                sport: 'baseball' as const,
+                position: (yahooPlayer.display_position || yahooPlayer.selected_position?.position || yahooPlayer.eligible_positions[0] || 'UTIL') as any,
+                team: yahooPlayer.editorial_team_abbr || 'FA',
+                injuryStatus: yahooPlayer.injury_status === 'DTD' ? 'questionable' : 
+                             yahooPlayer.injury_status === 'O' ? 'out' :
+                             yahooPlayer.injury_status === 'IL' ? 'IL' : 'healthy',
+                yahooPlayerKey: yahooPlayer.player_key,
+              }
+            } else {
+              // If not found in rosters, try free agents
+              const freeAgentPlayer = await searchPlayerInFreeAgents(api, yahooLeague.league_key, playerQuery)
+              
+              if (freeAgentPlayer) {
+                yahooPlayerKey = freeAgentPlayer.player_key
+                player = {
+                  id: freeAgentPlayer.player_id,
+                  name: freeAgentPlayer.name.full,
+                  sport: 'baseball' as const,
+                  position: (freeAgentPlayer.display_position || freeAgentPlayer.eligible_positions[0] || 'UTIL') as any,
+                  team: freeAgentPlayer.editorial_team_abbr || 'FA',
+                  injuryStatus: freeAgentPlayer.injury_status === 'DTD' ? 'questionable' : 
+                               freeAgentPlayer.injury_status === 'O' ? 'out' :
+                               freeAgentPlayer.injury_status === 'IL' ? 'IL' : 'healthy',
+                  yahooPlayerKey: freeAgentPlayer.player_key,
+                }
+              }
+            }
+          }
+        } catch (error) {
+          console.error('Error searching Yahoo for player:', error)
+          // Fall through to mock database
+        }
+      }
+      
+      // Fallback to mock database if not found in Yahoo
+      if (!player) {
+        const players = playerDB.getAll().filter((p) => p.sport === currentSport)
+        const foundPlayer = findPlayerByNameApprox(playerQuery, players)
+        if (foundPlayer) {
+          player = foundPlayer
+        }
+      }
+      
       if (player) {
         response.cards.push({
           type: 'player',
           title: 'Player Snapshot',
           payload: {
-            player,
+            player: {
+              ...player,
+              yahooPlayerKey: yahooPlayerKey || player.yahooPlayerKey,
+            },
             leagueKey: effectiveLeagueId || undefined, // Include league key for stats fetching
             insights: [
               `Projected ${player.projectedPoints?.toFixed(1) || '0.0'} points this week.`,
