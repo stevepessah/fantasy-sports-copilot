@@ -1,7 +1,7 @@
 # Fantasy Sports Copilot - Context Summary
 
 **Last Updated:** February 8, 2026  
-**Status:** Yahoo Fantasy Sports Integration Complete ✅
+**Status:** Yahoo Integration + Player Statistics Complete ✅
 
 ---
 
@@ -13,7 +13,9 @@
 - ✅ Chat-first interface for all league management
 - ✅ Multi-sport support (Football 🏈 and Baseball ⚾)
 - ✅ League creation, draft room, lineup optimization
-- ✅ **Yahoo Fantasy Sports API Integration** (NEW - Just Completed)
+- ✅ **Yahoo Fantasy Sports API Integration** - Full OAuth, leagues, teams, rosters
+- ✅ **Player Statistics Integration** - Current season + historical stats (2022-2026)
+- ✅ **Enhanced Conversational AI** - Natural language understanding with OpenAI function calling
 - ✅ Player management, trades, waivers
 - ✅ AI-powered recommendations (OpenAI GPT-4 with fallback)
 
@@ -23,18 +25,35 @@
 
 ### ✅ Recently Completed (Latest Session)
 
-**Yahoo Fantasy Sports Integration - FULLY WORKING:**
-1. **OAuth 2.0 Authentication** - Users can connect their Yahoo Fantasy Sports account
-2. **League Selection** - View and select from all MLB leagues (supports 2026 season)
-3. **Teams Display** - Browse all teams in selected league
-4. **Roster Display** - View full rosters with player details, positions, and status
+**Enhanced Conversational AI:**
+1. **Improved Intent Parsing** - More flexible natural language understanding
+   - Handles variations like "show teams", "standings", "who's in my league"
+   - Better lineup detection ("who should I start", "set my best lineup")
+   - Enhanced matchup and waiver detection
+2. **OpenAI Function Calling** - Structured action detection when OpenAI is available
+3. **Better Rule-Based Fallback** - More conversational when OpenAI unavailable
+4. **Input Field Auto-Focus** - Input stays focused after sending messages
+5. **Baseball Favicon** - Added baseball icon (`app/icon.svg`)
+
+**Player Statistics Integration:**
+1. **Yahoo Player Stats API** - Fetch player statistics from Yahoo Fantasy
+2. **Current Season Stats** - Display hitting and pitching stats for current season
+3. **Historical Stats** - View stats from previous seasons (2022-2026) with year selector
+4. **Player Search** - Search for players across all team rosters and free agents
+5. **Stats Display Component** - Organized display of hitting/pitching stats with year selector
+6. **Player Cards Integration** - Stats automatically show in player lookup cards
+
+**UI Improvements:**
+1. **Removed Roster Section** - Cleaned up sidebar, now shows only Yahoo Fantasy and Quick Actions
+2. **Enhanced Player Cards** - Show statistics when available
 
 **Technical Implementation:**
-- XML parser for Yahoo API responses (`lib/yahoo/xmlParser.ts`)
+- XML parser for Yahoo API responses including player stats (`lib/yahoo/xmlParser.ts`)
 - OAuth 2.0 flow with refresh token support (`lib/yahoo/oauth2.ts`)
-- React hooks for data fetching (`hooks/useYahooLeagues.ts`, `useYahooTeams.ts`, `useYahooRoster.ts`)
+- React hooks for data fetching (`hooks/useYahooLeagues.ts`, `useYahooTeams.ts`, `useYahooRoster.ts`, `useYahooPlayerStats.ts`)
+- Player search utilities (`lib/yahoo/playerSearch.ts`)
 - API routes returning parsed JSON (`app/api/yahoo/*`)
-- UI components integrated into sidebar (`components/YahooAuth.tsx`, `YahooTeams.tsx`)
+- UI components (`components/YahooAuth.tsx`, `YahooTeams.tsx`, `PlayerStats.tsx`)
 
 ### ✅ Previously Completed
 - Core chat interface
@@ -99,6 +118,7 @@ fantasy-sports-copilot/
 │   │   │   ├── leagues/route.ts # Fetch leagues
 │   │   │   ├── teams/route.ts   # Fetch teams
 │   │   │   ├── roster/route.ts  # Fetch roster
+│   │   │   ├── player-stats/route.ts # Fetch player statistics (NEW)
 │   │   │   └── games/route.ts   # Fetch all games/seasons
 │   │   ├── chat/route.ts        # AI chat endpoint
 │   │   ├── leagues/route.ts     # Mock league management
@@ -107,21 +127,24 @@ fantasy-sports-copilot/
 │   ├── page.tsx                 # Main page
 │   └── layout.tsx               # Root layout
 ├── components/
-│   ├── YahooAuth.tsx            # Yahoo connection UI (UPDATED)
-│   ├── YahooTeams.tsx           # Teams & roster display (NEW)
+│   ├── YahooAuth.tsx            # Yahoo connection UI
+│   ├── YahooTeams.tsx           # Teams & roster display
+│   ├── PlayerStats.tsx          # Player statistics display (NEW)
 │   ├── EnhancedChatInterface.tsx # Main chat UI
-│   ├── DraftRoom.tsx            # Draft interface
-│   └── SmartCards.tsx           # Contextual cards
+│   ├── EnhancedCards.tsx        # Contextual cards
+│   └── DraftRoom.tsx            # Draft interface
 ├── hooks/
-│   ├── useYahooLeagues.ts       # Fetch leagues hook (NEW)
-│   ├── useYahooTeams.ts         # Fetch teams hook (NEW)
-│   └── useYahooRoster.ts        # Fetch roster hook (NEW)
+│   ├── useYahooLeagues.ts       # Fetch leagues hook
+│   ├── useYahooTeams.ts         # Fetch teams hook
+│   ├── useYahooRoster.ts        # Fetch roster hook
+│   └── useYahooPlayerStats.ts   # Fetch player stats hook (NEW)
 ├── lib/
-│   ├── yahoo/                   # Yahoo integration (NEW)
+│   ├── yahoo/                   # Yahoo integration
 │   │   ├── config.ts            # OAuth config
 │   │   ├── oauth2.ts            # OAuth 2.0 implementation
 │   │   ├── api.ts               # Yahoo API client
-│   │   └── xmlParser.ts         # XML to JSON parser
+│   │   ├── xmlParser.ts         # XML to JSON parser
+│   │   └── playerSearch.ts      # Player search utilities (NEW)
 │   ├── ai.ts                    # AI integration
 │   ├── db.ts                    # In-memory database
 │   └── league.ts                # League logic
@@ -152,6 +175,7 @@ fantasy-sports-copilot/
 - `GET /api/yahoo/leagues?game=mlb` - Get leagues (defaults to MLB 2026)
 - `GET /api/yahoo/teams?leagueKey=469.l.45462` - Get teams for league
 - `GET /api/yahoo/roster?teamKey=469.l.45462.t.1` - Get roster for team
+- `GET /api/yahoo/player-stats?playerKey=469.p.12345&leagueKey=469.l.45462&season=2024` - Get player statistics
 
 ### Game Keys (Important!)
 Yahoo uses numeric game keys that change each season:
@@ -187,6 +211,15 @@ Shows:
 - Roster list when team selected
 - Player details: name, position, team, status
 - Active lineup indicators (green badge)
+- Clickable players to view statistics
+
+### PlayerStats Component
+Shows:
+- Season selector dropdown (current year and previous 4 years)
+- Season hitting stats (AB, H, R, HR, RBI, SB, AVG, OBP, SLG, OPS)
+- Season pitching stats (W, L, SV, IP, ER, BB, K, ERA, WHIP, K/9)
+- Week stats (if available)
+- Other stats that don't fit standard categories
 
 ---
 
@@ -202,6 +235,10 @@ User selects team → useYahooTeams hook → /api/yahoo/teams → YahooFantasyAP
 
 User views roster → useYahooRoster hook → /api/yahoo/roster → YahooFantasyAPI.getTeamRoster()
 → parseRosterXML() → Returns JSON → Display roster
+
+User asks about player → Chat API → Search Yahoo rosters/free agents → Find player key
+→ PlayerStats component → useYahooPlayerStats hook → /api/yahoo/player-stats
+→ YahooFantasyAPI.getPlayerStats() → parsePlayerStatsXML() → Display stats
 ```
 
 ### Authentication Flow
@@ -221,7 +258,9 @@ User clicks connect → /api/yahoo/auth → Generate state → Redirect to Yahoo
 
 3. **Error Handling:** Basic error handling in place, but could be enhanced with retry logic and better user feedback.
 
-4. **Game Key Mapping:** Hardcoded for 2026 MLB (469). May need dynamic detection or user selection for different seasons.
+4. **Player Stats Format:** Some stats may appear in unexpected formats - needs refinement based on actual Yahoo API responses.
+
+5. **Player Search Limits:** Free agent search limited to 250 players (10 pages). May need pagination or better search strategy for large leagues.
 
 ---
 
@@ -229,10 +268,11 @@ User clicks connect → /api/yahoo/auth → Generate state → Redirect to Yahoo
 
 ### Immediate Opportunities
 1. **Matchups Display** - Show weekly matchups and scores
-2. **Player Stats** - Integrate player statistics from Yahoo
+2. **Refine Player Stats Display** - Improve stat formatting and organization
 3. **Lineup Optimization** - Use Yahoo roster data for lineup suggestions
 4. **Trade Analysis** - Use Yahoo player data for trade evaluations
 5. **Waiver Wire** - Show available players from Yahoo
+6. **Player Comparison** - Compare multiple players side-by-side
 
 ### Technical Improvements
 1. Replace regex XML parser with `xml2js` library
@@ -264,6 +304,7 @@ User clicks connect → /api/yahoo/auth → Generate state → Redirect to Yahoo
 - Leagues: `https://fantasy-sports-copilot.vercel.app/api/yahoo/leagues?game=mlb`
 - Teams: `https://fantasy-sports-copilot.vercel.app/api/yahoo/teams?leagueKey=469.l.45462`
 - Roster: `https://fantasy-sports-copilot.vercel.app/api/yahoo/roster?teamKey=469.l.45462.t.1`
+- Player Stats: `https://fantasy-sports-copilot.vercel.app/api/yahoo/player-stats?playerKey=469.p.12345&leagueKey=469.l.45462&season=2024`
 
 ### Common Commands
 ```bash
@@ -288,12 +329,20 @@ const { leagues } = await api.getLeagues('mlb')
 const { leagues, isLoading, error } = useYahooLeagues('mlb')
 const { teams } = useYahooTeams(selectedLeagueKey)
 const { players } = useYahooRoster(selectedTeamKey)
+const { stats, isLoading, error } = useYahooPlayerStats(playerKey, leagueKey, season)
 ```
 
 ### XML Parsing
 ```typescript
-import { parseLeaguesXML, parseTeamsXML, parseRosterXML } from '@/lib/yahoo/xmlParser'
+import { parseLeaguesXML, parseTeamsXML, parseRosterXML, parsePlayerStatsXML } from '@/lib/yahoo/xmlParser'
 const leagues = parseLeaguesXML(xmlString)
+const stats = parsePlayerStatsXML(xmlString)
+```
+
+### Player Search
+```typescript
+import { searchPlayerInLeague, searchPlayerInFreeAgents } from '@/lib/yahoo/playerSearch'
+const player = await searchPlayerInLeague(api, leagueKey, 'Mike Trout')
 ```
 
 ---
@@ -305,13 +354,18 @@ const leagues = parseLeaguesXML(xmlString)
 - ✅ League selection and display
 - ✅ Team browsing
 - ✅ Roster viewing with player details
+- ✅ Player statistics (current season + historical 2022-2026)
+- ✅ Player search across rosters and free agents
+- ✅ Enhanced conversational AI with natural language understanding
+- ✅ Input auto-focus for better UX
 - ✅ All data flows working end-to-end
 
 **What's Next:**
-- Matchups and scores
-- Player statistics integration
+- Refine player stats display and formatting
+- Matchups and scores display
 - Lineup optimization using Yahoo data
-- Enhanced UI/UX improvements
+- Trade analysis with Yahoo player data
+- Waiver wire integration
 
 ---
 

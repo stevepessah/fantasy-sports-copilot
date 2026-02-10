@@ -321,7 +321,6 @@ export default function EnhancedChatInterface({ leagueId, userId, initialMessage
               </form>
             </div>
           </main>
-        )}
       </div>
     </div>
   )
