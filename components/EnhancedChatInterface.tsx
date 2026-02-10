@@ -22,6 +22,7 @@ export default function EnhancedChatInterface({ leagueId, userId, initialMessage
   const [isTiny, setIsTiny] = useState(false)
   const [showQuickActions, setShowQuickActions] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     const checkSize = () => {
@@ -40,6 +41,11 @@ export default function EnhancedChatInterface({ leagueId, userId, initialMessage
   useEffect(() => {
     scrollToBottom()
   }, [messages])
+
+  // Auto-focus input on mount
+  useEffect(() => {
+    inputRef.current?.focus()
+  }, [])
 
   useEffect(() => {
     // Load roster when league/team is available
@@ -134,6 +140,10 @@ export default function EnhancedChatInterface({ leagueId, userId, initialMessage
       setMessages((prev) => [...prev, errorMessage])
     } finally {
       setIsLoading(false)
+      // Refocus input after message is sent
+      setTimeout(() => {
+        inputRef.current?.focus()
+      }, 100)
     }
   }
 
@@ -376,6 +386,7 @@ export default function EnhancedChatInterface({ leagueId, userId, initialMessage
               )}
               <form onSubmit={handleSubmit} className="max-w-4xl mx-auto flex gap-2">
                 <input
+                  ref={inputRef}
                   type="text"
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
