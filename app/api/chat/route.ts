@@ -224,7 +224,7 @@ export async function POST(request: NextRequest) {
           // Get leagues to find an active league
           const { leagues } = await api.getLeagues('mlb')
           // Find the first active (not finished) league
-          const yahooLeague = leagues.find(l => l.is_finished !== '1' && l.is_finished !== 1) || leagues[0]
+          const yahooLeague = leagues.find(l => l.is_finished !== '1') || leagues[0]
           
           if (yahooLeague && yahooLeague.league_key) {
             // Search in rosters first
