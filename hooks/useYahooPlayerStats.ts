@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { ParsedPlayerStats } from '@/lib/yahoo/xmlParser'
 
-export function useYahooPlayerStats(playerKey: string | null, leagueKey?: string | null) {
+export function useYahooPlayerStats(playerKey: string | null, leagueKey?: string | null, season?: number | null) {
   const [stats, setStats] = useState<ParsedPlayerStats | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -22,6 +22,9 @@ export function useYahooPlayerStats(playerKey: string | null, leagueKey?: string
         const params = new URLSearchParams({ playerKey })
         if (leagueKey) {
           params.append('leagueKey', leagueKey)
+        }
+        if (season) {
+          params.append('season', season.toString())
         }
         
         const response = await fetch(`/api/yahoo/player-stats?${params.toString()}`)
@@ -45,7 +48,7 @@ export function useYahooPlayerStats(playerKey: string | null, leagueKey?: string
     }
 
     fetchStats()
-  }, [playerKey, leagueKey])
+  }, [playerKey, leagueKey, season])
 
   return { stats, isLoading, error }
 }

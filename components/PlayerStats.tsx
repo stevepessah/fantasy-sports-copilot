@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import { useYahooPlayerStats } from '@/hooks/useYahooPlayerStats'
 
 interface PlayerStatsProps {
@@ -44,7 +45,12 @@ const getContextualStatLabel = (key: string, isPitching: boolean): string => {
 }
 
 export function PlayerStats({ playerKey, leagueKey, playerName }: PlayerStatsProps) {
-  const { stats, isLoading, error } = useYahooPlayerStats(playerKey, leagueKey)
+  const currentYear = new Date().getFullYear()
+  const [selectedSeason, setSelectedSeason] = useState<number>(currentYear)
+  const { stats, isLoading, error } = useYahooPlayerStats(playerKey, leagueKey, selectedSeason)
+  
+  // Available seasons (last 5 years)
+  const availableSeasons = Array.from({ length: 5 }, (_, i) => currentYear - i)
 
   if (!playerKey) {
     return null
@@ -109,10 +115,26 @@ export function PlayerStats({ playerKey, leagueKey, playerName }: PlayerStatsPro
 
   return (
     <div className="mt-4 space-y-4">
+      {/* Season Selector */}
+      <div className="flex items-center justify-between mb-2">
+        <h4 className="text-sm font-semibold text-slate-300">Statistics</h4>
+        <select
+          value={selectedSeason}
+          onChange={(e) => setSelectedSeason(parseInt(e.target.value, 10))}
+          className="px-2 py-1 text-xs bg-slate-800 border border-slate-700 rounded text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+        >
+          {availableSeasons.map((year) => (
+            <option key={year} value={year}>
+              {year}
+            </option>
+          ))}
+        </select>
+      </div>
+
       {/* Season Stats */}
       {hittingStats.length > 0 && (
         <div className="p-3 bg-slate-800/50 rounded-lg">
-          <h4 className="text-sm font-semibold text-slate-300 mb-2">Season Hitting Stats</h4>
+          <h4 className="text-sm font-semibold text-slate-300 mb-2">{selectedSeason} Season Hitting Stats</h4>
           <div className="grid grid-cols-3 gap-2 text-xs">
             {hittingStats.map(({ key, value }) => (
               <div key={key}>
@@ -126,7 +148,7 @@ export function PlayerStats({ playerKey, leagueKey, playerName }: PlayerStatsPro
 
       {pitchingStats.length > 0 && (
         <div className="p-3 bg-slate-800/50 rounded-lg">
-          <h4 className="text-sm font-semibold text-slate-300 mb-2">Season Pitching Stats</h4>
+          <h4 className="text-sm font-semibold text-slate-300 mb-2">{selectedSeason} Season Pitching Stats</h4>
           <div className="grid grid-cols-3 gap-2 text-xs">
             {pitchingStats.map(({ key, value }) => (
               <div key={key}>

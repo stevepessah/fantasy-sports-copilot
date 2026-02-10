@@ -19,6 +19,8 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const playerKey = searchParams.get('playerKey')
     const leagueKey = searchParams.get('leagueKey')
+    const seasonParam = searchParams.get('season')
+    const season = seasonParam ? parseInt(seasonParam, 10) : undefined
     
     if (!playerKey) {
       return NextResponse.json(
@@ -30,13 +32,14 @@ export async function GET(request: NextRequest) {
     const api = new YahooFantasyAPI()
     api.setAccessToken(accessToken)
     
-    const response = await api.getPlayerStats(playerKey, leagueKey || undefined)
+    const response = await api.getPlayerStats(playerKey, leagueKey || undefined, season)
     
     // Return parsed stats as JSON
     return NextResponse.json({ 
       stats: response.stats,
       playerKey,
-      leagueKey: leagueKey || null
+      leagueKey: leagueKey || null,
+      season: season || null
     })
   } catch (error) {
     console.error('Error fetching Yahoo player stats:', error)

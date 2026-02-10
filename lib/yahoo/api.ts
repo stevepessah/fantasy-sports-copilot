@@ -280,17 +280,39 @@ export class YahooFantasyAPI {
    * Get player statistics
    * @param playerKey - Full player key in format: 469.p.12345
    * @param leagueKey - Optional league key for league-specific stats
+   * @param season - Optional season year (e.g., 2024, 2025). If provided, will construct player key for that season
    */
-  async getPlayerStats(playerKey: string, leagueKey?: string): Promise<{ stats: any; raw?: string }> {
+  async getPlayerStats(playerKey: string, leagueKey?: string, season?: number): Promise<{ stats: any; raw?: string }> {
     if (!this.accessToken) {
       throw new Error('Access token not set. Please authenticate first.')
+    }
+
+    // If season is provided, construct player key for that season
+    // Player key format: {game_key}.p.{player_id}
+    // Extract player_id from current playerKey
+    let finalPlayerKey = playerKey
+    if (season) {
+      const playerIdMatch = playerKey.match(/\.p\.(\d+)$/)
+      if (playerIdMatch) {
+        const playerId = playerIdMatch[1]
+        // Map season to game key
+        const seasonToGameKey: Record<number, string> = {
+          2026: '469',
+          2025: '458',
+          2024: '431',
+          2023: '422',
+          2022: '414',
+        }
+        const gameKey = seasonToGameKey[season] || '469'
+        finalPlayerKey = `${gameKey}.p.${playerId}`
+      }
     }
 
     // If leagueKey is provided, get league-specific stats
     // Otherwise, get general player stats
     const endpoint = leagueKey 
-      ? `/player/${playerKey}/stats;league_key=${leagueKey}`
-      : `/player/${playerKey}/stats`
+      ? `/player/${finalPlayerKey}/stats;league_key=${leagueKey}`
+      : `/player/${finalPlayerKey}/stats`
     
     const response = await this.oauth2.makeRequest(
       'GET',
