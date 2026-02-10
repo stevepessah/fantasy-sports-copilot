@@ -32,7 +32,16 @@ export async function GET(request: NextRequest) {
     const api = new YahooFantasyAPI()
     api.setAccessToken(accessToken)
     
+    console.log('Fetching player stats:', { playerKey, leagueKey, season })
     const response = await api.getPlayerStats(playerKey, leagueKey || undefined, season)
+    
+    console.log('Player stats response:', {
+      hasStats: !!response.stats,
+      statsKeys: response.stats ? Object.keys(response.stats) : [],
+      hasSeasonStats: !!(response.stats?.season_stats),
+      seasonStatsKeys: response.stats?.season_stats ? Object.keys(response.stats.season_stats) : [],
+      rawLength: response.raw?.length || 0
+    })
     
     // Return parsed stats as JSON
     return NextResponse.json({ 

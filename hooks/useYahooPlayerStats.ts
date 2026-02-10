@@ -38,6 +38,13 @@ export function useYahooPlayerStats(playerKey: string | null, leagueKey?: string
         }
         
         const data = await response.json()
+        console.log('useYahooPlayerStats - API response:', {
+          playerKey,
+          leagueKey,
+          season,
+          hasStats: !!data.stats,
+          stats: data.stats
+        })
         setStats(data.stats || null)
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to fetch player stats')

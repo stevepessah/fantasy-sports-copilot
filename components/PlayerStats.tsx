@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useYahooPlayerStats } from '@/hooks/useYahooPlayerStats'
 
 interface PlayerStatsProps {
@@ -52,6 +52,21 @@ export function PlayerStats({ playerKey, leagueKey, playerName }: PlayerStatsPro
   // Available seasons (last 5 years)
   const availableSeasons = Array.from({ length: 5 }, (_, i) => currentYear - i)
 
+  // Debug logging
+  useEffect(() => {
+    if (stats) {
+      console.log('PlayerStats - Stats received:', {
+        playerKey,
+        leagueKey,
+        season: selectedSeason,
+        hasSeasonStats: !!stats.season_stats,
+        hasWeekStats: !!stats.week_stats,
+        statsKeys: stats.season_stats ? Object.keys(stats.season_stats) : [],
+        fullStats: stats
+      })
+    }
+  }, [stats, playerKey, leagueKey, selectedSeason])
+
   // Show message if no player key but we have a league (means player wasn't found in Yahoo)
   if (!playerKey) {
     return (
@@ -81,19 +96,31 @@ export function PlayerStats({ playerKey, leagueKey, playerName }: PlayerStatsPro
     )
   }
 
-  if (!stats || !stats.season_stats) {
+  // Check if we have any stats at all
+  const hasAnyStats = stats && (
+    (stats.season_stats && Object.keys(stats.season_stats).length > 0) ||
+    (stats.week_stats && Object.keys(stats.week_stats).length > 0) ||
+    (stats.ytd_stats && Object.keys(stats.ytd_stats).length > 0)
+  )
+
+  if (!stats || !hasAnyStats) {
     return (
       <div className="mt-4 p-3 bg-slate-800/50 rounded-lg">
         <div className="text-sm text-slate-400">
           {!playerKey 
             ? 'Player key not available. Make sure you\'re connected to Yahoo and the player is in your league.'
-            : 'No statistics available for this season. The player may not have played or stats may not be available yet.'}
+            : `No statistics available for ${selectedSeason}. The player may not have played this season or stats may not be available yet.`}
         </div>
+        {stats && (
+          <div className="mt-2 text-xs text-slate-500">
+            Debug: Stats object exists but is empty. Player key: {playerKey?.substring(0, 20)}...
+          </div>
+        )}
       </div>
     )
   }
 
-  const seasonStats = stats.season_stats
+  const seasonStats = stats.season_stats || stats.ytd_stats || {}
   const weekStats = stats.week_stats
 
   // Format stat value
@@ -116,13 +143,17 @@ export function PlayerStats({ playerKey, leagueKey, playerName }: PlayerStatsPro
   // Organize stats by category
   const hittingStats: Array<{ key: string; value: number | string }> = []
   const pitchingStats: Array<{ key: string; value: number | string }> = []
+  const otherStats: Array<{ key: string; value: number | string }> = []
 
   Object.entries(seasonStats).forEach(([key, value]) => {
     const upperKey = key.toUpperCase()
     if (['AB', 'H', 'R', 'HR', 'RBI', 'SB', 'AVG', 'OBP', 'SLG', 'OPS'].includes(upperKey)) {
       hittingStats.push({ key: upperKey, value })
-    } else if (['W', 'L', 'SV', 'IP', 'ER', 'BB', 'K', 'ERA', 'WHIP', 'K/9'].includes(upperKey)) {
+    } else if (['W', 'L', 'SV', 'IP', 'ER', 'BB', 'K', 'ERA', 'WHIP', 'K/9', 'HA'].includes(upperKey)) {
       pitchingStats.push({ key: upperKey, value })
+    } else {
+      // Include other stats too
+      otherStats.push({ key: upperKey, value })
     }
   })
 
@@ -166,6 +197,21 @@ export function PlayerStats({ playerKey, leagueKey, playerName }: PlayerStatsPro
             {pitchingStats.map(({ key, value }) => (
               <div key={key}>
                 <div className="text-slate-400">{getStatLabel(key, true)}</div>
+                <div className="text-white font-semibold">{formatStat(value)}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Other Stats (if any) */}
+      {otherStats.length > 0 && (
+        <div className="p-3 bg-slate-800/50 rounded-lg">
+          <h4 className="text-sm font-semibold text-slate-300 mb-2">Other Stats</h4>
+          <div className="grid grid-cols-3 gap-2 text-xs">
+            {otherStats.slice(0, 9).map(({ key, value }) => (
+              <div key={key}>
+                <div className="text-slate-400">{getStatLabel(key, false)}</div>
                 <div className="text-white font-semibold">{formatStat(value)}</div>
               </div>
             ))}

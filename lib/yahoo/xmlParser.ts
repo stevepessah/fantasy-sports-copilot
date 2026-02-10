@@ -349,7 +349,13 @@ export function parsePlayerStatsXML(xml: string): ParsedPlayerStats | null {
   }
 
   // Extract stats - Yahoo provides stats in <player_stats> blocks
-  const statsBlocks = playerBlock.match(/<player_stats>(.*?)<\/player_stats>/gs)
+  // Also check for <stats> blocks as alternative format
+  let statsBlocks = playerBlock.match(/<player_stats>(.*?)<\/player_stats>/gs)
+  if (!statsBlocks) {
+    // Try alternative format
+    statsBlocks = playerBlock.match(/<stats>(.*?)<\/stats>/gs)
+  }
+  
   if (statsBlocks) {
     stats.season_stats = {}
     stats.week_stats = {}
@@ -358,7 +364,7 @@ export function parsePlayerStatsXML(xml: string): ParsedPlayerStats | null {
     for (const statsBlock of statsBlocks) {
       // Extract coverage type (season, week, etc.)
       const coverageTypeMatch = statsBlock.match(/<coverage_type>(.*?)<\/coverage_type>/s)
-      const coverageType = coverageTypeMatch ? coverageTypeMatch[1].trim() : 'season'
+      const coverageType = coverageTypeMatch ? coverageTypeMatch[1].trim().toLowerCase() : 'season'
 
       // Extract stat values
       const statRegex = /<stat>(.*?)<\/stat>/gs
@@ -371,27 +377,37 @@ export function parsePlayerStatsXML(xml: string): ParsedPlayerStats | null {
         const value = extractValue('value', statBlock)
         const name = extractValue('name', statBlock)
 
-        if (statId && value !== undefined) {
+        if (statId && value !== undefined && value !== '') {
           // Try to parse as number, otherwise keep as string
           const numValue = parseFloat(value)
-          statMap[statId] = isNaN(numValue) ? value : numValue
+          const finalValue = isNaN(numValue) ? value : numValue
+          statMap[statId] = finalValue
           
           // Also store by name for easier access
           if (name) {
-            statMap[name.toLowerCase().replace(/\s+/g, '_')] = isNaN(numValue) ? value : numValue
+            const nameKey = name.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '')
+            statMap[nameKey] = finalValue
+            // Also store uppercase version for common stats
+            statMap[name.toUpperCase().replace(/\s+/g, '_')] = finalValue
           }
         }
       }
 
       // Store stats by coverage type
-      if (coverageType === 'season' || coverageType === 'date') {
+      if (coverageType === 'season' || coverageType === 'date' || coverageType === '') {
         stats.season_stats = { ...stats.season_stats, ...statMap }
       } else if (coverageType === 'week') {
         stats.week_stats = { ...stats.week_stats, ...statMap }
-      } else if (coverageType === 'ytd') {
+      } else if (coverageType === 'ytd' || coverageType === 'year') {
         stats.ytd_stats = { ...stats.ytd_stats, ...statMap }
+      } else {
+        // Default to season stats if unknown type
+        stats.season_stats = { ...stats.season_stats, ...statMap }
       }
     }
+  } else {
+    // Log if no stats blocks found for debugging
+    console.log('No player_stats blocks found in XML. Sample:', xml.substring(0, 500))
   }
 
   return stats as ParsedPlayerStats
