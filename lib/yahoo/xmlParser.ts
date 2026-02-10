@@ -285,3 +285,114 @@ export function parseRosterXML(xml: string): ParsedRosterPlayer[] {
   
   return players
 }
+
+/**
+ * Player statistics interface
+ */
+export interface ParsedPlayerStats {
+  player_key: string
+  player_id: string
+  name?: {
+    full: string
+    first: string
+    last: string
+  }
+  // Season stats
+  season_stats?: {
+    [statName: string]: number | string
+  }
+  // Recent stats (last 7/14/30 days)
+  recent_stats?: {
+    [statName: string]: number | string
+  }
+  // Week stats
+  week_stats?: {
+    [statName: string]: number | string
+  }
+  // Year-to-date stats
+  ytd_stats?: {
+    [statName: string]: number | string
+  }
+}
+
+/**
+ * Parse player statistics XML from Yahoo API
+ */
+export function parsePlayerStatsXML(xml: string): ParsedPlayerStats | null {
+  // Extract player block
+  const playerMatch = xml.match(/<player>(.*?)<\/player>/s)
+  if (!playerMatch) {
+    return null
+  }
+
+  const playerBlock = playerMatch[1]
+  const stats: Partial<ParsedPlayerStats> = {}
+
+  // Extract player properties
+  const extractValue = (tag: string, block: string = playerBlock): string | undefined => {
+    const regex = new RegExp(`<${tag}>(.*?)<\/${tag}>`, 's')
+    const match = block.match(regex)
+    return match ? match[1].trim() : undefined
+  }
+
+  stats.player_key = extractValue('player_key') || ''
+  stats.player_id = extractValue('player_id') || ''
+
+  // Extract name if present
+  const nameBlock = playerBlock.match(/<name>(.*?)<\/name>/s)?.[1]
+  if (nameBlock) {
+    stats.name = {
+      full: extractValue('full', nameBlock) || '',
+      first: extractValue('first', nameBlock) || '',
+      last: extractValue('last', nameBlock) || '',
+    }
+  }
+
+  // Extract stats - Yahoo provides stats in <player_stats> blocks
+  const statsBlocks = playerBlock.match(/<player_stats>(.*?)<\/player_stats>/gs)
+  if (statsBlocks) {
+    stats.season_stats = {}
+    stats.week_stats = {}
+    stats.ytd_stats = {}
+
+    for (const statsBlock of statsBlocks) {
+      // Extract coverage type (season, week, etc.)
+      const coverageTypeMatch = statsBlock.match(/<coverage_type>(.*?)<\/coverage_type>/s)
+      const coverageType = coverageTypeMatch ? coverageTypeMatch[1].trim() : 'season'
+
+      // Extract stat values
+      const statRegex = /<stat>(.*?)<\/stat>/gs
+      let statMatch
+      const statMap: Record<string, number | string> = {}
+
+      while ((statMatch = statRegex.exec(statsBlock)) !== null) {
+        const statBlock = statMatch[1]
+        const statId = extractValue('stat_id', statBlock)
+        const value = extractValue('value', statBlock)
+        const name = extractValue('name', statBlock)
+
+        if (statId && value !== undefined) {
+          // Try to parse as number, otherwise keep as string
+          const numValue = parseFloat(value)
+          statMap[statId] = isNaN(numValue) ? value : numValue
+          
+          // Also store by name for easier access
+          if (name) {
+            statMap[name.toLowerCase().replace(/\s+/g, '_')] = isNaN(numValue) ? value : numValue
+          }
+        }
+      }
+
+      // Store stats by coverage type
+      if (coverageType === 'season' || coverageType === 'date') {
+        stats.season_stats = { ...stats.season_stats, ...statMap }
+      } else if (coverageType === 'week') {
+        stats.week_stats = { ...stats.week_stats, ...statMap }
+      } else if (coverageType === 'ytd') {
+        stats.ytd_stats = { ...stats.ytd_stats, ...statMap }
+      }
+    }
+  }
+
+  return stats as ParsedPlayerStats
+}

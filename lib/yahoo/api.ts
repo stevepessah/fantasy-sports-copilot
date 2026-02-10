@@ -2,7 +2,7 @@
 // Handles fetching data from Yahoo Fantasy Sports API
 
 import { YahooOAuth2 } from './oauth2'
-import { parseLeaguesXML, parseTeamsXML, parseRosterXML, ParsedLeague, ParsedTeam, ParsedRosterPlayer } from './xmlParser'
+import { parseLeaguesXML, parseTeamsXML, parseRosterXML, parsePlayerStatsXML, ParsedLeague, ParsedTeam, ParsedRosterPlayer } from './xmlParser'
 
 export interface YahooLeague {
   league_key: string
@@ -267,13 +267,44 @@ export class YahooFantasyAPI {
 
     const endpoint = `/league/${leagueKey}/players;start=${start};count=${count}`
     
-    const response = await this.oauth2.makeRequest(
+    const response = this.oauth2.makeRequest(
       'GET',
       endpoint,
       this.accessToken
     )
 
     return response
+  }
+
+  /**
+   * Get player statistics
+   * @param playerKey - Full player key in format: 469.p.12345
+   * @param leagueKey - Optional league key for league-specific stats
+   */
+  async getPlayerStats(playerKey: string, leagueKey?: string): Promise<{ stats: any; raw?: string }> {
+    if (!this.accessToken) {
+      throw new Error('Access token not set. Please authenticate first.')
+    }
+
+    // If leagueKey is provided, get league-specific stats
+    // Otherwise, get general player stats
+    const endpoint = leagueKey 
+      ? `/player/${playerKey}/stats;league_key=${leagueKey}`
+      : `/player/${playerKey}/stats`
+    
+    const response = await this.oauth2.makeRequest(
+      'GET',
+      endpoint,
+      this.accessToken
+    )
+
+    // Parse XML response
+    let stats: any = null
+    if (response.raw) {
+      stats = parsePlayerStatsXML(response.raw)
+    }
+
+    return { stats, raw: response.raw }
   }
 
   // Helper methods to parse XML responses (simplified for MVP)

@@ -214,6 +214,7 @@ export async function POST(request: NextRequest) {
           title: 'Player Snapshot',
           payload: {
             player,
+            leagueKey: effectiveLeagueId || undefined, // Include league key for stats fetching
             insights: [
               `Projected ${player.projectedPoints?.toFixed(1) || '0.0'} points this week.`,
               player.injuryStatus && player.injuryStatus !== 'healthy' 

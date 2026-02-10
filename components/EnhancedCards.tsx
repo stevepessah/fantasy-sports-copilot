@@ -1,6 +1,7 @@
 'use client'
 
 import { Player, Sport } from '@/types'
+import { PlayerStats } from './PlayerStats'
 
 interface Card {
   type: 'lineup' | 'matchup' | 'player' | 'waivers' | 'trade' | 'draft' | 'teams'
@@ -163,6 +164,15 @@ export function EnhancedCards({ card, onAction, sport }: EnhancedCardsProps) {
               </div>
             )}
           </div>
+
+          {/* Player Statistics */}
+          {player.yahooPlayerKey && (
+            <PlayerStats 
+              playerKey={player.yahooPlayerKey} 
+              leagueKey={p.leagueKey}
+              playerName={player.name}
+            />
+          )}
 
           {p.insights && p.insights.length > 0 && (
             <ul className="space-y-1 mb-4">

@@ -64,6 +64,16 @@ export interface Player {
     strikeouts?: number
     saves?: number
   }
+  // Actual season stats from Yahoo
+  seasonStats?: {
+    [statName: string]: number | string
+  }
+  // Week stats
+  weekStats?: {
+    [statName: string]: number | string
+  }
+  // Yahoo player key for fetching stats
+  yahooPlayerKey?: string
 }
 
 export interface Roster {
