@@ -275,6 +275,74 @@ export async function POST(request: NextRequest) {
       } else if (response.action.type === 'propose_trade' && context.teamId) {
         // Handle trade actions
         response.message += '\n\n💡 I can help evaluate trades. Tell me the specific players involved.'
+      } else if (response.action.type === 'view_teams') {
+        // Teams card is already generated via intent parsing, so this is handled
+        // The action is just for consistency
+      } else if (response.action.type === 'show_lineup' && context.teamId && context.league) {
+        // Show current lineup - similar to set_lineup but read-only
+        try {
+          const lineupResponse = await fetch(`${request.nextUrl.origin}/api/lineup?teamId=${context.teamId}&leagueId=${context.league.id}`)
+          if (lineupResponse.ok) {
+            const lineupData = await lineupResponse.json()
+            const slots = lineupData.optimal.starters.map((s: any) => ({
+              slot: s.position,
+              player: {
+                name: playerDB.get(s.playerId)?.name || 'Unknown',
+                position: playerDB.get(s.playerId)?.position || '',
+                team: playerDB.get(s.playerId)?.team || '',
+                projectedPoints: s.projectedPoints,
+              },
+            }))
+            
+            if (!response.cards) response.cards = []
+            response.cards.push({
+              type: 'lineup',
+              title: 'Your Current Lineup',
+              payload: {
+                teamName: context.team?.name || 'Your Team',
+                week: context.league.week || 1,
+                slots,
+                projectedTotal: lineupData.optimal.totalProjected,
+              },
+            })
+          }
+        } catch (error) {
+          console.error('Error generating lineup card:', error)
+        }
+      } else if (response.action.type === 'show_matchup' && context.teamId && context.league) {
+        // Show matchup - similar to existing matchup handling
+        try {
+          const lineupResponse = await fetch(`${request.nextUrl.origin}/api/lineup?teamId=${context.teamId}&leagueId=${context.league.id}`)
+          if (lineupResponse.ok) {
+            const lineupData = await lineupResponse.json()
+            const myProj = lineupData.optimal.totalProjected
+            const oppProj = myProj * 0.95 + Math.random() * 5 // Mock opponent projection
+            const diff = myProj - oppProj
+            const winProb = Math.max(5, Math.min(95, 50 + diff * 2.6))
+
+            if (!response.cards) response.cards = []
+            response.cards.push({
+              type: 'matchup',
+              title: `Matchup: ${context.team?.name || 'Your Team'} vs Opponent`,
+              payload: {
+                week: context.league.week || 1,
+                home: { team: context.team?.name || 'Your Team', projected: myProj },
+                away: { team: 'Opponent', projected: oppProj },
+                winProbHome: winProb,
+                notes: [
+                  diff > 6 ? 'You have a solid projected edge — prioritize stability.' :
+                  diff < -6 ? 'You\'re trailing — consider upside plays.' :
+                  'Toss-up — small moves can swing it.',
+                ],
+              },
+            })
+          }
+        } catch (error) {
+          console.error('Error generating matchup card:', error)
+        }
+      } else if (response.action.type === 'show_waivers') {
+        // Waivers - could be enhanced with actual waiver wire data
+        response.message += '\n\n💡 I can help you find the best available players. Let me check the waiver wire...'
       }
     }
 

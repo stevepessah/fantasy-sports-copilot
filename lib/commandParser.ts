@@ -21,14 +21,78 @@ export function parseIntent(input: string): ParsedIntent {
   const s = input.trim().toLowerCase()
 
   const isHelp = s === 'help' || s === '/help' || s.includes('what can you do')
-  const isSetLineup = s.startsWith('set lineup') || s.includes('optimal lineup') || s.startsWith('/lineup') || s.includes('optimize lineup')
-  const isShowLineup = s === 'show lineup' || s === 'lineup' || s.startsWith('show my lineup') || s === 'my lineup'
-  const isMatchup = s.includes('matchup') || s.includes('win probability') || s.startsWith('/matchup') || s.includes(' vs ') || s.includes(' versus ')
-  const isWaivers = s.includes('waiver') || s.includes('free agent') || s.startsWith('/waivers') || s.includes('pick up') || s.includes('available')
+  // More flexible lineup detection
+  const isSetLineup = 
+    s.startsWith('set lineup') || 
+    s.includes('optimal lineup') || 
+    s.startsWith('/lineup') || 
+    s.includes('optimize lineup') ||
+    s.includes('set my lineup') ||
+    s.includes('set best lineup') ||
+    s.includes('set optimal') ||
+    s.includes('optimize my lineup') ||
+    s.includes('who should i start') ||
+    s.includes('who should i play') ||
+    s.includes('best lineup') ||
+    (s.includes('lineup') && (s.includes('set') || s.includes('optimize') || s.includes('best')))
+  
+  const isShowLineup = 
+    s === 'show lineup' || 
+    s === 'lineup' || 
+    s.startsWith('show my lineup') || 
+    s === 'my lineup' ||
+    s.includes('show my lineup') ||
+    s.includes('view my lineup') ||
+    s.includes('current lineup') ||
+    s.includes('my current lineup') ||
+    (s.includes('lineup') && (s.includes('show') || s.includes('view') || s.includes('see')))
+  const isMatchup = 
+    s.includes('matchup') || 
+    s.includes('win probability') || 
+    s.startsWith('/matchup') || 
+    s.includes(' vs ') || 
+    s.includes(' versus ') ||
+    s.includes('this week') ||
+    s.includes('my matchup') ||
+    s.includes('who am i playing') ||
+    s.includes('who am i facing') ||
+    s.includes('opponent')
+  const isWaivers = 
+    s.includes('waiver') || 
+    s.includes('free agent') || 
+    s.startsWith('/waivers') || 
+    s.includes('pick up') || 
+    s.includes('available') ||
+    s.includes('who should i pick up') ||
+    s.includes('who should i add') ||
+    s.includes('waiver wire') ||
+    s.includes('free agents') ||
+    s.includes('available players')
   const isAddDrop = s.startsWith('add ') || s.startsWith('drop ') || (s.includes('drop') && s.includes('for'))
   const isTrade = s.includes('trade') || s.startsWith('/trade') || s.includes('propose trade') || s.includes('suggest trade')
   const isDraft = s.includes('draft') || s.startsWith('/draft') || s.includes('draft advice')
-  const isViewTeams = s.includes('show all teams') || s.includes('view all teams') || s.includes('list teams') || s.includes('all teams') || s.includes('teams in league') || s === 'teams'
+  // More flexible team viewing - handle many conversational variations
+  const isViewTeams = 
+    s.includes('show all teams') || 
+    s.includes('view all teams') || 
+    s.includes('list teams') || 
+    s.includes('all teams') || 
+    s.includes('teams in league') || 
+    s.includes('teams in my league') ||
+    s.includes('who is in my league') ||
+    s.includes('who\'s in my league') ||
+    s.includes('who are the teams') ||
+    s.includes('what teams') ||
+    s.includes('show teams') ||
+    s.includes('view teams') ||
+    s.includes('list teams') ||
+    s.includes('standings') ||
+    s.includes('league standings') ||
+    s.includes('show standings') ||
+    s.includes('view standings') ||
+    (s.includes('teams') && (s.includes('show') || s.includes('view') || s.includes('list') || s.includes('see') || s.includes('display'))) ||
+    s === 'teams' ||
+    s === 'standings'
   const playerName = extractPlayerName(input)
   const isPlayerLookup = shouldHandlePlayerLookup(s, {
     isHelp,

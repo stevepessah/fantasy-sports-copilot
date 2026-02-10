@@ -127,7 +127,7 @@ export interface ChatMessage {
 export interface AIResponse {
   message: string
   action?: {
-    type: 'create_league' | 'set_lineup' | 'add_player' | 'drop_player' | 'propose_trade' | 'draft_pick'
+    type: 'create_league' | 'set_lineup' | 'show_lineup' | 'add_player' | 'drop_player' | 'propose_trade' | 'draft_pick' | 'view_teams' | 'show_matchup' | 'show_waivers'
     data?: any
   }
   cards?: {

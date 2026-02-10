@@ -58,6 +58,10 @@ Core principles:
 - Be proactive about potential issues (injuries, schedule, matchups)
 - When suggesting actions, explain the impact
 - Remember you're helping with baseball
+- Understand user intent even when phrased differently - be flexible with language
+- If a user asks about "teams", "standings", "who's in my league", etc., they want to see all teams
+- If a user asks "who should I start", "set my lineup", "best lineup", they want lineup optimization
+- If a user asks about "matchup", "opponent", "who am I playing", they want matchup info
 
 Current context:
 - Sport: baseball
@@ -77,14 +81,33 @@ Current context:
     }
 
     prompt += `
-Available actions:
-- Create league: "Create a 12-team roto league"
-- Set lineup: "Set my best lineup" or "Who should I start?"
-- View teams: "Show all teams" or "View all teams" or "List teams"
-- Add/drop players: "Drop Player X for Player Y"
-- Draft help: "Who should I draft?" or "Best SP available?"
-- Trade evaluation: "Is this trade fair?"
-- General questions: Answer about fantasy baseball strategy, players, matchups`
+Available actions and their conversational variations:
+- View teams/standings: 
+  * "show teams", "show all teams", "view teams", "list teams", "who's in my league", 
+    "what teams are in my league", "show standings", "league standings", "standings"
+- Set lineup: 
+  * "set my lineup", "set optimal lineup", "who should I start", "best lineup", 
+    "optimize lineup", "set my best lineup"
+- View lineup: 
+  * "show my lineup", "view lineup", "current lineup", "my lineup"
+- Matchup: 
+  * "show matchup", "my matchup", "who am I playing", "who am I facing", "opponent"
+- Waivers: 
+  * "waiver wire", "who should I pick up", "free agents", "available players"
+- Add/drop: 
+  * "drop Player X for Player Y", "add Player X", "pick up Player X"
+- Draft help: 
+  * "who should I draft", "draft advice", "best SP available"
+- Trade evaluation: 
+  * "is this trade fair", "evaluate trade", "suggest a trade"
+- Create league: 
+  * "create a 12-team roto league"
+- General questions: Answer about fantasy baseball strategy, players, matchups
+
+IMPORTANT: Understand user intent from natural language. Don't require exact phrases. 
+If someone says "show teams" or "what teams are in my league" or "standings", they want to see all teams.
+If someone says "who should I start" or "set my lineup", they want lineup help.
+Be flexible and conversational!`
 
     prompt += `\n\nAlways respond in a friendly, conversational tone. Explain your reasoning clearly.`
 
@@ -106,21 +129,133 @@ Available actions:
       { role: 'user' as const, content: userMessage },
     ]
 
-    const completion = await openai.chat.completions.create({
-      model: 'gpt-4-turbo-preview',
-      messages,
-      temperature: 0.7,
-      max_tokens: 1000,
-    })
+    // Define functions for structured actions
+    const functions = [
+      {
+        name: 'view_teams',
+        description: 'Show all teams in the league with standings',
+        parameters: {
+          type: 'object',
+          properties: {},
+        },
+      },
+      {
+        name: 'set_lineup',
+        description: 'Set or optimize the user\'s lineup',
+        parameters: {
+          type: 'object',
+          properties: {},
+        },
+      },
+      {
+        name: 'show_lineup',
+        description: 'Show the user\'s current lineup',
+        parameters: {
+          type: 'object',
+          properties: {},
+        },
+      },
+      {
+        name: 'show_matchup',
+        description: 'Show the user\'s current matchup/opponent',
+        parameters: {
+          type: 'object',
+          properties: {},
+        },
+      },
+      {
+        name: 'show_waivers',
+        description: 'Show available players on waivers or free agents',
+        parameters: {
+          type: 'object',
+          properties: {},
+        },
+      },
+    ]
 
-    const responseText = completion.choices[0]?.message?.content || ''
+    try {
+      const completion = await openai.chat.completions.create({
+        model: 'gpt-4-turbo-preview',
+        messages,
+        functions,
+        function_call: 'auto', // Let the model decide when to call functions
+        temperature: 0.7,
+        max_tokens: 1000,
+      })
 
-    // Parse response for actions (this is simplified - in production, use function calling)
-    const action = this.extractAction(userMessage, responseText, context)
+      const responseMessage = completion.choices[0]?.message
+      const responseText = responseMessage?.content || ''
 
-    return {
-      message: responseText,
-      action,
+      // Check if the model wants to call a function
+      if (responseMessage?.function_call) {
+        const functionName = responseMessage.function_call.name
+        const action = this.mapFunctionToAction(functionName, context)
+        
+        // Generate a natural language response based on the function call
+        const naturalResponse = this.generateResponseForAction(functionName, context)
+        
+        return {
+          message: naturalResponse || responseText,
+          action,
+        }
+      }
+
+      // Parse response for actions as fallback
+      const action = this.extractAction(userMessage, responseText, context)
+
+      return {
+        message: responseText,
+        action,
+      }
+    } catch (error) {
+      console.error('OpenAI API error:', error)
+      // Fallback to rule-based
+      return this.processWithRules(userMessage, context)
+    }
+  }
+
+  private mapFunctionToAction(functionName: string, context: AIContext): AIResponse['action'] {
+    switch (functionName) {
+      case 'view_teams':
+        return { type: 'view_teams' }
+      case 'set_lineup':
+        return {
+          type: 'set_lineup',
+          data: { teamId: context.teamId },
+        }
+      case 'show_lineup':
+        return {
+          type: 'show_lineup',
+          data: { teamId: context.teamId },
+        }
+      case 'show_matchup':
+        return {
+          type: 'show_matchup',
+          data: { teamId: context.teamId, leagueId: context.leagueId },
+        }
+      case 'show_waivers':
+        return {
+          type: 'show_waivers',
+        }
+      default:
+        return undefined
+    }
+  }
+
+  private generateResponseForAction(functionName: string, context: AIContext): string {
+    switch (functionName) {
+      case 'view_teams':
+        return "I'll show you all the teams in your league. Check the card below for the full standings!"
+      case 'set_lineup':
+        return "I'll analyze your roster and set your optimal lineup based on matchups, projections, and recent performance. Give me a moment..."
+      case 'show_lineup':
+        return "Here's your current lineup:"
+      case 'show_matchup':
+        return "Let me show you your matchup for this week:"
+      case 'show_waivers':
+        return "I'll help you find the best available players. Let me check the waiver wire..."
+      default:
+        return ''
     }
   }
 
@@ -132,8 +267,17 @@ Available actions:
       return this.handleLeagueCreation(userMessage, context)
     }
 
-    // Lineup management
-    if (lowerMessage.includes('lineup') || lowerMessage.includes('start') || lowerMessage.includes('bench')) {
+    // Lineup management - more flexible
+    if (
+      lowerMessage.includes('lineup') || 
+      lowerMessage.includes('start') || 
+      lowerMessage.includes('bench') ||
+      lowerMessage.includes('who should i start') ||
+      lowerMessage.includes('who should i play') ||
+      lowerMessage.includes('set my lineup') ||
+      lowerMessage.includes('best lineup') ||
+      lowerMessage.includes('optimal lineup')
+    ) {
       return this.handleLineupManagement(userMessage, context)
     }
 
@@ -152,8 +296,17 @@ Available actions:
       return this.handleTrade(userMessage, context)
     }
 
-    // View teams
-    if (lowerMessage.includes('teams') && (lowerMessage.includes('show') || lowerMessage.includes('view') || lowerMessage.includes('list') || lowerMessage.includes('all'))) {
+    // View teams - much more flexible matching
+    if (
+      lowerMessage.includes('teams') || 
+      lowerMessage.includes('standings') ||
+      lowerMessage.includes('who\'s in') ||
+      lowerMessage.includes('who is in') ||
+      lowerMessage.includes('what teams') ||
+      (lowerMessage.includes('show') && (lowerMessage.includes('teams') || lowerMessage.includes('standings'))) ||
+      (lowerMessage.includes('view') && (lowerMessage.includes('teams') || lowerMessage.includes('standings'))) ||
+      (lowerMessage.includes('list') && lowerMessage.includes('teams'))
+    ) {
       return {
         message: "I'll show you all the teams in your league. Check the card below for the full standings!",
       }
@@ -330,17 +483,59 @@ Available actions:
     aiResponse: string,
     context: AIContext
   ): AIResponse['action'] {
-    // Simplified action extraction - in production, use OpenAI function calling
+    // Enhanced action extraction with more flexible matching
     const lowerMessage = userMessage.toLowerCase()
 
     if (lowerMessage.includes('create') && lowerMessage.includes('league')) {
       return this.handleLeagueCreation(userMessage, context).action
     }
 
-    if (lowerMessage.includes('lineup') || lowerMessage.includes('start')) {
+    // View teams
+    if (
+      lowerMessage.includes('teams') || 
+      lowerMessage.includes('standings') ||
+      lowerMessage.includes('who\'s in') ||
+      lowerMessage.includes('who is in') ||
+      lowerMessage.includes('what teams')
+    ) {
+      return { type: 'view_teams' }
+    }
+
+    // Set lineup
+    if (
+      lowerMessage.includes('lineup') && 
+      (lowerMessage.includes('set') || lowerMessage.includes('optimize') || lowerMessage.includes('best') || lowerMessage.includes('optimal')) ||
+      lowerMessage.includes('who should i start') ||
+      lowerMessage.includes('who should i play')
+    ) {
       return {
         type: 'set_lineup',
         data: { teamId: context.teamId },
+      }
+    }
+
+    // Show lineup
+    if (
+      (lowerMessage.includes('lineup') && (lowerMessage.includes('show') || lowerMessage.includes('view') || lowerMessage.includes('see'))) ||
+      lowerMessage === 'lineup' ||
+      lowerMessage === 'my lineup'
+    ) {
+      return {
+        type: 'show_lineup',
+        data: { teamId: context.teamId },
+      }
+    }
+
+    // Matchup
+    if (
+      lowerMessage.includes('matchup') ||
+      lowerMessage.includes('who am i playing') ||
+      lowerMessage.includes('who am i facing') ||
+      lowerMessage.includes('opponent')
+    ) {
+      return {
+        type: 'show_matchup',
+        data: { teamId: context.teamId, leagueId: context.leagueId },
       }
     }
 
