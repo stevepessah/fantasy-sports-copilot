@@ -16,8 +16,6 @@ export default function EnhancedChatInterface({ leagueId, userId, initialMessage
   const [input, setInput] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [currentSport] = useState<Sport>('baseball') // Baseball only
-  const [mobilePanel, setMobilePanel] = useState<'chat' | 'roster'>('chat')
-  const [roster, setRoster] = useState<Player[]>([])
   const [isNarrow, setIsNarrow] = useState(false)
   const [isTiny, setIsTiny] = useState(false)
   const [showQuickActions, setShowQuickActions] = useState(false)
@@ -48,35 +46,11 @@ export default function EnhancedChatInterface({ leagueId, userId, initialMessage
   }, [])
 
   useEffect(() => {
-    // Load roster when league/team is available
-    loadRoster()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentSport])
-
-  useEffect(() => {
     if (!isNarrow) {
-      setMobilePanel('chat')
+      setShowQuickActions(false)
     }
   }, [isNarrow])
 
-  useEffect(() => {
-    if (!isNarrow || mobilePanel !== 'chat') {
-      setShowQuickActions(false)
-    }
-  }, [isNarrow, mobilePanel])
-
-  const loadRoster = async () => {
-    try {
-      const response = await fetch(`/api/players?sport=${currentSport}`)
-      if (response.ok) {
-        const players = await response.json()
-        // In a real app, filter by team roster
-        setRoster(players.slice(0, 15)) // Mock roster
-      }
-    } catch (error) {
-      console.error('Error loading roster:', error)
-    }
-  }
 
   const handleSubmit = async (e?: React.FormEvent) => {
     e?.preventDefault()
@@ -165,12 +139,6 @@ export default function EnhancedChatInterface({ leagueId, userId, initialMessage
     setTimeout(() => handleSubmit(), 0)
   }
 
-  const handleRosterClick = (player: Player) => {
-    runCommand(`tell me about ${player.name}`)
-    if (isNarrow) {
-      setMobilePanel('chat')
-    }
-  }
 
   const handleQuickAction = (command: string) => {
     runCommand(command)
@@ -202,69 +170,13 @@ export default function EnhancedChatInterface({ leagueId, userId, initialMessage
         </div>
       </header>
 
-      {/* Mobile Tabs */}
-      {isNarrow && (
-        <div className="flex gap-2 p-2 border-b border-slate-700 bg-slate-800/30">
-          <button
-            onClick={() => setMobilePanel('chat')}
-            className={`flex-1 py-2 px-4 rounded-lg font-semibold transition-colors ${
-              mobilePanel === 'chat'
-                ? 'bg-primary-600 text-white'
-                : 'bg-slate-700 text-slate-300'
-            }`}
-          >
-            Chat
-          </button>
-          <button
-            onClick={() => setMobilePanel('roster')}
-            className={`flex-1 py-2 px-4 rounded-lg font-semibold transition-colors ${
-              mobilePanel === 'roster'
-                ? 'bg-primary-600 text-white'
-                : 'bg-slate-700 text-slate-300'
-            }`}
-          >
-            Roster
-          </button>
-        </div>
-      )}
 
       <div className="flex flex-1 min-h-0">
-        {/* Roster Sidebar */}
-        {(!isNarrow || mobilePanel === 'roster') && (
-          <aside className={`${isNarrow ? 'w-full' : 'w-80'} border-r border-slate-700 bg-slate-800/30 overflow-auto flex flex-col`}>
+        {/* Sidebar */}
+        {!isNarrow && (
+          <aside className="w-80 border-r border-slate-700 bg-slate-800/30 overflow-auto flex flex-col">
             <div className="p-4">
-              <h2 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">Roster</h2>
-              <div className="space-y-2">
-                {roster.map((player) => (
-                  <button
-                    key={player.id}
-                    onClick={() => handleRosterClick(player)}
-                    className="w-full text-left p-2 rounded-lg border border-slate-700 bg-slate-800/50 hover:bg-slate-700 transition-colors"
-                  >
-                    <div className="flex justify-between items-center gap-2">
-                      <div className="min-w-0 flex-1">
-                        <div className="font-medium truncate">{player.name}</div>
-                        <div className="text-xs text-slate-400">
-                          {player.position} - {player.team}
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {/* eslint-disable-next-line react/no-unescaped-entities */}
-                        {player.injuryStatus && player.injuryStatus !== 'healthy' && (
-                          <span className="px-2 py-0.5 text-xs rounded-full bg-red-600/20 text-red-400 border border-red-600/30">
-                            {player.injuryStatus}
-                          </span>
-                        )}
-                        <span className="px-2 py-0.5 text-xs rounded-full bg-slate-700 text-slate-300">
-                          {player.projectedPoints?.toFixed(1) || '0.0'}
-                        </span>
-                      </div>
-                    </div>
-                  </button>
-                ))}
-              </div>
-
-              <div className="mt-6">
+              <div className="mb-6">
                 <h2 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">Yahoo Fantasy</h2>
                 <YahooAuth />
               </div>
@@ -288,8 +200,7 @@ export default function EnhancedChatInterface({ leagueId, userId, initialMessage
         )}
 
         {/* Chat Panel */}
-        {(!isNarrow || mobilePanel === 'chat') && (
-          <main className="flex-1 flex flex-col min-w-0">
+        <main className="flex-1 flex flex-col min-w-0">
             <div className="flex-1 overflow-auto p-4 space-y-4">
               {messages.length === 0 && (
                 <div className="text-center text-slate-400 mt-12 max-w-2xl mx-auto">
