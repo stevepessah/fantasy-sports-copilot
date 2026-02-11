@@ -345,10 +345,13 @@ export default function EnhancedChatInterface({ leagueId, userId, initialMessage
                       : 'bg-slate-800 border border-slate-700 text-slate-100'
                   }`}
                 >
-                  <div className="whitespace-pre-wrap text-sm leading-relaxed">{message.content}</div>
+                  {/* Hide the text blurb when cards are present so the card is front and center */}
+                  {!message.metadata?.cards && (
+                    <div className="whitespace-pre-wrap text-sm leading-relaxed">{message.content}</div>
+                  )}
                   
                   {message.metadata?.cards && (
-                    <div className="mt-3 sm:mt-4 space-y-3">
+                    <div className="space-y-3">
                       {message.metadata.cards.map((card: any, idx: number) => (
                         <EnhancedCards
                           key={idx}
