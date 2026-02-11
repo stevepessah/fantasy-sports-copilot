@@ -250,7 +250,7 @@ export async function POST(request: NextRequest) {
           }
         } catch (error) {
           console.error('Error fetching roster list:', error)
-          response.message = 'Sorry, I couldn't fetch the player list. Please make sure you're connected to Yahoo Fantasy.'
+          response.message = "Sorry, I couldn't fetch the player list. Please make sure you're connected to Yahoo Fantasy."
         }
       } else {
         response.message = 'Please connect your Yahoo Fantasy account first to view league players.'
