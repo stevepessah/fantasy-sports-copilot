@@ -58,13 +58,13 @@ export function EnhancedCards({ card, onAction, sport }: EnhancedCardsProps) {
           <div className="flex gap-2 mt-4 flex-wrap">
             <button
               onClick={() => runCommand('set my optimal lineup')}
-              className="px-3 py-2 text-sm rounded-lg bg-primary-600 hover:bg-primary-700 text-white font-semibold"
+              className="px-3 py-2.5 text-sm rounded-lg bg-primary-600 hover:bg-primary-700 active:bg-primary-800 text-white font-semibold transition-colors"
             >
               Optimize again
             </button>
             <button
               onClick={() => runCommand('show matchup')}
-              className="px-3 py-2 text-sm rounded-lg border border-slate-700 bg-slate-800 hover:bg-slate-700 text-white font-semibold"
+              className="px-3 py-2.5 text-sm rounded-lg border border-slate-700 bg-slate-800 hover:bg-slate-700 active:bg-slate-600 text-white font-semibold transition-colors"
             >
               View matchup
             </button>
@@ -123,13 +123,13 @@ export function EnhancedCards({ card, onAction, sport }: EnhancedCardsProps) {
           <div className="flex gap-2 flex-wrap">
             <button
               onClick={() => runCommand('set my optimal lineup')}
-              className="px-3 py-2 text-sm rounded-lg bg-primary-600 hover:bg-primary-700 text-white font-semibold"
+              className="px-3 py-2.5 text-sm rounded-lg bg-primary-600 hover:bg-primary-700 active:bg-primary-800 text-white font-semibold transition-colors"
             >
               Improve my lineup
             </button>
             <button
               onClick={() => runCommand('who should I pick up on waivers?')}
-              className="px-3 py-2 text-sm rounded-lg border border-slate-700 bg-slate-800 hover:bg-slate-700 text-white font-semibold"
+              className="px-3 py-2.5 text-sm rounded-lg border border-slate-700 bg-slate-800 hover:bg-slate-700 active:bg-slate-600 text-white font-semibold transition-colors"
             >
               Waiver targets
             </button>
@@ -219,7 +219,7 @@ export function EnhancedCards({ card, onAction, sport }: EnhancedCardsProps) {
                 <button
                   key={action.label}
                   onClick={() => runCommand(action.command)}
-                  className="px-3 py-2 text-sm rounded-lg border border-slate-700 bg-slate-800 hover:bg-slate-700 text-white font-semibold"
+                  className="px-3 py-2.5 text-sm rounded-lg border border-slate-700 bg-slate-800 hover:bg-slate-700 active:bg-slate-600 text-white font-semibold transition-colors"
                 >
                   {action.label}
                 </button>
@@ -331,7 +331,7 @@ export function EnhancedCards({ card, onAction, sport }: EnhancedCardsProps) {
           <div className="flex gap-2 flex-wrap">
             <button
               onClick={() => runCommand(`propose trade: give ${p.offer?.name} for ${p.request?.name}`)}
-              className="px-3 py-2 text-sm rounded-lg bg-primary-600 hover:bg-primary-700 text-white font-semibold"
+              className="px-3 py-2.5 text-sm rounded-lg bg-primary-600 hover:bg-primary-700 active:bg-primary-800 text-white font-semibold transition-colors"
             >
               Propose trade
             </button>
@@ -393,10 +393,10 @@ export function EnhancedCards({ card, onAction, sport }: EnhancedCardsProps) {
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="font-medium truncate">{team.name}</div>
-                  <div className="text-xs text-slate-400 mt-1">
-                    {team.wins}-{team.losses}{team.ties > 0 ? `-${team.ties}` : ''} • 
-                    Win%: {team.winPercentage} • 
-                    PF: {team.pointsFor?.toFixed(1) || '0.0'} • 
+                  <div className="text-xs text-slate-400 mt-1 break-words">
+                    {team.wins}-{team.losses}{team.ties > 0 ? `-${team.ties}` : ''} · 
+                    Win%: {team.winPercentage} · 
+                    PF: {team.pointsFor?.toFixed(1) || '0.0'} · 
                     PA: {team.pointsAgainst?.toFixed(1) || '0.0'}
                   </div>
                 </div>
@@ -422,10 +422,10 @@ export function EnhancedCards({ card, onAction, sport }: EnhancedCardsProps) {
 function CardShell({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div className="rounded-xl border border-slate-700 bg-slate-800/50 overflow-hidden">
-      <div className="px-4 py-3 border-b border-slate-700 bg-slate-800/50">
+      <div className="px-3 sm:px-4 py-2.5 sm:py-3 border-b border-slate-700 bg-slate-800/50">
         <div className="text-sm font-bold">{title}</div>
       </div>
-      <div className="p-4">{children}</div>
+      <div className="p-3 sm:p-4">{children}</div>
     </div>
   )
 }

@@ -56,14 +56,14 @@ export default function YahooAuth() {
 
   if (isLoading) {
     return (
-      <div className="px-4 py-2 text-sm text-slate-400">
+      <div className="text-sm text-slate-400">
         Checking Yahoo connection...
       </div>
     )
   }
 
   return (
-    <div className="px-4 py-2 space-y-3">
+    <div className="space-y-3">
       {isAuthenticated ? (
         <>
           <div className="flex items-center justify-between">

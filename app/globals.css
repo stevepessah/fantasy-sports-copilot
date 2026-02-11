@@ -24,12 +24,23 @@ body {
       rgb(var(--background-end-rgb))
     )
     rgb(var(--background-start-rgb));
+  /* Prevent overscroll bounce on iOS */
+  overscroll-behavior: none;
 }
 
 @layer utilities {
   .text-balance {
     text-wrap: balance;
   }
+}
+
+/* Safe area insets for notched phones (iPhone, etc.) */
+.safe-top {
+  padding-top: max(env(safe-area-inset-top, 0px), 0px);
+}
+
+.safe-bottom {
+  padding-bottom: max(env(safe-area-inset-bottom, 0px), 0px);
 }
 
 /* Chat interface styles */
@@ -49,4 +60,30 @@ body {
   border-top: 1px solid rgba(255, 255, 255, 0.1);
   padding: 1rem;
   background: rgb(var(--background-start-rgb));
+}
+
+/* Mobile drawer slide animation */
+@keyframes slide-in {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+.animate-slide-in {
+  animation: slide-in 0.2s ease-out;
+}
+
+/* Improve tap highlight on mobile */
+@media (hover: none) {
+  button, a, select {
+    -webkit-tap-highlight-color: rgba(255, 255, 255, 0.05);
+  }
+}
+
+/* Smoother scrolling on iOS */
+.overflow-auto, .overflow-y-auto {
+  -webkit-overflow-scrolling: touch;
 }

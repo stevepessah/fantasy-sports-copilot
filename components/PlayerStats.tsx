@@ -242,7 +242,7 @@ export function PlayerStats({ playerKey, leagueKey, playerName, positions = [] }
     if (items.length === 0) return null
 
     return (
-      <div className="grid grid-cols-4 gap-x-3 gap-y-2 text-xs">
+      <div className="grid grid-cols-3 sm:grid-cols-4 gap-x-3 gap-y-2 text-xs">
         {items.map((item) => (
           <div key={item.label}>
             <div className="text-slate-400">{item.label}</div>
