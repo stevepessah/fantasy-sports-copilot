@@ -168,6 +168,8 @@ export default function EnhancedChatInterface({ leagueId, userId, initialMessage
     { label: '📋 Set optimal lineup', command: 'set my optimal lineup' },
     { label: '⚔️ Show matchup', command: 'show matchup' },
     { label: '🏆 View all teams', command: 'show all teams' },
+    { label: '🏏 Show all batters', command: 'show all batters' },
+    { label: '⚾ Show all pitchers', command: 'show all pitchers' },
     { label: '🔍 Waiver targets', command: 'who should I pick up on waivers?' },
     { label: '🔄 Trade idea', command: 'suggest a trade' },
     { label: '📝 Draft advice', command: 'draft advice' },

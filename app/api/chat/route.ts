@@ -207,6 +207,56 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Show all batters or pitchers
+    if (intent.isShowBatters || intent.isShowPitchers) {
+      const cookieStore = await cookies()
+      const yahooAccessToken = cookieStore.get('yahoo_access_token')?.value
+
+      if (yahooAccessToken) {
+        try {
+          const api = new YahooFantasyAPI()
+          api.setAccessToken(yahooAccessToken)
+          const { leagues } = await api.getLeagues('mlb')
+          const yahooLeague = leagues.find(l => l.is_finished !== '1') || leagues[0]
+
+          if (yahooLeague?.league_key) {
+            const positionType = intent.isShowBatters ? 'B' : 'P'
+            const label = intent.isShowBatters ? 'Batters' : 'Pitchers'
+
+            // Fetch players via internal API
+            const url = new URL(`${request.nextUrl.origin}/api/yahoo/league-players`)
+            url.searchParams.set('leagueKey', yahooLeague.league_key)
+            url.searchParams.set('positionType', positionType)
+
+            const res = await fetch(url.toString(), {
+              headers: { Cookie: `yahoo_access_token=${yahooAccessToken}` },
+            })
+
+            if (res.ok) {
+              const data = await res.json()
+              response.cards.push({
+                type: 'roster_list',
+                title: `All ${label} in Your League`,
+                payload: {
+                  players: data.players || [],
+                  total: data.total || 0,
+                  positionType,
+                  label,
+                  leagueKey: yahooLeague.league_key,
+                },
+              })
+              response.message = `Here are all ${data.total} ${label.toLowerCase()} across every team in your league:`
+            }
+          }
+        } catch (error) {
+          console.error('Error fetching roster list:', error)
+          response.message = 'Sorry, I couldn't fetch the player list. Please make sure you're connected to Yahoo Fantasy.'
+        }
+      } else {
+        response.message = 'Please connect your Yahoo Fantasy account first to view league players.'
+      }
+    }
+
     if (intent.isPlayerLookup) {
       const playerQuery = intent.playerName || message
       let player = null

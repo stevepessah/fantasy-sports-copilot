@@ -11,6 +11,8 @@ export interface ParsedIntent {
   isDraft: boolean
   isPlayerLookup: boolean
   isViewTeams: boolean
+  isShowBatters: boolean
+  isShowPitchers: boolean
   playerName?: string
   dropPlayer?: string
   addPlayer?: string
@@ -93,6 +95,23 @@ export function parseIntent(input: string): ParsedIntent {
     (s.includes('teams') && (s.includes('show') || s.includes('view') || s.includes('list') || s.includes('see') || s.includes('display'))) ||
     s === 'teams' ||
     s === 'standings'
+  const isShowBatters =
+    s.includes('show all batters') ||
+    s.includes('show all hitters') ||
+    s.includes('list all batters') ||
+    s.includes('list all hitters') ||
+    s.includes('all batters') ||
+    s.includes('all hitters') ||
+    s.includes('show batters') ||
+    s.includes('show hitters') ||
+    s === 'batters' ||
+    s === 'hitters'
+  const isShowPitchers =
+    s.includes('show all pitchers') ||
+    s.includes('list all pitchers') ||
+    s.includes('all pitchers') ||
+    s.includes('show pitchers') ||
+    s === 'pitchers'
   const playerName = extractPlayerName(input)
   const isPlayerLookup = shouldHandlePlayerLookup(s, {
     isHelp,
@@ -104,6 +123,8 @@ export function parseIntent(input: string): ParsedIntent {
     isTrade,
     isDraft,
     isViewTeams,
+    isShowBatters,
+    isShowPitchers,
   }, playerName)
 
   return {
@@ -116,6 +137,8 @@ export function parseIntent(input: string): ParsedIntent {
     isTrade,
     isDraft,
     isViewTeams,
+    isShowBatters,
+    isShowPitchers,
     isPlayerLookup,
     playerName,
     dropPlayer: extractDropPlayer(s),
@@ -185,6 +208,8 @@ const PLAYER_LOOKUP_EXCLUDE = new Set([
   'pitchers',
   'hitter',
   'hitters',
+  'batter',
+  'batters',
 ])
 
 const NAME_FILLER_WORDS = new Set([
@@ -236,11 +261,11 @@ const TRAILING_NOISE_WORDS = new Set([
 
 function shouldHandlePlayerLookup(
   s: string,
-  intents: Pick<ParsedIntent, 'isHelp' | 'isSetLineup' | 'isShowLineup' | 'isMatchup' | 'isWaivers' | 'isAddDrop' | 'isTrade' | 'isDraft' | 'isViewTeams'>,
+  intents: Pick<ParsedIntent, 'isHelp' | 'isSetLineup' | 'isShowLineup' | 'isMatchup' | 'isWaivers' | 'isAddDrop' | 'isTrade' | 'isDraft' | 'isViewTeams' | 'isShowBatters' | 'isShowPitchers'>,
   playerName?: string
 ): boolean {
   if (!s) return false
-  if (intents.isHelp || intents.isSetLineup || intents.isShowLineup || intents.isMatchup || intents.isWaivers || intents.isAddDrop || intents.isTrade || intents.isDraft || intents.isViewTeams) {
+  if (intents.isHelp || intents.isSetLineup || intents.isShowLineup || intents.isMatchup || intents.isWaivers || intents.isAddDrop || intents.isTrade || intents.isDraft || intents.isViewTeams || intents.isShowBatters || intents.isShowPitchers) {
     return false
   }
   if (looksLikePlayerQuery(s)) return true

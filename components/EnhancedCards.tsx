@@ -1,10 +1,11 @@
 'use client'
 
+import { useState } from 'react'
 import { Player, Sport } from '@/types'
 import { PlayerStats } from './PlayerStats'
 
 interface Card {
-  type: 'lineup' | 'matchup' | 'player' | 'waivers' | 'trade' | 'draft' | 'teams'
+  type: 'lineup' | 'matchup' | 'player' | 'waivers' | 'trade' | 'draft' | 'teams' | 'roster_list'
   title: string
   payload: any
 }
@@ -396,9 +397,85 @@ export function EnhancedCards({ card, onAction, sport }: EnhancedCardsProps) {
       )
     }
 
+    case 'roster_list': {
+      return <RosterListCard card={card} onAction={onAction} />
+    }
+
     default:
       return null
   }
+}
+
+function RosterListCard({ card, onAction }: { card: Card; onAction?: (cmd: string) => void }) {
+  const p = card.payload
+  const players: any[] = p.players || []
+  const PAGE_SIZE = 25
+  const [page, setPage] = useState(0)
+  const totalPages = Math.max(1, Math.ceil(players.length / PAGE_SIZE))
+  const start = page * PAGE_SIZE
+  const pageItems = players.slice(start, start + PAGE_SIZE)
+
+  return (
+    <CardShell title={card.title}>
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-[11px] text-slate-400">{p.total} players</span>
+        {totalPages > 1 && (
+          <span className="text-[11px] text-slate-400">
+            Page {page + 1} of {totalPages}
+          </span>
+        )}
+      </div>
+
+      {/* Column headers */}
+      <div className="grid grid-cols-[minmax(0,1fr)_72px_minmax(0,1fr)] sm:grid-cols-[minmax(0,1.5fr)_80px_minmax(0,1fr)] gap-x-2 px-1 pb-1 border-b border-slate-700/60 text-[10px] text-slate-500 uppercase tracking-wide">
+        <span>Player</span>
+        <span>Pos</span>
+        <span>Fantasy Team</span>
+      </div>
+
+      <div className="divide-y divide-slate-700/40">
+        {pageItems.map((pl: any, idx: number) => (
+          <div
+            key={pl.playerKey || idx}
+            className="grid grid-cols-[minmax(0,1fr)_72px_minmax(0,1fr)] sm:grid-cols-[minmax(0,1.5fr)_80px_minmax(0,1fr)] gap-x-2 py-1.5 px-1 items-center hover:bg-slate-700/20 cursor-pointer transition-colors rounded"
+            onClick={() => onAction && onAction(`tell me about ${pl.name}`)}
+          >
+            <div className="min-w-0">
+              <span className="text-xs font-medium text-white truncate block">{pl.name}</span>
+              <span className="text-[10px] text-slate-500">{pl.team}</span>
+            </div>
+            <span className="text-[11px] text-slate-300 truncate">
+              {pl.positions?.join(', ') || '-'}
+            </span>
+            <span className="text-[11px] text-slate-400 truncate">{pl.fantasyTeam}</span>
+          </div>
+        ))}
+      </div>
+
+      {/* Pagination controls */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between mt-2 pt-2 border-t border-slate-700/50">
+          <button
+            disabled={page === 0}
+            onClick={() => setPage((p) => Math.max(0, p - 1))}
+            className="px-2.5 py-1.5 text-xs rounded-lg border border-slate-700 bg-slate-800 hover:bg-slate-700 active:bg-slate-600 disabled:opacity-30 disabled:cursor-not-allowed text-white font-medium transition-colors"
+          >
+            ← Prev
+          </button>
+          <span className="text-[11px] text-slate-400">
+            {start + 1}–{Math.min(start + PAGE_SIZE, players.length)} of {players.length}
+          </span>
+          <button
+            disabled={page >= totalPages - 1}
+            onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+            className="px-2.5 py-1.5 text-xs rounded-lg border border-slate-700 bg-slate-800 hover:bg-slate-700 active:bg-slate-600 disabled:opacity-30 disabled:cursor-not-allowed text-white font-medium transition-colors"
+          >
+            Next →
+          </button>
+        </div>
+      )}
+    </CardShell>
+  )
 }
 
 function CardShell({ title, children }: { title: string; children: React.ReactNode }) {
