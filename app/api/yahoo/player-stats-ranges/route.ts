@@ -40,17 +40,10 @@ export async function GET(request: NextRequest) {
     
     console.log('Player stats ranges response:', {
       hasSeasonStats: !!stats.season,
-      seasonStatsDetail: stats.season ? {
-        keys: Object.keys(stats.season),
-        hasSeasonStats: !!stats.season.season_stats,
-        hasYtdStats: !!stats.season.ytd_stats,
-        hasWeekStats: !!stats.season.week_stats
-      } : null,
       hasLastMonth: !!stats.lastMonth,
       hasLastTwoWeeks: !!stats.lastTwoWeeks,
       hasLastWeek: !!stats.lastWeek,
-      hasToday: !!stats.today,
-      fullStats: stats
+      hasToday: !!stats.today
     })
     
     // Return parsed stats as JSON
@@ -58,10 +51,7 @@ export async function GET(request: NextRequest) {
       stats,
       playerKey,
       leagueKey: leagueKey || null,
-      season: season || null,
-      debug: {
-        seasonKeys: stats.season ? Object.keys(stats.season) : []
-      }
+      season: season || null
     })
   } catch (error) {
     console.error('Error fetching Yahoo player stats ranges:', error)

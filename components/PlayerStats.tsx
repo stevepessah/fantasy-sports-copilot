@@ -53,7 +53,7 @@ export function PlayerStats({ playerKey, leagueKey, playerName }: PlayerStatsPro
   const [isLoadingHistorical, setIsLoadingHistorical] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  // Fetch stats for multiple date ranges
+  // Fetch current season stats (simpler approach - just use the regular player-stats endpoint)
   useEffect(() => {
     if (!playerKey) {
       setStatsRanges(null)
@@ -71,7 +71,8 @@ export function PlayerStats({ playerKey, leagueKey, playerName }: PlayerStatsPro
         }
         params.append('season', currentYear.toString())
         
-        const response = await fetch(`/api/yahoo/player-stats-ranges?${params.toString()}`)
+        // Use the regular player-stats endpoint instead of ranges
+        const response = await fetch(`/api/yahoo/player-stats?${params.toString()}`)
         
         if (!response.ok) {
           if (response.status === 401) {
@@ -82,16 +83,13 @@ export function PlayerStats({ playerKey, leagueKey, playerName }: PlayerStatsPro
         }
         
         const data = await response.json()
-        console.log('PlayerStats - Range stats API response:', {
-          fullData: data,
-          hasStats: !!data.stats,
-          statsKeys: data.stats ? Object.keys(data.stats) : [],
-          seasonStats: data.stats?.season
-        })
-        setStatsRanges(data.stats || null)
+        console.log('🔍 Current Season Stats Response:', data)
+        
+        // The response has stats directly, not wrapped in a ranges object
+        setStatsRanges(data.stats ? { season: data.stats } : null)
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to fetch player stats')
-        console.error('Error fetching Yahoo player stats ranges:', err)
+        console.error('Error fetching Yahoo player stats:', err)
       } finally {
         setIsLoadingRanges(false)
       }
@@ -126,13 +124,7 @@ export function PlayerStats({ playerKey, leagueKey, playerName }: PlayerStatsPro
         }
         
         const data = await response.json()
-        console.log('PlayerStats - Historical stats API response:', {
-          fullData: data,
-          hasStats: !!data.stats,
-          statsKeys: data.stats ? Object.keys(data.stats) : [],
-          seasonStats: data.stats?.season_stats,
-          ytdStats: data.stats?.ytd_stats
-        })
+        console.log('🔍 Historical Stats API Response:', JSON.stringify(data, null, 2))
         setHistoricalStats(data.stats || null)
       } catch (err) {
         console.error('Error fetching historical stats:', err)
@@ -239,7 +231,23 @@ export function PlayerStats({ playerKey, leagueKey, playerName }: PlayerStatsPro
           <div className="p-3 bg-slate-800/50 rounded-lg">
             <h6 className="text-sm font-semibold text-slate-300 mb-2">Season Stats</h6>
             {(() => {
-              const { hittingStats, pitchingStats } = organizeStats(statsRanges.season.season_stats || statsRanges.season.ytd_stats)
+              const seasonData = statsRanges.season.season_stats || statsRanges.season.ytd_stats || {}
+              const { hittingStats, pitchingStats } = organizeStats(seasonData)
+              
+              console.log('📊 Organizing stats:', {
+                seasonData,
+                hittingStatsCount: hittingStats.length,
+                pitchingStatsCount: pitchingStats.length
+              })
+              
+              if (hittingStats.length === 0 && pitchingStats.length === 0) {
+                return (
+                  <div className="text-xs text-slate-400">
+                    No stats available. Raw data: {JSON.stringify(Object.keys(seasonData)).substring(0, 100)}
+                  </div>
+                )
+              }
+              
               return (
                 <>
                   {hittingStats.length > 0 && renderStatsSection('Hitting', Object.fromEntries(hittingStats.map(s => [s.key, s.value])), false)}
@@ -299,14 +307,23 @@ export function PlayerStats({ playerKey, leagueKey, playerName }: PlayerStatsPro
         )}
         
         {!isLoadingHistorical && historicalStats && (() => {
-          const { hittingStats, pitchingStats } = organizeStats(
-            historicalStats.season_stats || historicalStats.ytd_stats
-          )
+          const historicalData = historicalStats.season_stats || historicalStats.ytd_stats || {}
+          const { hittingStats, pitchingStats } = organizeStats(historicalData)
+          
+          console.log('📊 Historical stats organization:', {
+            year: selectedHistoricalYear,
+            historicalData,
+            hittingStatsCount: hittingStats.length,
+            pitchingStatsCount: pitchingStats.length
+          })
           
           if (hittingStats.length === 0 && pitchingStats.length === 0) {
             return (
               <div className="p-3 bg-slate-800/30 rounded-lg">
-                <div className="text-xs text-slate-400">No stats available for {selectedHistoricalYear}</div>
+                <div className="text-xs text-slate-400">
+                  No stats available for {selectedHistoricalYear}. 
+                  Raw keys: {JSON.stringify(Object.keys(historicalData)).substring(0, 100)}
+                </div>
               </div>
             )
           }
