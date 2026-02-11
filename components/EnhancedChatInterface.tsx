@@ -20,6 +20,7 @@ export default function EnhancedChatInterface({ leagueId, userId, initialMessage
   const [isTiny, setIsTiny] = useState(false)
   const [showQuickActions, setShowQuickActions] = useState(false)
   const [drawerOpen, setDrawerOpen] = useState(false)
+  const [isYahooConnected, setIsYahooConnected] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
@@ -31,6 +32,14 @@ export default function EnhancedChatInterface({ leagueId, userId, initialMessage
     checkSize()
     window.addEventListener('resize', checkSize)
     return () => window.removeEventListener('resize', checkSize)
+  }, [])
+
+  // Check Yahoo auth status for conditional UI
+  useEffect(() => {
+    fetch('/api/yahoo/status')
+      .then(r => r.json())
+      .then(d => setIsYahooConnected(d.authenticated === true))
+      .catch(() => setIsYahooConnected(false))
   }, [])
 
   const scrollToBottom = () => {
@@ -281,8 +290,8 @@ export default function EnhancedChatInterface({ leagueId, userId, initialMessage
                 <p className="mb-2 text-sm sm:text-base">Your AI-powered fantasy baseball assistant</p>
                 <p className="text-xs sm:text-sm mb-4">⚾ Baseball</p>
 
-                {/* Mobile: connect CTA if not on sidebar */}
-                {isNarrow && (
+                {/* Mobile: connect CTA — only show if not connected */}
+                {isNarrow && !isYahooConnected && (
                   <div className="mb-6 p-4 rounded-xl border border-purple-600/30 bg-purple-600/10">
                     <p className="text-sm text-slate-300 mb-3">Connect your Yahoo account to get started</p>
                     <button
