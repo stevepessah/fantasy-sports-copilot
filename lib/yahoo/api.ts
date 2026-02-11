@@ -328,17 +328,19 @@ export class YahooFantasyAPI {
       position?: string   // 'B' for batters, 'P' for pitchers, or specific position like 'C','1B','SP' etc.
       status?: string     // 'A' = all, 'FA' = free agents, 'T' = taken, 'W' = waivers
       sort?: string       // 'AR' = average rank, 'PTS' = points, 'OR' = overall rank
+      out?: string        // Sub-resources: 'stats', 'ownership', 'percent_owned', etc.
     } = {}
   ): Promise<{ players: ParsedRosterPlayer[]; raw?: string }> {
     if (!this.accessToken) {
       throw new Error('Access token not set. Please authenticate first.')
     }
 
-    const { start = 0, count = 25, position, status, sort } = options
+    const { start = 0, count = 25, position, status, sort, out } = options
     let filters = `;start=${start};count=${count}`
     if (position) filters += `;position=${position}`
     if (status) filters += `;status=${status}`
     if (sort) filters += `;sort=${sort}`
+    if (out) filters += `;out=${out}`
 
     const endpoint = `/league/${leagueKey}/players${filters}`
 

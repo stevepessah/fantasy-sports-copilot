@@ -64,6 +64,8 @@ export interface ParsedRosterPlayer {
   image_url?: string
   is_undroppable?: string
   position?: string
+  // Stats (present when fetched with ;out=stats)
+  player_stats?: Record<string, string | number>  // stat_id → value
 }
 
 /**
@@ -277,7 +279,25 @@ export function parseRosterXML(xml: string): ParsedRosterPlayer[] {
     player.uniform_number = extractValue('uniform_number')
     player.is_undroppable = extractValue('is_undroppable')
     player.image_url = extractValue('image_url')
-    
+
+    // Extract player_stats (present when fetched with ;out=stats)
+    const playerStatsBlock = playerBlock.match(/<player_stats>([\s\S]*?)<\/player_stats>/)?.[1]
+    if (playerStatsBlock) {
+      const statsMap: Record<string, string | number> = {}
+      const statRegex = /<stat>\s*<stat_id>(\d+)<\/stat_id>\s*<value>(.*?)<\/value>\s*<\/stat>/gs
+      let sm
+      while ((sm = statRegex.exec(playerStatsBlock)) !== null) {
+        const id = sm[1]
+        const raw = sm[2].trim()
+        // Parse numeric values, keep strings for non-numeric
+        const num = parseFloat(raw)
+        statsMap[id] = isNaN(num) ? raw : num
+      }
+      if (Object.keys(statsMap).length > 0) {
+        player.player_stats = statsMap
+      }
+    }
+
     if (player.player_key) {
       players.push(player as ParsedRosterPlayer)
     }

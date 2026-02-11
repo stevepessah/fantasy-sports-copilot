@@ -406,14 +406,121 @@ export function EnhancedCards({ card, onAction, sport }: EnhancedCardsProps) {
   }
 }
 
+// ── Stat column definitions (same curated lists as PlayerStats) ──
+
+interface ColDef {
+  key: string        // stat display name to look up in player.stats
+  label: string      // column header
+  composite?: 'h_ab'
+  fmt?: 'rate3' | 'rate2' | 'ip' | 'int'
+}
+
+const BATTER_COLS: ColDef[] = [
+  { key: 'GP', label: 'GP', fmt: 'int' },
+  { key: 'H/AB', label: 'H/AB', composite: 'h_ab' },
+  { key: 'AVG', label: 'AVG', fmt: 'rate3' },
+  { key: 'OBP', label: 'OBP', fmt: 'rate3' },
+  { key: 'OPS', label: 'OPS', fmt: 'rate3' },
+  { key: 'R', label: 'R', fmt: 'int' },
+  { key: 'HR', label: 'HR', fmt: 'int' },
+  { key: 'RBI', label: 'RBI', fmt: 'int' },
+  { key: 'SB', label: 'SB', fmt: 'int' },
+  { key: 'BB', label: 'BB', fmt: 'int' },
+  { key: 'K', label: 'K', fmt: 'int' },
+]
+
+const PITCHER_COLS: ColDef[] = [
+  { key: 'GP', label: 'GP', fmt: 'int' },
+  { key: 'IP', label: 'IP', fmt: 'ip' },
+  { key: 'W', label: 'W', fmt: 'int' },
+  { key: 'L', label: 'L', fmt: 'int' },
+  { key: 'SV', label: 'SV', fmt: 'int' },
+  { key: 'HLD', label: 'HLD', fmt: 'int' },
+  { key: 'K', label: 'K', fmt: 'int' },
+  { key: 'ERA', label: 'ERA', fmt: 'rate2' },
+  { key: 'WHIP', label: 'WHIP', fmt: 'rate2' },
+  { key: 'QS', label: 'QS', fmt: 'int' },
+]
+
+function fmtStat(value: number | string | undefined, col: ColDef): string {
+  if (value === undefined || value === '' || value === null) return '-'
+  const n = typeof value === 'string' ? parseFloat(value) : value
+  if (isNaN(n)) return String(value)
+  switch (col.fmt) {
+    case 'rate3': return n >= 0 && n < 1 ? n.toFixed(3).replace(/^0/, '') : n.toFixed(3)
+    case 'rate2': return n.toFixed(2)
+    case 'ip': return n.toFixed(1)
+    case 'int': return Math.round(n).toString()
+    default: return Number.isInteger(n) ? n.toString() : n.toFixed(1)
+  }
+}
+
+function buildHABList(stats: Record<string, number | string>): string {
+  const h = stats['H']
+  const ab = stats['AB']
+  if (h !== undefined && ab !== undefined) {
+    const hv = typeof h === 'number' ? Math.round(h) : h
+    const abv = typeof ab === 'number' ? Math.round(ab) : ab
+    return `${hv}/${abv}`
+  }
+  return '-'
+}
+
+function statSortValue(pl: any, colKey: string, composite?: string): number {
+  if (composite === 'h_ab') {
+    const h = pl.stats?.['H']
+    return h !== undefined ? (typeof h === 'number' ? h : parseFloat(h) || 0) : -Infinity
+  }
+  const v = pl.stats?.[colKey]
+  if (v === undefined || v === '') return -Infinity
+  const n = typeof v === 'number' ? v : parseFloat(v)
+  return isNaN(n) ? -Infinity : n
+}
+
 function RosterListCard({ card, onAction }: { card: Card; onAction?: (cmd: string) => void }) {
   const p = card.payload
-  const players: any[] = p.players || []
+  const allPlayers: any[] = p.players || []
+  const isPitcher = p.positionType === 'P'
+  const cols = isPitcher ? PITCHER_COLS : BATTER_COLS
+
   const PAGE_SIZE = 25
   const [page, setPage] = useState(0)
-  const totalPages = Math.max(1, Math.ceil(players.length / PAGE_SIZE))
-  const start = page * PAGE_SIZE
-  const pageItems = players.slice(start, start + PAGE_SIZE)
+  const [sortCol, setSortCol] = useState<string | null>(null)
+  const [sortAsc, setSortAsc] = useState(false)
+
+  // Sort players
+  const sorted = [...allPlayers]
+  if (sortCol !== null) {
+    const colDef = cols.find(c => c.key === sortCol)
+    sorted.sort((a, b) => {
+      if (sortCol === '__name') {
+        const cmp = (a.name || '').localeCompare(b.name || '')
+        return sortAsc ? cmp : -cmp
+      }
+      const av = statSortValue(a, sortCol, colDef?.composite)
+      const bv = statSortValue(b, sortCol, colDef?.composite)
+      return sortAsc ? av - bv : bv - av
+    })
+  }
+
+  const totalPages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE))
+  const startIdx = page * PAGE_SIZE
+  const pageItems = sorted.slice(startIdx, startIdx + PAGE_SIZE)
+
+  const handleSort = (key: string) => {
+    if (sortCol === key) {
+      setSortAsc(!sortAsc)
+    } else {
+      setSortCol(key)
+      setSortAsc(false)
+    }
+    setPage(0)
+  }
+
+  const sortIndicator = (key: string) => {
+    if (sortCol !== key) return ''
+    return sortAsc ? ' ▲' : ' ▼'
+  }
 
   return (
     <CardShell title={card.title}>
@@ -421,53 +528,92 @@ function RosterListCard({ card, onAction }: { card: Card; onAction?: (cmd: strin
         <span className="text-[11px] text-slate-400">{p.total} players</span>
         {totalPages > 1 && (
           <span className="text-[11px] text-slate-400">
-            Page {page + 1} of {totalPages}
+            Page {page + 1}/{totalPages}
           </span>
         )}
       </div>
 
-      {/* Column headers */}
-      <div className="grid grid-cols-[minmax(0,1fr)_72px_minmax(0,1fr)] sm:grid-cols-[minmax(0,1.5fr)_80px_minmax(0,1fr)] gap-x-2 px-1 pb-1 border-b border-slate-700/60 text-[10px] text-slate-500 uppercase tracking-wide">
-        <span>Player</span>
-        <span>Pos</span>
-        <span>Fantasy Team</span>
+      {/* Horizontally scrollable stats table */}
+      <div className="overflow-x-auto -mx-2.5 sm:-mx-3">
+        <table className="w-full text-[11px] min-w-[600px]">
+          <thead>
+            <tr className="border-b border-slate-700/60">
+              {/* Sticky action column */}
+              <th className="w-8 px-1 py-1.5 sticky left-0 bg-slate-800/90 z-10" />
+              {/* Sticky player column */}
+              <th
+                className="text-left px-1.5 py-1.5 text-slate-500 uppercase tracking-wide font-semibold cursor-pointer hover:text-slate-300 sticky left-8 bg-slate-800/90 z-10 min-w-[130px]"
+                onClick={() => handleSort('__name')}
+              >
+                Player{sortIndicator('__name')}
+              </th>
+              {cols.map((col) => (
+                <th
+                  key={col.key}
+                  className="text-right px-1.5 py-1.5 text-slate-500 uppercase tracking-wide font-semibold cursor-pointer hover:text-slate-300 whitespace-nowrap"
+                  onClick={() => handleSort(col.key)}
+                >
+                  {col.label}{sortIndicator(col.key)}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-700/30">
+            {pageItems.map((pl: any, idx: number) => (
+              <tr
+                key={pl.playerKey || idx}
+                className="hover:bg-slate-700/20 transition-colors"
+              >
+                {/* Action button */}
+                <td className="px-1 py-1 sticky left-0 bg-slate-800/90 z-10">
+                  <button
+                    onClick={(e) => { e.stopPropagation(); onAction && onAction(`add ${pl.name}`) }}
+                    className="w-6 h-6 flex items-center justify-center rounded-md bg-green-600/20 text-green-400 hover:bg-green-600/40 active:bg-green-600/60 border border-green-600/30 text-sm font-bold leading-none transition-colors"
+                    title={`Add ${pl.name}`}
+                  >
+                    +
+                  </button>
+                </td>
+                {/* Player info (name, team, pos) */}
+                <td
+                  className="px-1.5 py-1 sticky left-8 bg-slate-800/90 z-10 min-w-[130px] cursor-pointer"
+                  onClick={() => onAction && onAction(`tell me about ${pl.name}`)}
+                >
+                  <div className="font-medium text-white truncate max-w-[160px] sm:max-w-[200px]">{pl.name}</div>
+                  <div className="text-[10px] text-slate-500 truncate">
+                    {pl.team} · {pl.positions?.filter((pos: string) => pos !== 'Util' && pos !== 'BN' && pos !== 'IL' && pos !== 'IL+' && pos !== 'NA').join(', ') || pl.displayPosition || '-'}
+                  </div>
+                </td>
+                {/* Stat columns */}
+                {cols.map((col) => (
+                  <td key={col.key} className="text-right px-1.5 py-1 text-slate-300 whitespace-nowrap tabular-nums">
+                    {col.composite === 'h_ab'
+                      ? buildHABList(pl.stats || {})
+                      : fmtStat(pl.stats?.[col.key], col)}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
 
-      <div className="divide-y divide-slate-700/40">
-        {pageItems.map((pl: any, idx: number) => (
-          <div
-            key={pl.playerKey || idx}
-            className="grid grid-cols-[minmax(0,1fr)_72px_minmax(0,1fr)] sm:grid-cols-[minmax(0,1.5fr)_80px_minmax(0,1fr)] gap-x-2 py-1.5 px-1 items-center hover:bg-slate-700/20 cursor-pointer transition-colors rounded"
-            onClick={() => onAction && onAction(`tell me about ${pl.name}`)}
-          >
-            <div className="min-w-0">
-              <span className="text-xs font-medium text-white truncate block">{pl.name}</span>
-              <span className="text-[10px] text-slate-500">{pl.team}</span>
-            </div>
-            <span className="text-[11px] text-slate-300 truncate">
-              {pl.positions?.join(', ') || '-'}
-            </span>
-            <span className="text-[11px] text-slate-400 truncate">{pl.fantasyTeam}</span>
-          </div>
-        ))}
-      </div>
-
-      {/* Pagination controls */}
+      {/* Pagination */}
       {totalPages > 1 && (
         <div className="flex items-center justify-between mt-2 pt-2 border-t border-slate-700/50">
           <button
             disabled={page === 0}
-            onClick={() => setPage((p) => Math.max(0, p - 1))}
+            onClick={() => setPage((pg) => Math.max(0, pg - 1))}
             className="px-2.5 py-1.5 text-xs rounded-lg border border-slate-700 bg-slate-800 hover:bg-slate-700 active:bg-slate-600 disabled:opacity-30 disabled:cursor-not-allowed text-white font-medium transition-colors"
           >
             ← Prev
           </button>
           <span className="text-[11px] text-slate-400">
-            {start + 1}–{Math.min(start + PAGE_SIZE, players.length)} of {players.length}
+            {startIdx + 1}–{Math.min(startIdx + PAGE_SIZE, sorted.length)} of {sorted.length}
           </span>
           <button
             disabled={page >= totalPages - 1}
-            onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+            onClick={() => setPage((pg) => Math.min(totalPages - 1, pg + 1))}
             className="px-2.5 py-1.5 text-xs rounded-lg border border-slate-700 bg-slate-800 hover:bg-slate-700 active:bg-slate-600 disabled:opacity-30 disabled:cursor-not-allowed text-white font-medium transition-colors"
           >
             Next →
