@@ -182,6 +182,31 @@ export function PlayerStats({ playerKey, leagueKey, playerName }: PlayerStatsPro
     return getContextualStatLabel(key, isPitching)
   }
 
+  // Yahoo MLB stat ID to name mapping
+  const YAHOO_STAT_MAP: Record<string, { name: string; category: 'hitting' | 'pitching' }> = {
+    '1': { name: 'AB', category: 'hitting' },
+    '2': { name: 'R', category: 'hitting' },
+    '3': { name: 'H', category: 'hitting' },
+    '6': { name: 'HR', category: 'hitting' },
+    '7': { name: 'RBI', category: 'hitting' },
+    '8': { name: 'SB', category: 'hitting' },
+    '10': { name: 'BB', category: 'hitting' },
+    '11': { name: 'K', category: 'hitting' },
+    '12': { name: 'AVG', category: 'hitting' },
+    '13': { name: 'OBP', category: 'hitting' },
+    '14': { name: 'SLG', category: 'hitting' },
+    '15': { name: 'OPS', category: 'hitting' },
+    '18': { name: 'W', category: 'pitching' },
+    '19': { name: 'L', category: 'pitching' },
+    '22': { name: 'SV', category: 'pitching' },
+    '25': { name: 'IP', category: 'pitching' },
+    '28': { name: 'ER', category: 'pitching' },
+    '30': { name: 'BB', category: 'pitching' },
+    '31': { name: 'K', category: 'pitching' },
+    '32': { name: 'ERA', category: 'pitching' },
+    '33': { name: 'WHIP', category: 'pitching' },
+  }
+
   // Extract and organize stats by category
   const organizeStats = (stats: any) => {
     const hittingStats: Array<{ key: string; value: number | string }> = []
@@ -190,11 +215,23 @@ export function PlayerStats({ playerKey, leagueKey, playerName }: PlayerStatsPro
     if (!stats) return { hittingStats, pitchingStats }
     
     Object.entries(stats).forEach(([key, value]) => {
-      const upperKey = key.toUpperCase()
-      if (['AB', 'H', 'R', 'HR', 'RBI', 'SB', 'AVG', 'OBP', 'SLG', 'OPS'].includes(upperKey)) {
-        hittingStats.push({ key: upperKey, value: value as number | string })
-      } else if (['W', 'L', 'SV', 'IP', 'ER', 'BB', 'K', 'ERA', 'WHIP', 'K/9', 'HA'].includes(upperKey)) {
-        pitchingStats.push({ key: upperKey, value: value as number | string })
+      // Check if it's a Yahoo stat ID
+      const statInfo = YAHOO_STAT_MAP[key]
+      
+      if (statInfo) {
+        if (statInfo.category === 'hitting') {
+          hittingStats.push({ key: statInfo.name, value: value as number | string })
+        } else {
+          pitchingStats.push({ key: statInfo.name, value: value as number | string })
+        }
+      } else {
+        // Fallback: check uppercase key names
+        const upperKey = key.toUpperCase()
+        if (['AB', 'H', 'R', 'HR', 'RBI', 'SB', 'AVG', 'OBP', 'SLG', 'OPS'].includes(upperKey)) {
+          hittingStats.push({ key: upperKey, value: value as number | string })
+        } else if (['W', 'L', 'SV', 'IP', 'ER', 'BB', 'K', 'ERA', 'WHIP', 'K/9', 'HA'].includes(upperKey)) {
+          pitchingStats.push({ key: upperKey, value: value as number | string })
+        }
       }
     })
     
