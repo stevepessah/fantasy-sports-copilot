@@ -155,7 +155,7 @@ export async function searchPlayerInFreeAgents(
     // Search through multiple pages of free agents
     for (let page = 0; page < maxPages; page++) {
       const start = page * 25
-      const response = await api.getPlayers(leagueKey, start, 25)
+      const response = await api.getPlayers(leagueKey, { start, count: 25 })
       
       // Parse the players from XML
       if (response.raw) {
