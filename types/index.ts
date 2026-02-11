@@ -141,7 +141,7 @@ export interface AIResponse {
     data?: any
   }
   cards?: {
-    type: 'lineup' | 'player' | 'matchup' | 'draft_board' | 'waivers' | 'trade' | 'draft' | 'teams'
+    type: 'lineup' | 'player' | 'matchup' | 'draft_board' | 'waivers' | 'trade' | 'draft' | 'teams' | 'roster_list'
     title: string
     payload: any
   }[]
