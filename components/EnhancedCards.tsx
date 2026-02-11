@@ -143,57 +143,39 @@ export function EnhancedCards({ card, onAction, sport }: EnhancedCardsProps) {
       const player = p.player
       return (
         <CardShell title={card.title}>
-          {/* Player Information Section */}
-          <div className="mb-4 p-3 bg-slate-700/30 rounded-lg">
-            <div className="text-lg font-bold mb-2">{player.name}</div>
-            <div className="space-y-1 text-sm">
-              <div className="flex items-center gap-2">
-                <span className="text-slate-400">MLB Team:</span>
-                <span className="text-white font-semibold">{player.team}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-slate-400">Position(s):</span>
-                <span className="text-white font-semibold">
-                  {p.eligiblePositions && p.eligiblePositions.length > 0 
-                    ? p.eligiblePositions.join(', ')
-                    : player.position}
-                </span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-slate-400">Fantasy Status:</span>
-                {p.ownershipStatus === 'free_agent' && (
-                  <span className="px-2 py-0.5 text-xs rounded-full bg-green-600/20 text-green-400 border border-green-600/30 font-semibold">
-                    Free Agent
-                  </span>
-                )}
-                {p.ownershipStatus === 'taken' && (
-                  <span className="px-2 py-0.5 text-xs rounded-full bg-red-600/20 text-red-400 border border-red-600/30 font-semibold">
-                    Taken {p.owningTeamName ? `by ${p.owningTeamName}` : ''}
-                  </span>
-                )}
-                {p.ownershipStatus === 'unknown' && (
-                  <span className="text-slate-400 text-xs">Unknown</span>
-                )}
-              </div>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4 mb-4">
-            <div>
-              <div className="text-2xl font-bold text-primary-400">
-                {player.projectedPoints?.toFixed(1) || 'N/A'}
-              </div>
-              <div className="text-xs text-slate-400">Projected Points</div>
-            </div>
-            {player.adp && (
-              <div>
-                <div className="text-2xl font-bold text-slate-300">{player.adp}</div>
-                <div className="text-xs text-slate-400">ADP</div>
-              </div>
+          {/* Compact player header: name + meta inline */}
+          <div className="mb-2 flex flex-wrap items-center gap-x-3 gap-y-1">
+            <span className="text-base sm:text-lg font-bold leading-tight">{player.name}</span>
+            <span className="text-xs text-slate-400">
+              {player.team} &middot; {p.eligiblePositions && p.eligiblePositions.length > 0 
+                ? p.eligiblePositions.join(', ')
+                : player.position}
+            </span>
+            {p.ownershipStatus === 'free_agent' && (
+              <span className="px-1.5 py-0.5 text-[10px] rounded-full bg-green-600/20 text-green-400 border border-green-600/30 font-semibold leading-none">
+                FA
+              </span>
+            )}
+            {p.ownershipStatus === 'taken' && (
+              <span className="px-1.5 py-0.5 text-[10px] rounded-full bg-red-600/20 text-red-400 border border-red-600/30 font-semibold leading-none">
+                {p.owningTeamName ? p.owningTeamName : 'Taken'}
+              </span>
             )}
           </div>
 
-          {/* Player Statistics - Always show if we have a player key or league key */}
+          {/* Projected / ADP inline row — only show when available */}
+          {(player.projectedPoints || player.adp) && (
+            <div className="flex items-baseline gap-4 mb-2 text-xs text-slate-400">
+              {player.projectedPoints != null && (
+                <span>Proj <span className="text-primary-400 font-bold text-sm">{player.projectedPoints.toFixed(1)}</span></span>
+              )}
+              {player.adp != null && (
+                <span>ADP <span className="text-slate-200 font-bold text-sm">{player.adp}</span></span>
+              )}
+            </div>
+          )}
+
+          {/* Player Statistics */}
           {(player.yahooPlayerKey || p.leagueKey) && (
             <PlayerStats 
               playerKey={player.yahooPlayerKey || null} 
@@ -204,7 +186,7 @@ export function EnhancedCards({ card, onAction, sport }: EnhancedCardsProps) {
           )}
 
           {p.insights && p.insights.length > 0 && (
-            <ul className="space-y-1 mb-4">
+            <ul className="space-y-0.5 mb-2">
               {p.insights.map((insight: string, i: number) => (
                 <li key={i} className="text-xs text-slate-400 list-disc list-inside">
                   {insight}
@@ -214,12 +196,12 @@ export function EnhancedCards({ card, onAction, sport }: EnhancedCardsProps) {
           )}
 
           {p.actions && p.actions.length > 0 && (
-            <div className="flex gap-2 flex-wrap">
+            <div className="flex gap-2 flex-wrap mt-2">
               {p.actions.map((action: any) => (
                 <button
                   key={action.label}
                   onClick={() => runCommand(action.command)}
-                  className="px-3 py-2.5 text-sm rounded-lg border border-slate-700 bg-slate-800 hover:bg-slate-700 active:bg-slate-600 text-white font-semibold transition-colors"
+                  className="px-3 py-2 text-xs sm:text-sm rounded-lg border border-slate-700 bg-slate-800 hover:bg-slate-700 active:bg-slate-600 text-white font-semibold transition-colors"
                 >
                   {action.label}
                 </button>
@@ -422,10 +404,10 @@ export function EnhancedCards({ card, onAction, sport }: EnhancedCardsProps) {
 function CardShell({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div className="rounded-xl border border-slate-700 bg-slate-800/50 overflow-hidden">
-      <div className="px-3 sm:px-4 py-2.5 sm:py-3 border-b border-slate-700 bg-slate-800/50">
-        <div className="text-sm font-bold">{title}</div>
+      <div className="px-2.5 sm:px-3 py-1.5 sm:py-2 border-b border-slate-700 bg-slate-800/50">
+        <div className="text-xs sm:text-sm font-bold">{title}</div>
       </div>
-      <div className="p-3 sm:p-4">{children}</div>
+      <div className="p-2.5 sm:p-3">{children}</div>
     </div>
   )
 }

@@ -339,7 +339,11 @@ export default function EnhancedChatInterface({ leagueId, userId, initialMessage
                 className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'} max-w-4xl mx-auto`}
               >
                 <div
-                  className={`${isTiny ? 'max-w-[95%]' : 'max-w-[85%]'} rounded-xl px-3 sm:px-4 py-2.5 sm:py-3 ${
+                  className={`${
+                    message.metadata?.cards
+                      ? 'max-w-[98%] sm:max-w-[95%] lg:max-w-full'
+                      : isTiny ? 'max-w-[95%]' : 'max-w-[85%]'
+                  } rounded-xl px-3 sm:px-4 py-2.5 sm:py-3 ${
                     message.role === 'user'
                       ? 'bg-primary-600 text-white'
                       : 'bg-slate-800 border border-slate-700 text-slate-100'

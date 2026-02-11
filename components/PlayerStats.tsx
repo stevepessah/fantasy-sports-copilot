@@ -196,11 +196,11 @@ export function PlayerStats({ playerKey, leagueKey, playerName, positions = [] }
 
   if (!playerKey) {
     return (
-      <div className="mt-4 p-3 bg-slate-800/50 rounded-lg">
-        <div className="text-sm text-slate-400">
+      <div className="mt-2 p-2 bg-slate-800/50 rounded-lg">
+        <div className="text-xs text-slate-400">
           {leagueKey
-            ? 'Player not found in your Yahoo league. Stats are only available for players in your league.'
-            : 'Connect to Yahoo Fantasy to view player statistics.'}
+            ? 'Player not found in your Yahoo league.'
+            : 'Connect to Yahoo Fantasy to view stats.'}
         </div>
       </div>
     )
@@ -208,16 +208,16 @@ export function PlayerStats({ playerKey, leagueKey, playerName, positions = [] }
 
   if (error) {
     return (
-      <div className="mt-4 p-3 bg-red-900/20 border border-red-800/50 rounded-lg">
-        <div className="text-sm text-red-400">{error}</div>
+      <div className="mt-2 p-2 bg-red-900/20 border border-red-800/50 rounded-lg">
+        <div className="text-xs text-red-400">{error}</div>
       </div>
     )
   }
 
   if (isLoadingCurrent) {
     return (
-      <div className="mt-4 p-3 bg-slate-800/50 rounded-lg">
-        <div className="text-sm text-slate-400">Loading statistics...</div>
+      <div className="mt-2 p-2 bg-slate-800/50 rounded-lg">
+        <div className="text-xs text-slate-400">Loading stats…</div>
       </div>
     )
   }
@@ -242,11 +242,11 @@ export function PlayerStats({ playerKey, leagueKey, playerName, positions = [] }
     if (items.length === 0) return null
 
     return (
-      <div className="grid grid-cols-3 sm:grid-cols-4 gap-x-3 gap-y-2 text-xs">
+      <div className="grid grid-cols-4 sm:grid-cols-6 gap-x-2 gap-y-1 text-[11px] sm:text-xs">
         {items.map((item) => (
-          <div key={item.label}>
-            <div className="text-slate-400">{item.label}</div>
-            <div className="text-white font-semibold">{item.value}</div>
+          <div key={item.label} className="min-w-0">
+            <div className="text-slate-500 text-[10px] leading-tight">{item.label}</div>
+            <div className="text-white font-semibold leading-snug truncate">{item.value}</div>
           </div>
         ))}
       </div>
@@ -254,26 +254,24 @@ export function PlayerStats({ playerKey, leagueKey, playerName, positions = [] }
   }
 
   return (
-    <div className="mt-4 space-y-4">
-      <h4 className="text-sm font-semibold text-slate-300">
-        Player Statistics {playerIsPitcher ? '(Pitching)' : '(Batting)'}
+    <div className="mt-2 space-y-2">
+      <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-wide">
+        {playerIsPitcher ? 'Pitching' : 'Batting'} Stats
       </h4>
 
       {/* Current Season Stats */}
       {currentStats && (
-        <div className="space-y-3">
-          <h5 className="text-xs font-semibold text-slate-400 uppercase">{currentYear} Season</h5>
-
+        <div className="space-y-1.5">
           {currentStats.season_stats && Object.keys(currentStats.season_stats).length > 0 && (
-            <div className="p-3 bg-slate-800/50 rounded-lg">
-              <h6 className="text-sm font-semibold text-slate-300 mb-2">Season Stats</h6>
+            <div className="p-2 sm:p-2.5 bg-slate-700/30 rounded-lg">
+              <h6 className="text-[11px] font-semibold text-slate-400 mb-1.5">{currentYear} Season</h6>
               {renderCuratedStats(currentStats.season_stats)}
             </div>
           )}
 
           {currentStats.week_stats && Object.keys(currentStats.week_stats).length > 0 && (
-            <div className="p-3 bg-slate-800/30 rounded-lg">
-              <h6 className="text-xs font-semibold text-slate-300 mb-2">This Week</h6>
+            <div className="p-2 sm:p-2.5 bg-slate-700/20 rounded-lg">
+              <h6 className="text-[11px] font-semibold text-slate-400 mb-1.5">This Week</h6>
               {renderCuratedStats(currentStats.week_stats)}
             </div>
           )}
@@ -281,13 +279,13 @@ export function PlayerStats({ playerKey, leagueKey, playerName, positions = [] }
       )}
 
       {/* Historical Seasons */}
-      <div className="space-y-3">
+      <div className="space-y-1.5">
         <div className="flex items-center justify-between">
-          <h5 className="text-xs font-semibold text-slate-400 uppercase">Historical Seasons</h5>
+          <h6 className="text-[11px] font-semibold text-slate-400 uppercase">Historical</h6>
           <select
             value={selectedHistoricalYear}
             onChange={(e) => setSelectedHistoricalYear(parseInt(e.target.value, 10))}
-            className="px-2 py-1 text-xs bg-slate-800 border border-slate-700 rounded text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+            className="px-1.5 py-0.5 text-[11px] bg-slate-800 border border-slate-700 rounded text-white focus:outline-none focus:ring-1 focus:ring-purple-500"
           >
             {[currentYear - 1, currentYear - 2, currentYear - 3].map((year) => (
               <option key={year} value={year}>{year}</option>
@@ -296,20 +294,20 @@ export function PlayerStats({ playerKey, leagueKey, playerName, positions = [] }
         </div>
 
         {isLoadingHistorical && (
-          <div className="p-3 bg-slate-800/30 rounded-lg">
-            <div className="text-xs text-slate-400">Loading {selectedHistoricalYear} stats...</div>
+          <div className="p-2 bg-slate-700/20 rounded-lg">
+            <div className="text-[11px] text-slate-400">Loading {selectedHistoricalYear}…</div>
           </div>
         )}
 
         {!isLoadingHistorical && historicalStats?.season_stats && Object.keys(historicalStats.season_stats).length > 0 ? (
-          <div className="p-3 bg-slate-800/30 rounded-lg">
-            <h6 className="text-sm font-semibold text-slate-300 mb-2">{selectedHistoricalYear} Season</h6>
+          <div className="p-2 sm:p-2.5 bg-slate-700/20 rounded-lg">
+            <h6 className="text-[11px] font-semibold text-slate-400 mb-1.5">{selectedHistoricalYear}</h6>
             {renderCuratedStats(historicalStats.season_stats)}
           </div>
         ) : (
           !isLoadingHistorical && (
-            <div className="p-3 bg-slate-800/30 rounded-lg">
-              <div className="text-xs text-slate-400">No stats available for {selectedHistoricalYear}</div>
+            <div className="p-2 bg-slate-700/20 rounded-lg">
+              <div className="text-[11px] text-slate-400">No stats for {selectedHistoricalYear}</div>
             </div>
           )
         )}
@@ -317,9 +315,9 @@ export function PlayerStats({ playerKey, leagueKey, playerName, positions = [] }
 
       {/* No stats message */}
       {!isLoadingCurrent && !currentStats && (
-        <div className="p-3 bg-slate-800/50 rounded-lg">
-          <div className="text-sm text-slate-400">
-            No statistics available. The player may not have played this season or stats may not be available yet.
+        <div className="p-2 bg-slate-800/50 rounded-lg">
+          <div className="text-xs text-slate-400">
+            No statistics available yet.
           </div>
         </div>
       )}
