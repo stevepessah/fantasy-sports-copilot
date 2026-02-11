@@ -316,22 +316,45 @@ export class YahooFantasyAPI {
   }
 
   /**
-   * Get available players (free agents)
+   * Get league players with optional filters
+   * @param leagueKey - League key
+   * @param options - Filtering / pagination options
    */
-  async getPlayers(leagueKey: string, start: number = 0, count: number = 25): Promise<any> {
+  async getPlayers(
+    leagueKey: string,
+    options: {
+      start?: number
+      count?: number
+      position?: string   // 'B' for batters, 'P' for pitchers, or specific position like 'C','1B','SP' etc.
+      status?: string     // 'A' = all, 'FA' = free agents, 'T' = taken, 'W' = waivers
+      sort?: string       // 'AR' = average rank, 'PTS' = points, 'OR' = overall rank
+    } = {}
+  ): Promise<{ players: ParsedRosterPlayer[]; raw?: string }> {
     if (!this.accessToken) {
       throw new Error('Access token not set. Please authenticate first.')
     }
 
-    const endpoint = `/league/${leagueKey}/players;start=${start};count=${count}`
-    
-    const response = this.oauth2.makeRequest(
+    const { start = 0, count = 25, position, status, sort } = options
+    let filters = `;start=${start};count=${count}`
+    if (position) filters += `;position=${position}`
+    if (status) filters += `;status=${status}`
+    if (sort) filters += `;sort=${sort}`
+
+    const endpoint = `/league/${leagueKey}/players${filters}`
+
+    const response = await this.oauth2.makeRequest(
       'GET',
       endpoint,
       this.accessToken
     )
 
-    return response
+    // Reuse the roster XML parser — it extracts <player> blocks generically
+    let players: ParsedRosterPlayer[] = []
+    if (response.raw) {
+      players = parseRosterXML(response.raw)
+    }
+
+    return { players, raw: response.raw }
   }
 
   /**
