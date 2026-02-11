@@ -5,7 +5,7 @@ import { LeagueManager } from '@/lib/league'
 import { parseIntent, findPlayerByNameApprox } from '@/lib/commandParser'
 import { setupBaseballLeague } from '@/lib/setupBaseballLeague'
 import { YahooFantasyAPI } from '@/lib/yahoo/api'
-import { searchPlayerInLeague, searchPlayerInFreeAgents } from '@/lib/yahoo/playerSearch'
+import { searchPlayerInLeague, searchPlayerInFreeAgents, getPlayerOwnership } from '@/lib/yahoo/playerSearch'
 import { cookies } from 'next/headers'
 
 export async function POST(request: NextRequest) {
@@ -212,6 +212,9 @@ export async function POST(request: NextRequest) {
       let player = null
       let yahooPlayerKey: string | undefined = undefined
       let yahooLeagueKey: string | undefined = undefined
+      let eligiblePositions: string[] = []
+      let ownershipStatus: 'free_agent' | 'taken' | 'unknown' = 'unknown'
+      let owningTeamName: string | undefined = undefined
       
       // First, try to find player in Yahoo if authenticated
       const cookieStore = await cookies()
@@ -230,11 +233,16 @@ export async function POST(request: NextRequest) {
           if (yahooLeague && yahooLeague.league_key) {
             yahooLeagueKey = yahooLeague.league_key
             
-            // Search in rosters first
-            const yahooPlayer = await searchPlayerInLeague(api, yahooLeague.league_key, playerQuery)
+            // Get player ownership information
+            const ownership = await getPlayerOwnership(api, yahooLeague.league_key, playerQuery)
             
-            if (yahooPlayer) {
+            if (ownership) {
+              const yahooPlayer = ownership.player
               yahooPlayerKey = yahooPlayer.player_key
+              eligiblePositions = yahooPlayer.eligible_positions || []
+              ownershipStatus = ownership.ownershipStatus
+              owningTeamName = ownership.owningTeam?.name
+              
               // Convert Yahoo player to our Player format
               player = {
                 id: yahooPlayer.player_id,
@@ -246,24 +254,6 @@ export async function POST(request: NextRequest) {
                              yahooPlayer.injury_status === 'O' ? 'out' :
                              yahooPlayer.injury_status === 'IL' ? 'IL' : 'healthy',
                 yahooPlayerKey: yahooPlayer.player_key,
-              }
-            } else {
-              // If not found in rosters, try free agents
-              const freeAgentPlayer = await searchPlayerInFreeAgents(api, yahooLeague.league_key, playerQuery)
-              
-              if (freeAgentPlayer) {
-                yahooPlayerKey = freeAgentPlayer.player_key
-                player = {
-                  id: freeAgentPlayer.player_id,
-                  name: freeAgentPlayer.name.full,
-                  sport: 'baseball' as const,
-                  position: (freeAgentPlayer.display_position || freeAgentPlayer.eligible_positions[0] || 'UTIL') as any,
-                  team: freeAgentPlayer.editorial_team_abbr || 'FA',
-                  injuryStatus: freeAgentPlayer.injury_status === 'DTD' ? 'questionable' : 
-                               freeAgentPlayer.injury_status === 'O' ? 'out' :
-                               freeAgentPlayer.injury_status === 'IL' ? 'IL' : 'healthy',
-                  yahooPlayerKey: freeAgentPlayer.player_key,
-                }
               }
             }
           }
@@ -285,9 +275,12 @@ export async function POST(request: NextRequest) {
               const api = new YahooFantasyAPI()
               api.setAccessToken(yahooAccessToken)
               // Try one more search with the mock player name
-              const yahooPlayer = await searchPlayerInFreeAgents(api, yahooLeagueKey, player.name)
-              if (yahooPlayer) {
-                yahooPlayerKey = yahooPlayer.player_key
+              const ownership = await getPlayerOwnership(api, yahooLeagueKey, player.name)
+              if (ownership) {
+                yahooPlayerKey = ownership.player.player_key
+                eligiblePositions = ownership.player.eligible_positions || []
+                ownershipStatus = ownership.ownershipStatus
+                owningTeamName = ownership.owningTeam?.name
               }
             } catch (error) {
               console.error('Error searching for Yahoo player key:', error)
@@ -305,7 +298,10 @@ export async function POST(request: NextRequest) {
               ...player,
               yahooPlayerKey: yahooPlayerKey || player.yahooPlayerKey,
             },
-            leagueKey: yahooLeagueKey || undefined, // Use Yahoo league key, not mock league ID
+            leagueKey: yahooLeagueKey || undefined,
+            eligiblePositions,
+            ownershipStatus,
+            owningTeamName,
             insights: [
               `Projected ${player.projectedPoints?.toFixed(1) || '0.0'} points this week.`,
               player.injuryStatus && player.injuryStatus !== 'healthy' 

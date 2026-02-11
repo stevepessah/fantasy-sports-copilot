@@ -281,8 +281,14 @@ export class YahooFantasyAPI {
    * @param playerKey - Full player key in format: 469.p.12345
    * @param leagueKey - Optional league key for league-specific stats
    * @param season - Optional season year (e.g., 2024, 2025). If provided, will construct player key for that season
+   * @param dateRange - Optional date range for stats. Format: 'date=YYYY-MM-DD' or 'lastweek', 'lastmonth', etc.
    */
-  async getPlayerStats(playerKey: string, leagueKey?: string, season?: number): Promise<{ stats: any; raw?: string }> {
+  async getPlayerStats(
+    playerKey: string, 
+    leagueKey?: string, 
+    season?: number,
+    dateRange?: string
+  ): Promise<{ stats: any; raw?: string }> {
     if (!this.accessToken) {
       throw new Error('Access token not set. Please authenticate first.')
     }
@@ -308,11 +314,21 @@ export class YahooFantasyAPI {
       }
     }
 
-    // If leagueKey is provided, get league-specific stats
-    // Otherwise, get general player stats
-    const endpoint = leagueKey 
-      ? `/player/${finalPlayerKey}/stats;league_key=${leagueKey}`
-      : `/player/${finalPlayerKey}/stats`
+    // Build endpoint with optional parameters
+    let endpoint = `/player/${finalPlayerKey}/stats`
+    const params: string[] = []
+    
+    if (leagueKey) {
+      params.push(`league_key=${leagueKey}`)
+    }
+    
+    if (dateRange) {
+      params.push(`type=${dateRange}`)
+    }
+    
+    if (params.length > 0) {
+      endpoint += `;${params.join(';')}`
+    }
     
     const response = await this.oauth2.makeRequest(
       'GET',
@@ -327,6 +343,54 @@ export class YahooFantasyAPI {
     }
 
     return { stats, raw: response.raw }
+  }
+
+  /**
+   * Get player statistics for multiple date ranges
+   * @param playerKey - Full player key
+   * @param leagueKey - Optional league key
+   * @param season - Optional season year
+   */
+  async getPlayerStatsMultipleRanges(
+    playerKey: string,
+    leagueKey?: string,
+    season?: number
+  ): Promise<{
+    season: any
+    lastMonth: any
+    lastTwoWeeks: any
+    lastWeek: any
+    today: any
+  }> {
+    const now = new Date()
+    const today = now.toISOString().split('T')[0]
+    
+    // Calculate date ranges
+    const lastWeekDate = new Date(now)
+    lastWeekDate.setDate(lastWeekDate.getDate() - 7)
+    
+    const twoWeeksAgoDate = new Date(now)
+    twoWeeksAgoDate.setDate(twoWeeksAgoDate.getDate() - 14)
+    
+    const lastMonthDate = new Date(now)
+    lastMonthDate.setDate(lastMonthDate.getDate() - 30)
+
+    // Fetch stats for different ranges
+    const [seasonStats, lastMonthStats, lastTwoWeeksStats, lastWeekStats, todayStats] = await Promise.all([
+      this.getPlayerStats(playerKey, leagueKey, season),
+      this.getPlayerStats(playerKey, leagueKey, season, `date=${lastMonthDate.toISOString().split('T')[0]}`),
+      this.getPlayerStats(playerKey, leagueKey, season, `date=${twoWeeksAgoDate.toISOString().split('T')[0]}`),
+      this.getPlayerStats(playerKey, leagueKey, season, `date=${lastWeekDate.toISOString().split('T')[0]}`),
+      this.getPlayerStats(playerKey, leagueKey, season, `date=${today}`)
+    ])
+
+    return {
+      season: seasonStats.stats,
+      lastMonth: lastMonthStats.stats,
+      lastTwoWeeks: lastTwoWeeksStats.stats,
+      lastWeek: lastWeekStats.stats,
+      today: todayStats.stats
+    }
   }
 
   // Helper methods to parse XML responses (simplified for MVP)
