@@ -1,77 +1,97 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { ParsedPlayerStats } from '@/lib/yahoo/xmlParser'
 
 interface PlayerStatsProps {
   playerKey: string | null
   leagueKey?: string | null
   playerName?: string
+  positions?: string[]
 }
 
-// Baseball stat labels mapping
-const BASEBALL_STAT_LABELS: Record<string, string> = {
-  // Hitting stats
-  'AB': 'At Bats',
-  'H': 'Hits',
-  'R': 'Runs',
-  'HR': 'Home Runs',
-  'RBI': 'RBI',
-  'SB': 'Stolen Bases',
-  'AVG': 'Average',
-  'OBP': 'On-Base %',
-  'SLG': 'Slugging %',
-  'OPS': 'OPS',
-  // Pitching stats
-  'W': 'Wins',
-  'L': 'Losses',
-  'SV': 'Saves',
-  'IP': 'Innings Pitched',
-  'HA': 'Hits Allowed',
-  'ER': 'Earned Runs',
-  'BB': 'Walks',
-  'K': 'Strikeouts',
-  'ERA': 'ERA',
-  'WHIP': 'WHIP',
-  'K/9': 'K/9',
+interface StatEntry {
+  value: number | string
+  displayName: string
+  positionType: string // 'B' for batter, 'P' for pitcher
+  statId: string
 }
 
-// Context-aware stat labels
-const getContextualStatLabel = (key: string, isPitching: boolean): string => {
-  if (key === 'H') {
-    return isPitching ? 'Hits Allowed' : 'Hits'
+type StatsSection = Record<string, StatEntry>
+
+// Determine if player is a pitcher based on positions
+function isPitcher(positions: string[]): boolean {
+  const pitcherPositions = ['SP', 'RP', 'P']
+  return positions.some(pos => pitcherPositions.includes(pos.toUpperCase()))
+}
+
+// Format stat value for display
+function formatStatValue(value: number | string, displayName: string): string {
+  if (typeof value === 'string') {
+    const num = parseFloat(value)
+    if (isNaN(num)) return value
+    return formatNumber(num, displayName)
   }
-  return BASEBALL_STAT_LABELS[key] || key
+  return formatNumber(value, displayName)
 }
 
-export function PlayerStats({ playerKey, leagueKey, playerName }: PlayerStatsProps) {
+function formatNumber(value: number, displayName: string): string {
+  // Rate stats that should show as decimal (e.g., .232 not 0.232)
+  const rateStats = ['AVG', 'OBP', 'SLG', 'OPS', 'WHIP', 'ERA', 'BAA', 'K/BB', 'K/9', 'BB/9']
+  const isRate = rateStats.some(s => displayName.toUpperCase().includes(s))
+  
+  if (isRate) {
+    // AVG/OBP/SLG/OPS/BAA: show as .XXX (3 decimal places, no leading zero for < 1)
+    if (['AVG', 'OBP', 'SLG', 'OPS', 'BAA'].some(s => displayName.toUpperCase().includes(s))) {
+      if (value >= 0 && value < 1) {
+        return value.toFixed(3).replace(/^0/, '')
+      }
+      return value.toFixed(3)
+    }
+    // ERA, WHIP, K/9, BB/9, OPS: show with 2 decimal places
+    return value.toFixed(2)
+  }
+  
+  // Innings Pitched: show with 1 decimal (e.g., 156.2)
+  if (displayName.toUpperCase().includes('IP') || displayName.toUpperCase().includes('INNINGS')) {
+    return value.toFixed(1)
+  }
+  
+  // Counting stats: show as whole numbers
+  if (Number.isInteger(value)) {
+    return value.toString()
+  }
+  
+  // Default: round to nearest integer for counting stats
+  return Math.round(value).toString()
+}
+
+export function PlayerStats({ playerKey, leagueKey, playerName, positions = [] }: PlayerStatsProps) {
   const currentYear = new Date().getFullYear()
   const [selectedHistoricalYear, setSelectedHistoricalYear] = useState<number>(currentYear - 1)
-  const [statsRanges, setStatsRanges] = useState<any>(null)
+  const [currentStats, setCurrentStats] = useState<any>(null)
   const [historicalStats, setHistoricalStats] = useState<any>(null)
-  const [isLoadingRanges, setIsLoadingRanges] = useState(false)
+  const [isLoadingCurrent, setIsLoadingCurrent] = useState(false)
   const [isLoadingHistorical, setIsLoadingHistorical] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  // Fetch current season stats (simpler approach - just use the regular player-stats endpoint)
+  const playerIsPitcher = isPitcher(positions)
+
+  // Fetch current season stats
   useEffect(() => {
     if (!playerKey) {
-      setStatsRanges(null)
+      setCurrentStats(null)
       return
     }
 
-    const fetchRangeStats = async () => {
+    const fetchCurrentStats = async () => {
       try {
-        setIsLoadingRanges(true)
+        setIsLoadingCurrent(true)
         setError(null)
         
         const params = new URLSearchParams({ playerKey })
-        if (leagueKey) {
-          params.append('leagueKey', leagueKey)
-        }
+        if (leagueKey) params.append('leagueKey', leagueKey)
         params.append('season', currentYear.toString())
         
-        // Use the regular player-stats endpoint instead of ranges
         const response = await fetch(`/api/yahoo/player-stats?${params.toString()}`)
         
         if (!response.ok) {
@@ -83,19 +103,16 @@ export function PlayerStats({ playerKey, leagueKey, playerName }: PlayerStatsPro
         }
         
         const data = await response.json()
-        console.log('🔍 Current Season Stats Response:', data)
-        
-        // The response has stats directly, not wrapped in a ranges object
-        setStatsRanges(data.stats ? { season: data.stats } : null)
+        setCurrentStats(data.stats || null)
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to fetch player stats')
-        console.error('Error fetching Yahoo player stats:', err)
+        console.error('Error fetching current stats:', err)
       } finally {
-        setIsLoadingRanges(false)
+        setIsLoadingCurrent(false)
       }
     }
 
-    fetchRangeStats()
+    fetchCurrentStats()
   }, [playerKey, leagueKey, currentYear])
 
   // Fetch historical stats for selected year
@@ -113,9 +130,7 @@ export function PlayerStats({ playerKey, leagueKey, playerName }: PlayerStatsPro
           playerKey,
           season: selectedHistoricalYear.toString()
         })
-        if (leagueKey) {
-          params.append('leagueKey', leagueKey)
-        }
+        if (leagueKey) params.append('leagueKey', leagueKey)
         
         const response = await fetch(`/api/yahoo/player-stats?${params.toString()}`)
         
@@ -124,7 +139,6 @@ export function PlayerStats({ playerKey, leagueKey, playerName }: PlayerStatsPro
         }
         
         const data = await response.json()
-        console.log('🔍 Historical Stats API Response:', JSON.stringify(data, null, 2))
         setHistoricalStats(data.stats || null)
       } catch (err) {
         console.error('Error fetching historical stats:', err)
@@ -158,7 +172,7 @@ export function PlayerStats({ playerKey, leagueKey, playerName }: PlayerStatsPro
     )
   }
 
-  if (isLoadingRanges) {
+  if (isLoadingCurrent) {
     return (
       <div className="mt-4 p-3 bg-slate-800/50 rounded-lg">
         <div className="text-sm text-slate-400">Loading statistics...</div>
@@ -166,159 +180,82 @@ export function PlayerStats({ playerKey, leagueKey, playerName }: PlayerStatsPro
     )
   }
 
-  // Format stat value
-  const formatStat = (value: number | string): string => {
-    if (typeof value === 'number') {
-      if (value < 1 && value > 0) {
-        return value.toFixed(3)
-      }
-      return value.toFixed(2)
-    }
-    return String(value)
-  }
-
-  // Get stat label
-  const getStatLabel = (key: string, isPitching: boolean = false): string => {
-    return getContextualStatLabel(key, isPitching)
-  }
-
-  // Yahoo MLB stat ID to name mapping
-  const YAHOO_STAT_MAP: Record<string, { name: string; category: 'hitting' | 'pitching' }> = {
-    '1': { name: 'AB', category: 'hitting' },
-    '2': { name: 'R', category: 'hitting' },
-    '3': { name: 'H', category: 'hitting' },
-    '6': { name: 'HR', category: 'hitting' },
-    '7': { name: 'RBI', category: 'hitting' },
-    '8': { name: 'SB', category: 'hitting' },
-    '10': { name: 'BB', category: 'hitting' },
-    '11': { name: 'K', category: 'hitting' },
-    '12': { name: 'AVG', category: 'hitting' },
-    '13': { name: 'OBP', category: 'hitting' },
-    '14': { name: 'SLG', category: 'hitting' },
-    '15': { name: 'OPS', category: 'hitting' },
-    '18': { name: 'W', category: 'pitching' },
-    '19': { name: 'L', category: 'pitching' },
-    '22': { name: 'SV', category: 'pitching' },
-    '25': { name: 'IP', category: 'pitching' },
-    '28': { name: 'ER', category: 'pitching' },
-    '30': { name: 'BB', category: 'pitching' },
-    '31': { name: 'K', category: 'pitching' },
-    '32': { name: 'ERA', category: 'pitching' },
-    '33': { name: 'WHIP', category: 'pitching' },
-  }
-
-  // Extract and organize stats by category
-  const organizeStats = (stats: any) => {
-    const hittingStats: Array<{ key: string; value: number | string }> = []
-    const pitchingStats: Array<{ key: string; value: number | string }> = []
+  // Filter stats by position type
+  function filterStatsByPosition(stats: StatsSection | undefined): StatEntry[] {
+    if (!stats) return []
     
-    if (!stats) return { hittingStats, pitchingStats }
+    const allStats = Object.values(stats)
     
-    Object.entries(stats).forEach(([key, value]) => {
-      // Check if it's a Yahoo stat ID
-      const statInfo = YAHOO_STAT_MAP[key]
-      
-      if (statInfo) {
-        if (statInfo.category === 'hitting') {
-          hittingStats.push({ key: statInfo.name, value: value as number | string })
-        } else {
-          pitchingStats.push({ key: statInfo.name, value: value as number | string })
-        }
+    // Filter by position type
+    const filtered = allStats.filter(stat => {
+      if (playerIsPitcher) {
+        return stat.positionType === 'P'
       } else {
-        // Fallback: check uppercase key names
-        const upperKey = key.toUpperCase()
-        if (['AB', 'H', 'R', 'HR', 'RBI', 'SB', 'AVG', 'OBP', 'SLG', 'OPS'].includes(upperKey)) {
-          hittingStats.push({ key: upperKey, value: value as number | string })
-        } else if (['W', 'L', 'SV', 'IP', 'ER', 'BB', 'K', 'ERA', 'WHIP', 'K/9', 'HA'].includes(upperKey)) {
-          pitchingStats.push({ key: upperKey, value: value as number | string })
-        }
+        return stat.positionType === 'B'
       }
     })
     
-    return { hittingStats, pitchingStats }
+    // If no stats matched the filter (e.g. stat categories failed to load),
+    // show all stats as a fallback
+    if (filtered.length === 0 && allStats.length > 0) {
+      return allStats.filter(stat => stat.positionType !== 'unknown' || allStats.every(s => s.positionType === 'unknown'))
+    }
+    
+    return filtered
   }
 
-  const renderStatsSection = (title: string, stats: any, isPitching: boolean = false) => {
-    if (!stats || Object.keys(stats).length === 0) {
-      return null
-    }
+  // Render a grid of stats
+  function renderStatsGrid(stats: StatEntry[]) {
+    if (stats.length === 0) return null
 
     return (
       <div className="grid grid-cols-3 gap-2 text-xs">
-        {Object.entries(stats).slice(0, 9).map(([key, value]) => (
-          <div key={key}>
-            <div className="text-slate-400">{getStatLabel(key.toUpperCase(), isPitching)}</div>
-            <div className="text-white font-semibold">{formatStat(value as number | string)}</div>
+        {stats.map((stat) => (
+          <div key={stat.statId}>
+            <div className="text-slate-400">{stat.displayName}</div>
+            <div className="text-white font-semibold">
+              {formatStatValue(stat.value, stat.displayName)}
+            </div>
           </div>
         ))}
       </div>
     )
   }
 
+  // Render a stats section (season or week)
+  function renderSection(title: string, statsSection: StatsSection | undefined) {
+    const filtered = filterStatsByPosition(statsSection)
+    if (filtered.length === 0) return null
+
+    return (
+      <div className="p-3 bg-slate-800/50 rounded-lg">
+        <h6 className="text-sm font-semibold text-slate-300 mb-2">{title}</h6>
+        {renderStatsGrid(filtered)}
+      </div>
+    )
+  }
+
   return (
     <div className="mt-4 space-y-4">
-      <h4 className="text-sm font-semibold text-slate-300">Player Statistics</h4>
+      <h4 className="text-sm font-semibold text-slate-300">
+        Player Statistics {playerIsPitcher ? '(Pitching)' : '(Batting)'}
+      </h4>
 
       {/* Current Season Stats */}
-      <div className="space-y-3">
-        <h5 className="text-xs font-semibold text-slate-400 uppercase">{currentYear} Season</h5>
-        
-        {/* Full Season Stats */}
-        {statsRanges?.season && (
-          <div className="p-3 bg-slate-800/50 rounded-lg">
-            <h6 className="text-sm font-semibold text-slate-300 mb-2">Season Stats</h6>
-            {(() => {
-              const seasonData = statsRanges.season.season_stats || statsRanges.season.ytd_stats || {}
-              const { hittingStats, pitchingStats } = organizeStats(seasonData)
-              
-              console.log('📊 Organizing stats:', {
-                seasonData,
-                hittingStatsCount: hittingStats.length,
-                pitchingStatsCount: pitchingStats.length
-              })
-              
-              if (hittingStats.length === 0 && pitchingStats.length === 0) {
-                return (
-                  <div className="text-xs text-slate-400">
-                    No stats available. Raw data: {JSON.stringify(Object.keys(seasonData)).substring(0, 100)}
-                  </div>
-                )
-              }
-              
-              return (
-                <>
-                  {hittingStats.length > 0 && renderStatsSection('Hitting', Object.fromEntries(hittingStats.map(s => [s.key, s.value])), false)}
-                  {pitchingStats.length > 0 && (
-                    <div className="mt-3">
-                      {renderStatsSection('Pitching', Object.fromEntries(pitchingStats.map(s => [s.key, s.value])), true)}
-                    </div>
-                  )}
-                </>
-              )
-            })()}
-          </div>
-        )}
-
-        {/* This Week */}
-        {statsRanges?.season?.week_stats && Object.keys(statsRanges.season.week_stats).length > 0 && (
-          <div className="p-3 bg-slate-800/30 rounded-lg">
-            <h6 className="text-xs font-semibold text-slate-300 mb-2">This Week</h6>
-            {(() => {
-              const { hittingStats, pitchingStats } = organizeStats(statsRanges.season.week_stats)
-              return (
-                <>
-                  {hittingStats.length > 0 && renderStatsSection('Hitting', Object.fromEntries(hittingStats.map(s => [s.key, s.value])), false)}
-                  {pitchingStats.length > 0 && (
-                    <div className="mt-3">
-                      {renderStatsSection('Pitching', Object.fromEntries(pitchingStats.map(s => [s.key, s.value])), true)}
-                    </div>
-                  )}
-                </>
-              )
-            })()}
-          </div>
-        )}
-      </div>
+      {currentStats && (
+        <div className="space-y-3">
+          <h5 className="text-xs font-semibold text-slate-400 uppercase">{currentYear} Season</h5>
+          
+          {renderSection('Season Stats', currentStats.season_stats)}
+          
+          {currentStats.week_stats && Object.keys(currentStats.week_stats).length > 0 && (
+            <div className="p-3 bg-slate-800/30 rounded-lg">
+              <h6 className="text-xs font-semibold text-slate-300 mb-2">This Week</h6>
+              {renderStatsGrid(filterStatsByPosition(currentStats.week_stats))}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Historical Seasons */}
       <div className="space-y-3">
@@ -344,23 +281,13 @@ export function PlayerStats({ playerKey, leagueKey, playerName }: PlayerStatsPro
         )}
         
         {!isLoadingHistorical && historicalStats && (() => {
-          const historicalData = historicalStats.season_stats || historicalStats.ytd_stats || {}
-          const { hittingStats, pitchingStats } = organizeStats(historicalData)
+          const seasonData = historicalStats.season_stats
+          const filtered = filterStatsByPosition(seasonData)
           
-          console.log('📊 Historical stats organization:', {
-            year: selectedHistoricalYear,
-            historicalData,
-            hittingStatsCount: hittingStats.length,
-            pitchingStatsCount: pitchingStats.length
-          })
-          
-          if (hittingStats.length === 0 && pitchingStats.length === 0) {
+          if (filtered.length === 0) {
             return (
               <div className="p-3 bg-slate-800/30 rounded-lg">
-                <div className="text-xs text-slate-400">
-                  No stats available for {selectedHistoricalYear}. 
-                  Raw keys: {JSON.stringify(Object.keys(historicalData)).substring(0, 100)}
-                </div>
+                <div className="text-xs text-slate-400">No stats available for {selectedHistoricalYear}</div>
               </div>
             )
           }
@@ -368,12 +295,7 @@ export function PlayerStats({ playerKey, leagueKey, playerName }: PlayerStatsPro
           return (
             <div className="p-3 bg-slate-800/30 rounded-lg">
               <h6 className="text-sm font-semibold text-slate-300 mb-2">{selectedHistoricalYear} Season</h6>
-              {hittingStats.length > 0 && renderStatsSection('Hitting', Object.fromEntries(hittingStats.map(s => [s.key, s.value])), false)}
-              {pitchingStats.length > 0 && (
-                <div className="mt-3">
-                  {renderStatsSection('Pitching', Object.fromEntries(pitchingStats.map(s => [s.key, s.value])), true)}
-                </div>
-              )}
+              {renderStatsGrid(filtered)}
             </div>
           )
         })()}
@@ -386,7 +308,7 @@ export function PlayerStats({ playerKey, leagueKey, playerName }: PlayerStatsPro
       </div>
 
       {/* No stats message */}
-      {!isLoadingRanges && !statsRanges && (
+      {!isLoadingCurrent && !currentStats && (
         <div className="p-3 bg-slate-800/50 rounded-lg">
           <div className="text-sm text-slate-400">
             No statistics available. The player may not have played this season or stats may not be available yet.

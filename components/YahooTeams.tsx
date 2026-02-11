@@ -111,6 +111,7 @@ export default function YahooTeams({ leagueKey }: YahooTeamsProps) {
                         playerKey={player.player_key} 
                         leagueKey={leagueKey}
                         playerName={player.name.full}
+                        positions={player.eligible_positions || (player.display_position ? player.display_position.split(',') : [])}
                       />
                     </div>
                   )}

@@ -258,6 +258,64 @@ export class YahooFantasyAPI {
   }
 
   /**
+   * Get stat categories for a game (maps stat IDs to display names)
+   * @param gameKey - Yahoo game key (e.g., '469' for MLB 2026)
+   */
+  async getStatCategories(gameKey: string): Promise<{ categories: Record<string, { name: string; displayName: string; positionType: string }>; raw?: string }> {
+    if (!this.accessToken) {
+      throw new Error('Access token not set. Please authenticate first.')
+    }
+
+    const endpoint = `/game/${gameKey}/stat_categories`
+    
+    const response = await this.oauth2.makeRequest(
+      'GET',
+      endpoint,
+      this.accessToken
+    )
+
+    // Parse stat categories from XML
+    const categories: Record<string, { name: string; displayName: string; positionType: string }> = {}
+    
+    if (response.raw) {
+      // Extract the stat_categories section first to avoid matching stat_modifiers
+      const catSection = response.raw.match(/<stat_categories>([\s\S]*?)<\/stat_categories>/)
+      const xmlToParse = catSection ? catSection[1] : response.raw
+      
+      const statRegex = /<stat>([\s\S]*?)<\/stat>/g
+      let statMatch
+      
+      while ((statMatch = statRegex.exec(xmlToParse)) !== null) {
+        const statBlock = statMatch[1]
+        
+        const extractVal = (tag: string): string | undefined => {
+          const regex = new RegExp(`<${tag}>([\\s\\S]*?)<\\/${tag}>`)
+          const match = statBlock.match(regex)
+          return match ? match[1].trim() : undefined
+        }
+        
+        const statId = extractVal('stat_id')
+        const name = extractVal('name')
+        const displayName = extractVal('display_name') || extractVal('abbr') || name
+        // position_type can be directly on stat or nested inside position_types
+        const positionType = extractVal('position_type') || 'unknown'
+        
+        if (statId && name) {
+          categories[statId] = {
+            name,
+            displayName: displayName || name,
+            positionType // 'B' for batter, 'P' for pitcher
+          }
+        }
+      }
+      
+      console.log(`Parsed ${Object.keys(categories).length} stat categories from game XML`)
+    }
+
+    return { categories, raw: response.raw }
+  }
+
+  /**
    * Get available players (free agents)
    */
   async getPlayers(leagueKey: string, start: number = 0, count: number = 25): Promise<any> {
