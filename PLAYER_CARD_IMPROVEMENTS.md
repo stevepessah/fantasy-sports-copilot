@@ -16,18 +16,17 @@ The player card now displays:
    - **Unknown** - Status couldn't be determined
 
 ### Player Statistics Section
-The player card now shows comprehensive statistics broken down by time periods:
+The player card now shows comprehensive statistics:
 
-#### Current Season Stats - Multiple Time Periods
-1. **Season Total** - All stats for the entire current season
-2. **Last 30 Days** - Stats from the last month
-3. **Last 14 Days** - Stats from the last two weeks
-4. **Last 7 Days** - Stats from the last week
-5. **Today** - Stats from the current day
+#### Current Season Stats
+1. **Season Stats** - All stats for the entire current season
+2. **This Week** - Current week performance (when available)
 
 #### Historical Seasons
 - **Last 3 Seasons** - Full season stats from the previous 3 years
 - Displays stats for each season simultaneously for easy comparison
+
+> **Note**: Yahoo Fantasy API provides season-total and current-week stats. More granular date ranges (last 7/14/30 days) are not consistently available from Yahoo's API, so we focus on the data that's reliably provided.
 
 ### Stats Display
 For each time period, the component intelligently displays:

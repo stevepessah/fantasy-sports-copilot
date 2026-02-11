@@ -219,14 +219,14 @@ export function PlayerStats({ playerKey, leagueKey, playerName }: PlayerStatsPro
     <div className="mt-4 space-y-4">
       <h4 className="text-sm font-semibold text-slate-300">Player Statistics</h4>
 
-      {/* Current Season Stats - Multiple Time Periods */}
+      {/* Current Season Stats */}
       <div className="space-y-3">
         <h5 className="text-xs font-semibold text-slate-400 uppercase">{currentYear} Season</h5>
         
         {/* Full Season Stats */}
         {statsRanges?.season && (
           <div className="p-3 bg-slate-800/50 rounded-lg">
-            <h6 className="text-sm font-semibold text-slate-300 mb-2">Season Total</h6>
+            <h6 className="text-sm font-semibold text-slate-300 mb-2">Season Stats</h6>
             {(() => {
               const { hittingStats, pitchingStats } = organizeStats(statsRanges.season.season_stats || statsRanges.season.ytd_stats)
               return (
@@ -243,72 +243,12 @@ export function PlayerStats({ playerKey, leagueKey, playerName }: PlayerStatsPro
           </div>
         )}
 
-        {/* Last Month */}
-        {statsRanges?.lastMonth && (
+        {/* This Week */}
+        {statsRanges?.season?.week_stats && Object.keys(statsRanges.season.week_stats).length > 0 && (
           <div className="p-3 bg-slate-800/30 rounded-lg">
-            <h6 className="text-xs font-semibold text-slate-300 mb-2">Last 30 Days</h6>
+            <h6 className="text-xs font-semibold text-slate-300 mb-2">This Week</h6>
             {(() => {
-              const { hittingStats, pitchingStats } = organizeStats(statsRanges.lastMonth.season_stats || statsRanges.lastMonth.ytd_stats)
-              return (
-                <>
-                  {hittingStats.length > 0 && renderStatsSection('Hitting', Object.fromEntries(hittingStats.map(s => [s.key, s.value])), false)}
-                  {pitchingStats.length > 0 && (
-                    <div className="mt-3">
-                      {renderStatsSection('Pitching', Object.fromEntries(pitchingStats.map(s => [s.key, s.value])), true)}
-                    </div>
-                  )}
-                </>
-              )
-            })()}
-          </div>
-        )}
-
-        {/* Last Two Weeks */}
-        {statsRanges?.lastTwoWeeks && (
-          <div className="p-3 bg-slate-800/30 rounded-lg">
-            <h6 className="text-xs font-semibold text-slate-300 mb-2">Last 14 Days</h6>
-            {(() => {
-              const { hittingStats, pitchingStats } = organizeStats(statsRanges.lastTwoWeeks.season_stats || statsRanges.lastTwoWeeks.ytd_stats)
-              return (
-                <>
-                  {hittingStats.length > 0 && renderStatsSection('Hitting', Object.fromEntries(hittingStats.map(s => [s.key, s.value])), false)}
-                  {pitchingStats.length > 0 && (
-                    <div className="mt-3">
-                      {renderStatsSection('Pitching', Object.fromEntries(pitchingStats.map(s => [s.key, s.value])), true)}
-                    </div>
-                  )}
-                </>
-              )
-            })()}
-          </div>
-        )}
-
-        {/* Last Week */}
-        {statsRanges?.lastWeek && (
-          <div className="p-3 bg-slate-800/30 rounded-lg">
-            <h6 className="text-xs font-semibold text-slate-300 mb-2">Last 7 Days</h6>
-            {(() => {
-              const { hittingStats, pitchingStats } = organizeStats(statsRanges.lastWeek.season_stats || statsRanges.lastWeek.ytd_stats)
-              return (
-                <>
-                  {hittingStats.length > 0 && renderStatsSection('Hitting', Object.fromEntries(hittingStats.map(s => [s.key, s.value])), false)}
-                  {pitchingStats.length > 0 && (
-                    <div className="mt-3">
-                      {renderStatsSection('Pitching', Object.fromEntries(pitchingStats.map(s => [s.key, s.value])), true)}
-                    </div>
-                  )}
-                </>
-              )
-            })()}
-          </div>
-        )}
-
-        {/* Today */}
-        {statsRanges?.today && (
-          <div className="p-3 bg-slate-800/30 rounded-lg">
-            <h6 className="text-xs font-semibold text-slate-300 mb-2">Today</h6>
-            {(() => {
-              const { hittingStats, pitchingStats } = organizeStats(statsRanges.today.season_stats || statsRanges.today.ytd_stats)
+              const { hittingStats, pitchingStats } = organizeStats(statsRanges.season.week_stats)
               return (
                 <>
                   {hittingStats.length > 0 && renderStatsSection('Hitting', Object.fromEntries(hittingStats.map(s => [s.key, s.value])), false)}

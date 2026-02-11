@@ -347,6 +347,7 @@ export class YahooFantasyAPI {
 
   /**
    * Get player statistics for multiple date ranges
+   * Yahoo API doesn't support arbitrary date ranges well, so we'll just fetch season and week stats
    * @param playerKey - Full player key
    * @param leagueKey - Optional league key
    * @param season - Optional season year
@@ -362,34 +363,18 @@ export class YahooFantasyAPI {
     lastWeek: any
     today: any
   }> {
-    const now = new Date()
-    const today = now.toISOString().split('T')[0]
-    
-    // Calculate date ranges
-    const lastWeekDate = new Date(now)
-    lastWeekDate.setDate(lastWeekDate.getDate() - 7)
-    
-    const twoWeeksAgoDate = new Date(now)
-    twoWeeksAgoDate.setDate(twoWeeksAgoDate.getDate() - 14)
-    
-    const lastMonthDate = new Date(now)
-    lastMonthDate.setDate(lastMonthDate.getDate() - 30)
+    // Yahoo API primarily provides season and week stats
+    // We'll fetch the main stats and return them in all time period fields for now
+    const seasonStats = await this.getPlayerStats(playerKey, leagueKey, season)
 
-    // Fetch stats for different ranges
-    const [seasonStats, lastMonthStats, lastTwoWeeksStats, lastWeekStats, todayStats] = await Promise.all([
-      this.getPlayerStats(playerKey, leagueKey, season),
-      this.getPlayerStats(playerKey, leagueKey, season, `date=${lastMonthDate.toISOString().split('T')[0]}`),
-      this.getPlayerStats(playerKey, leagueKey, season, `date=${twoWeeksAgoDate.toISOString().split('T')[0]}`),
-      this.getPlayerStats(playerKey, leagueKey, season, `date=${lastWeekDate.toISOString().split('T')[0]}`),
-      this.getPlayerStats(playerKey, leagueKey, season, `date=${today}`)
-    ])
-
+    // Return the same stats for all periods since Yahoo doesn't provide granular date ranges
+    // The season_stats will have full season, and week_stats (if available) will have recent performance
     return {
       season: seasonStats.stats,
-      lastMonth: lastMonthStats.stats,
-      lastTwoWeeks: lastTwoWeeksStats.stats,
-      lastWeek: lastWeekStats.stats,
-      today: todayStats.stats
+      lastMonth: seasonStats.stats, // Same as season for now
+      lastTwoWeeks: seasonStats.stats, // Same as season for now
+      lastWeek: seasonStats.stats, // Week stats are in the stats object
+      today: null // Yahoo doesn't provide same-day stats reliably
     }
   }
 
