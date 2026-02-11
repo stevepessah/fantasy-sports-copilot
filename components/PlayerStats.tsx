@@ -46,8 +46,9 @@ const getContextualStatLabel = (key: string, isPitching: boolean): string => {
 
 export function PlayerStats({ playerKey, leagueKey, playerName }: PlayerStatsProps) {
   const currentYear = new Date().getFullYear()
+  const [selectedHistoricalYear, setSelectedHistoricalYear] = useState<number>(currentYear - 1)
   const [statsRanges, setStatsRanges] = useState<any>(null)
-  const [historicalStats, setHistoricalStats] = useState<any[]>([])
+  const [historicalStats, setHistoricalStats] = useState<any>(null)
   const [isLoadingRanges, setIsLoadingRanges] = useState(false)
   const [isLoadingHistorical, setIsLoadingHistorical] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -94,10 +95,10 @@ export function PlayerStats({ playerKey, leagueKey, playerName }: PlayerStatsPro
     fetchRangeStats()
   }, [playerKey, leagueKey, currentYear])
 
-  // Fetch historical stats (last 3 seasons)
+  // Fetch historical stats for selected year
   useEffect(() => {
-    if (!playerKey) {
-      setHistoricalStats([])
+    if (!playerKey || !selectedHistoricalYear) {
+      setHistoricalStats(null)
       return
     }
 
@@ -105,16 +106,15 @@ export function PlayerStats({ playerKey, leagueKey, playerName }: PlayerStatsPro
       try {
         setIsLoadingHistorical(true)
         
-        const seasons = [currentYear - 1, currentYear - 2, currentYear - 3]
         const params = new URLSearchParams({ 
           playerKey,
-          seasons: seasons.join(',')
+          season: selectedHistoricalYear.toString()
         })
         if (leagueKey) {
           params.append('leagueKey', leagueKey)
         }
         
-        const response = await fetch(`/api/yahoo/player-stats-seasons?${params.toString()}`)
+        const response = await fetch(`/api/yahoo/player-stats?${params.toString()}`)
         
         if (!response.ok) {
           throw new Error(`Failed to fetch historical stats: ${response.statusText}`)
@@ -122,17 +122,17 @@ export function PlayerStats({ playerKey, leagueKey, playerName }: PlayerStatsPro
         
         const data = await response.json()
         console.log('PlayerStats - Historical stats received:', data)
-        setHistoricalStats(data.seasonStats || [])
+        setHistoricalStats(data.stats || null)
       } catch (err) {
         console.error('Error fetching historical stats:', err)
-        // Don't show error for historical stats, just log it
+        setHistoricalStats(null)
       } finally {
         setIsLoadingHistorical(false)
       }
     }
 
     fetchHistoricalStats()
-  }, [playerKey, leagueKey, currentYear])
+  }, [playerKey, leagueKey, selectedHistoricalYear])
 
   // Show message if no player key
   if (!playerKey) {
@@ -265,35 +265,60 @@ export function PlayerStats({ playerKey, leagueKey, playerName }: PlayerStatsPro
       </div>
 
       {/* Historical Seasons */}
-      {historicalStats.length > 0 && (
-        <div className="space-y-3">
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
           <h5 className="text-xs font-semibold text-slate-400 uppercase">Historical Seasons</h5>
-          {isLoadingHistorical && (
-            <div className="text-xs text-slate-400">Loading historical stats...</div>
-          )}
-          {historicalStats.map((seasonData) => {
-            if (!seasonData.stats) return null
-            
-            const { hittingStats, pitchingStats } = organizeStats(
-              seasonData.stats.season_stats || seasonData.stats.ytd_stats
-            )
-            
-            if (hittingStats.length === 0 && pitchingStats.length === 0) return null
-            
+          <select
+            value={selectedHistoricalYear}
+            onChange={(e) => setSelectedHistoricalYear(parseInt(e.target.value, 10))}
+            className="px-2 py-1 text-xs bg-slate-800 border border-slate-700 rounded text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+          >
+            {[currentYear - 1, currentYear - 2, currentYear - 3].map((year) => (
+              <option key={year} value={year}>
+                {year}
+              </option>
+            ))}
+          </select>
+        </div>
+        
+        {isLoadingHistorical && (
+          <div className="p-3 bg-slate-800/30 rounded-lg">
+            <div className="text-xs text-slate-400">Loading {selectedHistoricalYear} stats...</div>
+          </div>
+        )}
+        
+        {!isLoadingHistorical && historicalStats && (() => {
+          const { hittingStats, pitchingStats } = organizeStats(
+            historicalStats.season_stats || historicalStats.ytd_stats
+          )
+          
+          if (hittingStats.length === 0 && pitchingStats.length === 0) {
             return (
-              <div key={seasonData.season} className="p-3 bg-slate-800/30 rounded-lg">
-                <h6 className="text-sm font-semibold text-slate-300 mb-2">{seasonData.season} Season</h6>
-                {hittingStats.length > 0 && renderStatsSection('Hitting', Object.fromEntries(hittingStats.map(s => [s.key, s.value])), false)}
-                {pitchingStats.length > 0 && (
-                  <div className="mt-3">
-                    {renderStatsSection('Pitching', Object.fromEntries(pitchingStats.map(s => [s.key, s.value])), true)}
-                  </div>
-                )}
+              <div className="p-3 bg-slate-800/30 rounded-lg">
+                <div className="text-xs text-slate-400">No stats available for {selectedHistoricalYear}</div>
               </div>
             )
-          })}
-        </div>
-      )}
+          }
+          
+          return (
+            <div className="p-3 bg-slate-800/30 rounded-lg">
+              <h6 className="text-sm font-semibold text-slate-300 mb-2">{selectedHistoricalYear} Season</h6>
+              {hittingStats.length > 0 && renderStatsSection('Hitting', Object.fromEntries(hittingStats.map(s => [s.key, s.value])), false)}
+              {pitchingStats.length > 0 && (
+                <div className="mt-3">
+                  {renderStatsSection('Pitching', Object.fromEntries(pitchingStats.map(s => [s.key, s.value])), true)}
+                </div>
+              )}
+            </div>
+          )
+        })()}
+        
+        {!isLoadingHistorical && !historicalStats && (
+          <div className="p-3 bg-slate-800/30 rounded-lg">
+            <div className="text-xs text-slate-400">No stats available for {selectedHistoricalYear}</div>
+          </div>
+        )}
+      </div>
 
       {/* No stats message */}
       {!isLoadingRanges && !statsRanges && (
