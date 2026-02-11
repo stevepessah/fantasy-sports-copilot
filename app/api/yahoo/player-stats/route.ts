@@ -40,7 +40,12 @@ export async function GET(request: NextRequest) {
       statsKeys: response.stats ? Object.keys(response.stats) : [],
       hasSeasonStats: !!(response.stats?.season_stats),
       seasonStatsKeys: response.stats?.season_stats ? Object.keys(response.stats.season_stats) : [],
-      rawLength: response.raw?.length || 0
+      hasYtdStats: !!(response.stats?.ytd_stats),
+      ytdStatsKeys: response.stats?.ytd_stats ? Object.keys(response.stats.ytd_stats) : [],
+      hasWeekStats: !!(response.stats?.week_stats),
+      weekStatsKeys: response.stats?.week_stats ? Object.keys(response.stats.week_stats) : [],
+      rawLength: response.raw?.length || 0,
+      fullStats: response.stats
     })
     
     // Return parsed stats as JSON
@@ -48,7 +53,11 @@ export async function GET(request: NextRequest) {
       stats: response.stats,
       playerKey,
       leagueKey: leagueKey || null,
-      season: season || null
+      season: season || null,
+      debug: {
+        hasStats: !!response.stats,
+        statKeys: response.stats ? Object.keys(response.stats) : []
+      }
     })
   } catch (error) {
     console.error('Error fetching Yahoo player stats:', error)

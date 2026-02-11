@@ -82,7 +82,12 @@ export function PlayerStats({ playerKey, leagueKey, playerName }: PlayerStatsPro
         }
         
         const data = await response.json()
-        console.log('PlayerStats - Range stats received:', data)
+        console.log('PlayerStats - Range stats API response:', {
+          fullData: data,
+          hasStats: !!data.stats,
+          statsKeys: data.stats ? Object.keys(data.stats) : [],
+          seasonStats: data.stats?.season
+        })
         setStatsRanges(data.stats || null)
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to fetch player stats')
@@ -121,7 +126,13 @@ export function PlayerStats({ playerKey, leagueKey, playerName }: PlayerStatsPro
         }
         
         const data = await response.json()
-        console.log('PlayerStats - Historical stats received:', data)
+        console.log('PlayerStats - Historical stats API response:', {
+          fullData: data,
+          hasStats: !!data.stats,
+          statsKeys: data.stats ? Object.keys(data.stats) : [],
+          seasonStats: data.stats?.season_stats,
+          ytdStats: data.stats?.ytd_stats
+        })
         setHistoricalStats(data.stats || null)
       } catch (err) {
         console.error('Error fetching historical stats:', err)
