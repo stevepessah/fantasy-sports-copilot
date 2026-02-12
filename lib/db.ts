@@ -255,7 +255,6 @@ function initializeBaseballPlayers() {
     const csvPlayers = loadMLBPlayersFromCSV()
     
     if (csvPlayers.length > 0) {
-      console.log(`Loading ${csvPlayers.length} MLB players from CSV...`)
       csvPlayers.forEach((player) => {
         playerDB.create(player)
       })

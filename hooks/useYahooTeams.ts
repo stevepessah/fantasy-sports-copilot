@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import useSWR from 'swr'
+import { fetcher } from '@/lib/yahoo/fetcher'
 
 export interface YahooTeam {
   team_key: string
@@ -16,44 +17,25 @@ export interface YahooTeam {
   }>
 }
 
+interface TeamsResponse {
+  teams: YahooTeam[]
+}
+
 export function useYahooTeams(leagueKey: string | null) {
-  const [teams, setTeams] = useState<YahooTeam[]>([])
-  const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const { data, error, isLoading } = useSWR<TeamsResponse>(
+    leagueKey
+      ? `/api/yahoo/teams?leagueKey=${encodeURIComponent(leagueKey)}`
+      : null,
+    fetcher,
+    {
+      revalidateOnFocus: false,
+      dedupingInterval: 60_000,
+    },
+  )
 
-  useEffect(() => {
-    if (!leagueKey) {
-      setTeams([])
-      return
-    }
-
-    const fetchTeams = async () => {
-      try {
-        setIsLoading(true)
-        setError(null)
-        
-        const response = await fetch(`/api/yahoo/teams?leagueKey=${encodeURIComponent(leagueKey)}`)
-        
-        if (!response.ok) {
-          if (response.status === 401) {
-            setError('Not authenticated. Please connect your Yahoo account.')
-            return
-          }
-          throw new Error(`Failed to fetch teams: ${response.statusText}`)
-        }
-        
-        const data = await response.json()
-        setTeams(data.teams || [])
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to fetch teams')
-        console.error('Error fetching Yahoo teams:', err)
-      } finally {
-        setIsLoading(false)
-      }
-    }
-
-    fetchTeams()
-  }, [leagueKey])
-
-  return { teams, isLoading, error }
+  return {
+    teams: data?.teams ?? [],
+    isLoading,
+    error: error?.message ?? null,
+  }
 }

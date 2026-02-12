@@ -1,5 +1,17 @@
 // Yahoo Fantasy Sports API Configuration
 
+/**
+ * Maps MLB season year → Yahoo game key.
+ * Shared across API routes and lib code.
+ */
+export const MLB_SEASON_TO_GAME_KEY: Record<number, string> = {
+  2026: '469',
+  2025: '458',
+  2024: '431',
+  2023: '422',
+  2022: '414',
+}
+
 export const YAHOO_CONFIG = {
   // OAuth 1.0a endpoints (standard for Fantasy Sports API)
   requestTokenUrl: 'https://api.login.yahoo.com/oauth/v1/get_request_token',

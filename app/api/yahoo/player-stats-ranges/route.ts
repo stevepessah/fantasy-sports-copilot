@@ -35,16 +35,7 @@ export async function GET(request: NextRequest) {
     const api = new YahooFantasyAPI()
     api.setAccessToken(accessToken)
     
-    console.log('Fetching player stats for multiple ranges:', { playerKey, leagueKey, season })
     const stats = await api.getPlayerStatsMultipleRanges(playerKey, leagueKey || undefined, season)
-    
-    console.log('Player stats ranges response:', {
-      hasSeasonStats: !!stats.season,
-      hasLastMonth: !!stats.lastMonth,
-      hasLastTwoWeeks: !!stats.lastTwoWeeks,
-      hasLastWeek: !!stats.lastWeek,
-      hasToday: !!stats.today
-    })
     
     // Return parsed stats as JSON
     return NextResponse.json({ 

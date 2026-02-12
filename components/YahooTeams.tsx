@@ -2,8 +2,14 @@
 
 import { useYahooTeams, YahooTeam } from '@/hooks/useYahooTeams'
 import { useYahooRoster } from '@/hooks/useYahooRoster'
-import { PlayerStats } from './PlayerStats'
 import { useState } from 'react'
+import dynamic from 'next/dynamic'
+
+// Lazy-load PlayerStats — only rendered when a specific player is expanded
+const PlayerStats = dynamic(
+  () => import('./PlayerStats').then((mod) => mod.PlayerStats),
+  { ssr: false, loading: () => <div className="text-xs text-slate-400 py-2">Loading stats…</div> },
+)
 
 interface YahooTeamsProps {
   leagueKey: string | null

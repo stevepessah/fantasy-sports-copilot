@@ -1,9 +1,39 @@
 'use client'
 
-import { useState, useRef, useEffect, useMemo } from 'react'
-import { ChatMessage, Sport, Player, Roster } from '@/types'
-import { EnhancedCards } from './EnhancedCards'
+import { useState, useRef, useEffect, useCallback } from 'react'
+import dynamic from 'next/dynamic'
+import { ChatMessage, Sport } from '@/types'
 import YahooAuth from './YahooAuth'
+import { useYahooAuth } from '@/contexts/YahooAuthContext'
+
+// Lazy-load the heavy cards component — only needed after first message
+const EnhancedCards = dynamic(
+  () => import('./EnhancedCards').then((mod) => mod.EnhancedCards),
+  { ssr: false },
+)
+
+// ── Static constants (no re-creation on render) ──
+
+const QUICK_ACTIONS = [
+  { label: '📋 Set optimal lineup', command: 'set my optimal lineup' },
+  { label: '⚔️ Show matchup', command: 'show matchup' },
+  { label: '🏆 View all teams', command: 'show all teams' },
+  { label: '🏏 Show all batters', command: 'show all batters' },
+  { label: '⚾ Show all pitchers', command: 'show all pitchers' },
+  { label: '🔍 Waiver targets', command: 'who should I pick up on waivers?' },
+  { label: '🔄 Trade idea', command: 'suggest a trade' },
+  { label: '📝 Draft advice', command: 'draft advice' },
+] as const
+
+const SUGGESTION_PILLS = [
+  { label: 'Set my best lineup', cmd: 'set my best lineup' },
+  { label: 'Who should I draft?', cmd: 'Who should I draft?' },
+  { label: 'Waiver targets', cmd: 'who should I pick up on waivers?' },
+  { label: 'Suggest a trade', cmd: 'suggest a trade' },
+] as const
+
+const BOUNCE_DELAY_200 = { animationDelay: '0.2s' } as const
+const BOUNCE_DELAY_400 = { animationDelay: '0.4s' } as const
 
 interface ChatInterfaceProps {
   leagueId?: string
@@ -21,36 +51,38 @@ export default function EnhancedChatInterface({ leagueId, userId, initialMessage
   const [isTiny, setIsTiny] = useState(false)
   const [showQuickActions, setShowQuickActions] = useState(false)
   const [drawerOpen, setDrawerOpen] = useState(false)
-  const [isYahooConnected, setIsYahooConnected] = useState(false)
+  const { isAuthenticated: isYahooConnected } = useYahooAuth()
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
+  // Debounced resize handler — only fires after 150ms of no resize events
   useEffect(() => {
+    let timeoutId: ReturnType<typeof setTimeout>
     const checkSize = () => {
-      setIsNarrow(window.innerWidth <= 900)
-      setIsTiny(window.innerWidth <= 520)
+      clearTimeout(timeoutId)
+      timeoutId = setTimeout(() => {
+        setIsNarrow(window.innerWidth <= 900)
+        setIsTiny(window.innerWidth <= 520)
+      }, 150)
     }
-    checkSize()
+    // Set initial values synchronously (no debounce on mount)
+    setIsNarrow(window.innerWidth <= 900)
+    setIsTiny(window.innerWidth <= 520)
     setMounted(true)
     window.addEventListener('resize', checkSize)
-    return () => window.removeEventListener('resize', checkSize)
+    return () => {
+      clearTimeout(timeoutId)
+      window.removeEventListener('resize', checkSize)
+    }
   }, [])
 
-  // Check Yahoo auth status for conditional UI
-  useEffect(() => {
-    fetch('/api/yahoo/status')
-      .then(r => r.json())
-      .then(d => setIsYahooConnected(d.authenticated === true))
-      .catch(() => setIsYahooConnected(false))
-  }, [])
-
-  const scrollToBottom = () => {
+  const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }
+  }, [])
 
   useEffect(() => {
     scrollToBottom()
-  }, [messages])
+  }, [messages, scrollToBottom])
 
   useEffect(() => {
     inputRef.current?.focus()
@@ -63,7 +95,7 @@ export default function EnhancedChatInterface({ leagueId, userId, initialMessage
     }
   }, [isNarrow])
 
-  // Close drawer when tapping outside (via overlay)
+  // Lock body scroll when drawer is open
   useEffect(() => {
     if (drawerOpen) {
       document.body.style.overflow = 'hidden'
@@ -124,8 +156,7 @@ export default function EnhancedChatInterface({ leagueId, userId, initialMessage
       if (data.action) {
         handleAction(data.action)
       }
-    } catch (error) {
-      console.error('Chat error:', error)
+    } catch {
       const errorMessage: ChatMessage = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
@@ -141,41 +172,24 @@ export default function EnhancedChatInterface({ leagueId, userId, initialMessage
     }
   }
 
-  const handleAction = async (action: any) => {
-    switch (action.type) {
-      case 'create_league':
-        console.log('Creating league:', action.data)
-        break
-      case 'set_lineup':
-        console.log('Setting lineup:', action.data)
-        break
-      default:
-        console.log('Action:', action)
+  const handleAction = async (action: { type: string; data?: unknown }) => {
+    if (process.env.NODE_ENV === 'development') {
+      // eslint-disable-next-line no-console
+      console.log('Action:', action.type, action.data)
     }
   }
 
-  const runCommand = (command: string) => {
+  const runCommand = useCallback((command: string) => {
     setInput(command)
     setTimeout(() => handleSubmit(), 0)
-  }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
-
-  const handleQuickAction = (command: string) => {
+  const handleQuickAction = useCallback((command: string) => {
     runCommand(command)
     setShowQuickActions(false)
     setDrawerOpen(false)
-  }
-
-  const quickActions = [
-    { label: '📋 Set optimal lineup', command: 'set my optimal lineup' },
-    { label: '⚔️ Show matchup', command: 'show matchup' },
-    { label: '🏆 View all teams', command: 'show all teams' },
-    { label: '🏏 Show all batters', command: 'show all batters' },
-    { label: '⚾ Show all pitchers', command: 'show all pitchers' },
-    { label: '🔍 Waiver targets', command: 'who should I pick up on waivers?' },
-    { label: '🔄 Trade idea', command: 'suggest a trade' },
-    { label: '📝 Draft advice', command: 'draft advice' },
-  ]
+  }, [runCommand])
 
   return (
     <div className="h-[100dvh] bg-slate-900 text-white flex flex-col overflow-hidden">
@@ -201,7 +215,7 @@ export default function EnhancedChatInterface({ leagueId, userId, initialMessage
         </div>
         {/* Mobile: small Yahoo status indicator */}
         {mounted && isNarrow && (
-          <YahooStatusBadge />
+          <YahooStatusBadge isAuthenticated={isYahooConnected} />
         )}
       </header>
 
@@ -214,7 +228,7 @@ export default function EnhancedChatInterface({ leagueId, userId, initialMessage
             onClick={() => setDrawerOpen(false)}
           />
           {/* Drawer panel */}
-          <div className="relative w-[85vw] max-w-[340px] h-full bg-slate-800 border-r border-slate-700 overflow-auto animate-slide-in flex flex-col">
+          <nav className="relative w-[85vw] max-w-[340px] h-full bg-slate-800 border-r border-slate-700 overflow-auto animate-slide-in flex flex-col" aria-label="Main menu">
             <div className="flex items-center justify-between px-4 py-3 border-b border-slate-700">
               <h2 className="text-sm font-bold text-white">Menu</h2>
               <button
@@ -230,16 +244,16 @@ export default function EnhancedChatInterface({ leagueId, userId, initialMessage
 
             <div className="flex-1 overflow-auto p-4 space-y-6">
               {/* Yahoo Auth */}
-              <div>
-                <h2 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">Yahoo Fantasy</h2>
+              <section>
+                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">Yahoo Fantasy</h3>
                 <YahooAuth />
-              </div>
+              </section>
 
               {/* Quick Actions */}
-              <div>
-                <h2 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">Quick Actions</h2>
+              <section>
+                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">Quick Actions</h3>
                 <div className="space-y-2">
-                  {quickActions.map((action) => (
+                  {QUICK_ACTIONS.map((action) => (
                     <button
                       key={action.label}
                       onClick={() => handleQuickAction(action.command)}
@@ -249,9 +263,9 @@ export default function EnhancedChatInterface({ leagueId, userId, initialMessage
                     </button>
                   ))}
                 </div>
-              </div>
+              </section>
             </div>
-          </div>
+          </nav>
         </div>
       )}
 
@@ -261,15 +275,15 @@ export default function EnhancedChatInterface({ leagueId, userId, initialMessage
         {!isNarrow && mounted && (
           <aside className="w-72 lg:w-80 border-r border-slate-700 bg-slate-800/30 overflow-auto flex flex-col">
             <div className="p-4">
-              <div className="mb-6">
+              <section className="mb-6">
                 <h2 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">Yahoo Fantasy</h2>
                 <YahooAuth />
-              </div>
+              </section>
 
-              <div className="mt-6">
+              <section className="mt-6">
                 <h2 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">Quick Actions</h2>
                 <div className="space-y-2">
-                  {quickActions.map((action) => (
+                  {QUICK_ACTIONS.map((action) => (
                     <button
                       key={action.label}
                       onClick={() => handleQuickAction(action.command)}
@@ -279,7 +293,7 @@ export default function EnhancedChatInterface({ leagueId, userId, initialMessage
                     </button>
                   ))}
                 </div>
-              </div>
+              </section>
             </div>
           </aside>
         )}
@@ -311,12 +325,7 @@ export default function EnhancedChatInterface({ leagueId, userId, initialMessage
                 {/* Mobile: tappable suggestion pills */}
                 {mounted && isNarrow ? (
                   <div className="mt-4 flex flex-wrap gap-2 justify-center">
-                    {[
-                      { label: 'Set my best lineup', cmd: 'set my best lineup' },
-                      { label: 'Who should I draft?', cmd: 'Who should I draft?' },
-                      { label: 'Waiver targets', cmd: 'who should I pick up on waivers?' },
-                      { label: 'Suggest a trade', cmd: 'suggest a trade' },
-                    ].map(s => (
+                    {SUGGESTION_PILLS.map(s => (
                       <button
                         key={s.cmd}
                         onClick={() => runCommand(s.cmd)}
@@ -379,8 +388,8 @@ export default function EnhancedChatInterface({ leagueId, userId, initialMessage
                 <div className="bg-slate-800 border border-slate-700 rounded-xl px-4 py-3">
                   <div className="flex space-x-2">
                     <div className="w-2 h-2 bg-slate-400 rounded-full animate-bounce" />
-                    <div className="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }} />
-                    <div className="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '0.4s' }} />
+                    <div className="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style={BOUNCE_DELAY_200} />
+                    <div className="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style={BOUNCE_DELAY_400} />
                   </div>
                 </div>
               </div>
@@ -408,7 +417,7 @@ export default function EnhancedChatInterface({ leagueId, userId, initialMessage
                 </button>
                 {showQuickActions && (
                   <div id="quick-actions-panel" className="mt-2 flex flex-wrap gap-2">
-                    {quickActions.map((action) => (
+                    {QUICK_ACTIONS.map((action) => (
                       <button
                         key={action.label}
                         type="button"
@@ -460,19 +469,9 @@ export default function EnhancedChatInterface({ leagueId, userId, initialMessage
   )
 }
 
-/** Small status badge for the header on mobile — shows green/gray dot */
-function YahooStatusBadge() {
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null)
-
-  useEffect(() => {
-    fetch('/api/yahoo/status')
-      .then(r => r.json())
-      .then(d => setIsAuthenticated(d.authenticated))
-      .catch(() => setIsAuthenticated(false))
-  }, [])
-
-  if (isAuthenticated === null) return null
-
+/** Small status badge for the header on mobile — shows green/gray dot.
+ *  Receives auth state from parent (no independent fetch). */
+function YahooStatusBadge({ isAuthenticated }: { isAuthenticated: boolean }) {
   return (
     <div className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-slate-800 border border-slate-700 text-[10px] shrink-0">
       <div className={`w-1.5 h-1.5 rounded-full ${isAuthenticated ? 'bg-green-500' : 'bg-slate-500'}`} />

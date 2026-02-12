@@ -33,13 +33,11 @@ export async function GET(request: NextRequest) {
     const response = await api.getTeamRoster(teamKey)
     
     // Return parsed roster as JSON
-    return NextResponse.json({ 
-      players: response.players,
-      teamKey,
-      count: response.players.length
-    })
+    return NextResponse.json(
+      { players: response.players, teamKey, count: response.players.length },
+      { headers: { 'Cache-Control': 'private, s-maxage=30, stale-while-revalidate=120' } },
+    )
   } catch (error) {
-    console.error('Error fetching Yahoo roster:', error)
     return NextResponse.json(
       { error: 'Failed to fetch roster', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }

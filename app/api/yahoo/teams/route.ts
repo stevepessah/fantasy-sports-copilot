@@ -43,13 +43,11 @@ export async function GET(request: NextRequest) {
     const response = await api.getLeagueTeams(leagueKey)
     
     // Return parsed teams as JSON
-    return NextResponse.json({ 
-      teams: response.teams,
-      leagueKey,
-      count: response.teams.length
-    })
+    return NextResponse.json(
+      { teams: response.teams, leagueKey, count: response.teams.length },
+      { headers: { 'Cache-Control': 'private, s-maxage=60, stale-while-revalidate=300' } },
+    )
   } catch (error) {
-    console.error('Error fetching Yahoo teams:', error)
     return NextResponse.json(
       { error: 'Failed to fetch teams', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }

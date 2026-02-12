@@ -37,13 +37,11 @@ export async function GET(request: NextRequest) {
     const response = await api.getLeagues(gameKey)
     
     // Return parsed leagues as JSON
-    return NextResponse.json({ 
-      leagues: response.leagues,
-      gameKey,
-      count: response.leagues.length
-    })
+    return NextResponse.json(
+      { leagues: response.leagues, gameKey, count: response.leagues.length },
+      { headers: { 'Cache-Control': 'private, s-maxage=60, stale-while-revalidate=300' } },
+    )
   } catch (error) {
-    console.error('Error fetching Yahoo leagues:', error)
     return NextResponse.json(
       { error: 'Failed to fetch leagues', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }

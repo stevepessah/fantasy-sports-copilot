@@ -429,7 +429,7 @@ export function parsePlayerStatsXML(xml: string): ParsedPlayerStats | null {
     }
   } else {
     // Log if no stats blocks found for debugging
-    console.log('No player_stats blocks found in XML. Sample:', xml.substring(0, 500))
+    // No player_stats blocks found — likely an empty stats response
   }
 
   return stats as ParsedPlayerStats

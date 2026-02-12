@@ -1,12 +1,45 @@
 import type { Metadata, Viewport } from 'next'
 import { Inter } from 'next/font/google'
+import { YahooAuthProvider } from '@/contexts/YahooAuthContext'
 import './globals.css'
 
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'Fantasy Sports Copilot',
-  description: 'Conversational fantasy sports management',
+  title: {
+    default: 'Fantasy Baseball Copilot — AI-Powered Fantasy Sports Assistant',
+    template: '%s | Fantasy Baseball Copilot',
+  },
+  description:
+    'Get AI-powered lineup optimization, trade analysis, waiver wire picks, and draft advice for your Yahoo Fantasy Baseball league.',
+  keywords: [
+    'fantasy baseball',
+    'lineup optimizer',
+    'fantasy sports AI',
+    'Yahoo fantasy',
+    'draft advice',
+    'waiver wire',
+    'trade analyzer',
+    'fantasy baseball assistant',
+  ],
+  openGraph: {
+    title: 'Fantasy Baseball Copilot',
+    description:
+      'AI-powered fantasy baseball assistant — lineup optimization, trade analysis, waiver picks & more.',
+    type: 'website',
+    siteName: 'Fantasy Baseball Copilot',
+    locale: 'en_US',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Fantasy Baseball Copilot',
+    description:
+      'AI-powered fantasy baseball assistant — lineup optimization, trade analysis & more.',
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',
@@ -17,8 +50,6 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
   viewportFit: 'cover',
   themeColor: '#0f172a',
 }
@@ -30,7 +61,9 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className="bg-slate-900">
-      <body className={`${inter.className} bg-slate-900`}>{children}</body>
+      <body className={`${inter.className} bg-slate-900`}>
+        <YahooAuthProvider>{children}</YahooAuthProvider>
+      </body>
     </html>
   )
 }

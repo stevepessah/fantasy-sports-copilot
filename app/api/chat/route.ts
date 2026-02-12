@@ -7,11 +7,54 @@ import { setupBaseballLeague } from '@/lib/setupBaseballLeague'
 import { YahooFantasyAPI } from '@/lib/yahoo/api'
 import { searchPlayerInLeague, searchPlayerInFreeAgents, getPlayerOwnership } from '@/lib/yahoo/playerSearch'
 import { buildRosterContext, buildRosterSummary } from '@/lib/rosterContext'
+import { fetchLeaguePlayers } from '@/lib/yahoo/leaguePlayers'
+import { getDefaultScoringType } from '@/lib/sports'
 import { cookies } from 'next/headers'
+import { League, Sport } from '@/types'
 
 // Simple in-memory cache for roster context to avoid re-fetching on every message
 const rosterContextCache: Record<string, { context: string; timestamp: number }> = {}
 const ROSTER_CACHE_TTL = 5 * 60 * 1000 // 5 minutes
+
+// ── Helpers (avoid self-fetch) ──────────────────────────────────────────────
+
+/** Optimise lineup via direct function call instead of HTTP round-trip. */
+function getOptimalLineup(teamId: string, leagueId: string) {
+  const league = leagueDB.get(leagueId)
+  if (!league) return null
+  return LeagueManager.optimizeLineup(teamId, league)
+}
+
+/** Set lineup via direct function call. */
+function setOptimalLineup(teamId: string, leagueId: string) {
+  const league = leagueDB.get(leagueId)
+  if (!league) return null
+  const optimal = LeagueManager.optimizeLineup(teamId, league)
+  LeagueManager.setLineup(teamId, league)
+  return optimal
+}
+
+/** Create a league directly instead of self-fetching /api/leagues. */
+function createLeague(data: any, currentSport: Sport, userId: string): League {
+  const league: League = {
+    id: `league_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+    name:
+      data.name ||
+      `${currentSport === 'football' ? 'Fantasy Football' : 'Fantasy Baseball'} League ${new Date().getFullYear()}`,
+    commissionerId: userId,
+    sport: currentSport,
+    type: 'redraft',
+    numTeams: data.numTeams || 12,
+    scoringType: data.scoringType || getDefaultScoringType(currentSport),
+    draftType: data.draftType || 'snake',
+    status: 'setup',
+    createdAt: new Date().toISOString(),
+    season: new Date().getFullYear(),
+  }
+  return leagueDB.create(league)
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 export async function POST(request: NextRequest) {
   try {
@@ -28,7 +71,7 @@ export async function POST(request: NextRequest) {
 
     // Build context
     const context: any = {
-      userId: userId || 'user_1', // For MVP, use default user
+      userId: userId || 'user_1',
       leagueId,
       sport: currentSport,
     }
@@ -50,15 +93,12 @@ export async function POST(request: NextRequest) {
         context.league = league
         context.leagueId = effectiveLeagueId
 
-        // Get user's team if available
         if (userId) {
           const allTeams = teamDB.getByLeague(effectiveLeagueId)
           const userTeam = allTeams.find((t) => t.ownerId === userId)
           if (userTeam) {
             context.team = userTeam
             context.teamId = userTeam.id
-
-            // Get roster if available
             const roster = rosterDB.get(userTeam.id)
             if (roster) {
               context.roster = roster
@@ -69,8 +109,6 @@ export async function POST(request: NextRequest) {
     }
 
     // ─── Inject Yahoo Roster + Stats Context ────────────────────────────────
-    // If the user is authenticated with Yahoo, fetch their actual roster and stats
-    // and inject them into the AI context so the LLM can give personalized advice.
     const cookieStore = await cookies()
     const yahooAccessToken = cookieStore.get('yahoo_access_token')?.value
 
@@ -79,14 +117,12 @@ export async function POST(request: NextRequest) {
         const api = new YahooFantasyAPI()
         api.setAccessToken(yahooAccessToken)
 
-        // Get the user's active Yahoo league
         const { leagues } = await api.getLeagues('mlb')
         const yahooLeague = leagues.find(l => l.is_finished !== '1') || leagues[0]
 
         if (yahooLeague?.league_key) {
           context.yahooLeagueKey = yahooLeague.league_key
 
-          // Find the user's team in the Yahoo league
           const { teams: yahooTeams } = await api.getLeagueTeams(yahooLeague.league_key)
           const userTeam = yahooTeams.find(t =>
             t.managers?.some(m => m.is_current_login === '1')
@@ -97,18 +133,12 @@ export async function POST(request: NextRequest) {
             const cached = rosterContextCache[cacheKey]
 
             if (cached && Date.now() - cached.timestamp < ROSTER_CACHE_TTL) {
-              // Use cached roster context
               context.yahooRosterContext = cached.context
-              console.log(`[Chat] Using cached roster context for ${userTeam.name}`)
             } else {
-              // Determine whether we need full stats or just a summary.
-              // For trade, strategy, lineup, and player-related queries → full stats
-              // For simple actions (show teams, create league) → lightweight summary
               const intent = parseIntent(message)
               const needsFullStats = !intent.isViewTeams && !intent.isHelp
 
               if (needsFullStats) {
-                console.log(`[Chat] Building full roster context for ${userTeam.name}...`)
                 const rosterResult = await buildRosterContext(
                   api,
                   userTeam.team_key,
@@ -116,23 +146,19 @@ export async function POST(request: NextRequest) {
                 )
                 context.yahooRosterContext = rosterResult.contextString
 
-                // Cache it
                 rosterContextCache[cacheKey] = {
                   context: rosterResult.contextString,
                   timestamp: Date.now(),
                 }
-                console.log(`[Chat] Roster context built: ${rosterResult.batterCount} batters, ${rosterResult.pitcherCount} pitchers`)
               } else {
-                console.log(`[Chat] Building lightweight roster summary for ${userTeam.name}...`)
                 const summary = await buildRosterSummary(api, userTeam.team_key)
                 context.yahooRosterContext = summary
               }
             }
           }
         }
-      } catch (error) {
+      } catch {
         // Don't fail the whole chat if roster context fails — just skip it
-        console.error('[Chat] Error building Yahoo roster context (non-fatal):', error)
       }
     }
 
@@ -151,47 +177,44 @@ export async function POST(request: NextRequest) {
       response.cards = []
     }
 
-    // Generate cards for specific intents
+    // ─── Generate cards for specific intents (direct calls, no self-fetch) ──
+
     if ((intent.isShowLineup || intent.isSetLineup) && context.teamId && context.league) {
-      if (context.teamId && context.league) {
-        try {
-          const lineupResponse = await fetch(`${request.nextUrl.origin}/api/lineup?teamId=${context.teamId}&leagueId=${context.league.id}`)
-          if (lineupResponse.ok) {
-            const lineupData = await lineupResponse.json()
-            const slots = lineupData.optimal.starters.map((s: any) => ({
-              slot: s.position,
-              player: {
-                name: playerDB.get(s.playerId)?.name || 'Unknown',
-                position: playerDB.get(s.playerId)?.position || '',
-                team: playerDB.get(s.playerId)?.team || '',
-                projectedPoints: s.projectedPoints,
-              },
-            }))
-            
-            response.cards.push({
-              type: 'lineup',
-              title: intent.isSetLineup ? 'Your Lineup (Optimized)' : 'Your Lineup',
-              payload: {
-                teamName: context.team?.name || 'Your Team',
-                week: context.league.week || 1,
-                slots,
-                projectedTotal: lineupData.optimal.totalProjected,
-              },
-            })
-          }
-        } catch (error) {
-          console.error('Error generating lineup card:', error)
+      try {
+        const optimal = getOptimalLineup(context.teamId, context.league.id)
+        if (optimal) {
+          const slots = optimal.starters.map((s: any) => ({
+            slot: s.position,
+            player: {
+              name: playerDB.get(s.playerId)?.name || 'Unknown',
+              position: playerDB.get(s.playerId)?.position || '',
+              team: playerDB.get(s.playerId)?.team || '',
+              projectedPoints: s.projectedPoints,
+            },
+          }))
+          
+          response.cards.push({
+            type: 'lineup',
+            title: intent.isSetLineup ? 'Your Lineup (Optimized)' : 'Your Lineup',
+            payload: {
+              teamName: context.team?.name || 'Your Team',
+              week: context.league.week || 1,
+              slots,
+              projectedTotal: optimal.totalProjected,
+            },
+          })
         }
+      } catch {
+        // silently skip
       }
     }
 
     if (intent.isMatchup && context.teamId && context.league) {
       try {
-        const lineupResponse = await fetch(`${request.nextUrl.origin}/api/lineup?teamId=${context.teamId}&leagueId=${context.league.id}`)
-        if (lineupResponse.ok) {
-          const lineupData = await lineupResponse.json()
-          const myProj = lineupData.optimal.totalProjected
-          const oppProj = myProj * 0.95 + Math.random() * 5 // Mock opponent projection
+        const optimal = getOptimalLineup(context.teamId, context.league.id)
+        if (optimal) {
+          const myProj = optimal.totalProjected
+          const oppProj = myProj * 0.95 + Math.random() * 5
           const diff = myProj - oppProj
           const winProb = Math.max(5, Math.min(95, 50 + diff * 2.6))
 
@@ -211,17 +234,15 @@ export async function POST(request: NextRequest) {
             },
           })
         }
-      } catch (error) {
-        console.error('Error generating matchup card:', error)
+      } catch {
+        // silently skip
       }
     }
 
     if (intent.isViewTeams) {
       try {
-        // Use the leagueId from context (which may have been auto-detected)
         let leagueIdToUse = context.leagueId
         if (!leagueIdToUse) {
-          // Try to get any baseball league
           const allLeagues = leagueDB.getAll()
           const baseballLeague = allLeagues.find((l) => l.sport === 'baseball')
           if (baseballLeague) {
@@ -229,14 +250,12 @@ export async function POST(request: NextRequest) {
             context.leagueId = leagueIdToUse
             context.league = baseballLeague
           } else {
-            // Auto-create the league if it doesn't exist
             try {
               const setupResult = setupBaseballLeague()
               leagueIdToUse = setupResult.league.id
               context.leagueId = leagueIdToUse
               context.league = setupResult.league
-            } catch (setupError) {
-              console.error('Error auto-creating league:', setupError)
+            } catch {
               response.message = "No league found and could not create one automatically. Please create a league first."
               return NextResponse.json(response)
             }
@@ -245,7 +264,6 @@ export async function POST(request: NextRequest) {
 
         const allTeams = teamDB.getByLeague(leagueIdToUse)
         if (allTeams.length > 0) {
-          // Sort teams by wins (descending), then by points for
           const sortedTeams = [...allTeams].sort((a, b) => {
             if (b.wins !== a.wins) return b.wins - a.wins
             if (b.pointsFor !== a.pointsFor) return b.pointsFor - a.pointsFor
@@ -275,16 +293,13 @@ export async function POST(request: NextRequest) {
         } else {
           response.message = "No teams found in this league."
         }
-      } catch (error) {
-        console.error('Error generating teams card:', error)
+      } catch {
+        // silently skip
       }
     }
 
-    // Show all batters or pitchers
+    // Show all batters or pitchers — direct call via fetchLeaguePlayers
     if (intent.isShowBatters || intent.isShowPitchers) {
-      const cookieStore = await cookies()
-      const yahooAccessToken = cookieStore.get('yahoo_access_token')?.value
-
       if (yahooAccessToken) {
         try {
           const api = new YahooFantasyAPI()
@@ -296,33 +311,25 @@ export async function POST(request: NextRequest) {
             const positionType = intent.isShowBatters ? 'B' : 'P'
             const label = intent.isShowBatters ? 'Batters' : 'Pitchers'
 
-            // Fetch players via internal API
-            const url = new URL(`${request.nextUrl.origin}/api/yahoo/league-players`)
-            url.searchParams.set('leagueKey', yahooLeague.league_key)
-            url.searchParams.set('positionType', positionType)
-
-            const res = await fetch(url.toString(), {
-              headers: { Cookie: `yahoo_access_token=${yahooAccessToken}` },
+            const data = await fetchLeaguePlayers(api, {
+              leagueKey: yahooLeague.league_key,
+              positionType,
             })
 
-            if (res.ok) {
-              const data = await res.json()
-              response.cards.push({
-                type: 'roster_list',
-                title: `All ${label} in Your League`,
-                payload: {
-                  players: data.players || [],
-                  total: data.total || 0,
-                  positionType,
-                  label,
-                  leagueKey: yahooLeague.league_key,
-                },
-              })
-              response.message = `Here are all ${data.total} ${label.toLowerCase()} across every team in your league:`
-            }
+            response.cards.push({
+              type: 'roster_list',
+              title: `All ${label} in Your League`,
+              payload: {
+                players: data.players,
+                total: data.total,
+                positionType,
+                label,
+                leagueKey: yahooLeague.league_key,
+              },
+            })
+            response.message = `Here are all ${data.total} ${label.toLowerCase()} across every team in your league:`
           }
-        } catch (error) {
-          console.error('Error fetching roster list:', error)
+        } catch {
           response.message = "Sorry, I couldn't fetch the player list. Please make sure you're connected to Yahoo Fantasy."
         }
       } else {
@@ -339,24 +346,17 @@ export async function POST(request: NextRequest) {
       let ownershipStatus: 'free_agent' | 'taken' | 'unknown' = 'unknown'
       let owningTeamName: string | undefined = undefined
       
-      // First, try to find player in Yahoo if authenticated
-      const cookieStore = await cookies()
-      const yahooAccessToken = cookieStore.get('yahoo_access_token')?.value
-      
       if (yahooAccessToken) {
         try {
           const api = new YahooFantasyAPI()
           api.setAccessToken(yahooAccessToken)
           
-          // Get leagues to find an active league
           const { leagues } = await api.getLeagues('mlb')
-          // Find the first active (not finished) league
           const yahooLeague = leagues.find(l => l.is_finished !== '1') || leagues[0]
           
           if (yahooLeague && yahooLeague.league_key) {
             yahooLeagueKey = yahooLeague.league_key
             
-            // Get player ownership information
             const ownership = await getPlayerOwnership(api, yahooLeague.league_key, playerQuery)
             
             if (ownership) {
@@ -366,7 +366,6 @@ export async function POST(request: NextRequest) {
               ownershipStatus = ownership.ownershipStatus
               owningTeamName = ownership.owningTeam?.name
               
-              // Convert Yahoo player to our Player format
               player = {
                 id: yahooPlayer.player_id,
                 name: yahooPlayer.name.full,
@@ -380,24 +379,20 @@ export async function POST(request: NextRequest) {
               }
             }
           }
-        } catch (error) {
-          console.error('Error searching Yahoo for player:', error)
+        } catch {
           // Fall through to mock database
         }
       }
       
-      // Fallback to mock database if not found in Yahoo
       if (!player) {
         const players = playerDB.getAll().filter((p) => p.sport === currentSport)
         const foundPlayer = findPlayerByNameApprox(playerQuery, players)
         if (foundPlayer) {
           player = foundPlayer
-          // Even if using mock player, try to get Yahoo player key if we have a league
           if (yahooAccessToken && yahooLeagueKey && !player.yahooPlayerKey) {
             try {
               const api = new YahooFantasyAPI()
               api.setAccessToken(yahooAccessToken)
-              // Try one more search with the mock player name
               const ownership = await getPlayerOwnership(api, yahooLeagueKey, player.name)
               if (ownership) {
                 yahooPlayerKey = ownership.player.player_key
@@ -405,8 +400,8 @@ export async function POST(request: NextRequest) {
                 ownershipStatus = ownership.ownershipStatus
                 owningTeamName = ownership.owningTeam?.name
               }
-            } catch (error) {
-              console.error('Error searching for Yahoo player key:', error)
+            } catch {
+              // silently skip
             }
           }
         }
@@ -441,61 +436,38 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Handle actions immediately if needed
+    // Handle actions immediately if needed — all via direct calls
     if (response.action) {
       if (response.action.type === 'create_league' && response.action.data) {
-        // Create league via API
-        const leagueResponse = await fetch(`${request.nextUrl.origin}/api/leagues`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            ...response.action.data,
-            sport: currentSport,
-            commissionerId: context.userId,
-          }),
-        })
-
-        if (leagueResponse.ok) {
-          const newLeague = await leagueResponse.json()
+        try {
+          const newLeague = createLeague(response.action.data, currentSport, context.userId)
           response.message += `\n\n✅ League created! Your league ID is: ${newLeague.id}`
           response.action.data = { ...response.action.data, leagueId: newLeague.id }
+        } catch {
+          // silently skip
         }
       } else if (response.action.type === 'set_lineup' && context.teamId && context.league) {
         try {
-          const lineupResponse = await fetch(`${request.nextUrl.origin}/api/lineup`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              teamId: context.teamId,
-              leagueId: context.league.id,
-            }),
-          })
-
-          if (lineupResponse.ok) {
-            const lineupData = await lineupResponse.json()
-            response.message += `\n\n✅ Lineup updated! ${lineupData.optimal.totalProjected.toFixed(1)} projected points with ${lineupData.optimal.starters.length} starters.`
+          const optimal = setOptimalLineup(context.teamId, context.league.id)
+          if (optimal) {
+            response.message += `\n\n✅ Lineup updated! ${optimal.totalProjected.toFixed(1)} projected points with ${optimal.starters.length} starters.`
           } else {
             response.message += '\n\n⚠️ Could not set lineup. Make sure you have players on your roster.'
           }
-        } catch (error) {
+        } catch {
           response.message += '\n\n⚠️ Could not set lineup. Make sure you have players on your roster.'
         }
       } else if (response.action.type === 'add_player' && context.teamId) {
-        // Handle add/drop actions
         response.message += '\n\n💡 Use the waivers API to complete this action, or ask me to help you find available players.'
       } else if (response.action.type === 'propose_trade' && context.teamId) {
-        // Handle trade actions
         response.message += '\n\n💡 I can help evaluate trades. Tell me the specific players involved.'
       } else if (response.action.type === 'view_teams') {
-        // Teams card is already generated via intent parsing, so this is handled
-        // The action is just for consistency
+        // Teams card is already generated via intent parsing
       } else if (response.action.type === 'show_lineup' && context.teamId && context.league) {
-        // Show current lineup - similar to set_lineup but read-only
         try {
-          const lineupResponse = await fetch(`${request.nextUrl.origin}/api/lineup?teamId=${context.teamId}&leagueId=${context.league.id}`)
-          if (lineupResponse.ok) {
-            const lineupData = await lineupResponse.json()
-            const slots = lineupData.optimal.starters.map((s: any) => ({
+          const optimal = getOptimalLineup(context.teamId, context.league.id)
+          if (optimal) {
+            const slots = optimal.starters.map((s: any) => ({
               slot: s.position,
               player: {
                 name: playerDB.get(s.playerId)?.name || 'Unknown',
@@ -513,21 +485,19 @@ export async function POST(request: NextRequest) {
                 teamName: context.team?.name || 'Your Team',
                 week: context.league.week || 1,
                 slots,
-                projectedTotal: lineupData.optimal.totalProjected,
+                projectedTotal: optimal.totalProjected,
               },
             })
           }
-        } catch (error) {
-          console.error('Error generating lineup card:', error)
+        } catch {
+          // silently skip
         }
       } else if (response.action.type === 'show_matchup' && context.teamId && context.league) {
-        // Show matchup - similar to existing matchup handling
         try {
-          const lineupResponse = await fetch(`${request.nextUrl.origin}/api/lineup?teamId=${context.teamId}&leagueId=${context.league.id}`)
-          if (lineupResponse.ok) {
-            const lineupData = await lineupResponse.json()
-            const myProj = lineupData.optimal.totalProjected
-            const oppProj = myProj * 0.95 + Math.random() * 5 // Mock opponent projection
+          const optimal = getOptimalLineup(context.teamId, context.league.id)
+          if (optimal) {
+            const myProj = optimal.totalProjected
+            const oppProj = myProj * 0.95 + Math.random() * 5
             const diff = myProj - oppProj
             const winProb = Math.max(5, Math.min(95, 50 + diff * 2.6))
 
@@ -548,18 +518,16 @@ export async function POST(request: NextRequest) {
               },
             })
           }
-        } catch (error) {
-          console.error('Error generating matchup card:', error)
+        } catch {
+          // silently skip
         }
       } else if (response.action.type === 'show_waivers') {
-        // Waivers - could be enhanced with actual waiver wire data
         response.message += '\n\n💡 I can help you find the best available players. Let me check the waiver wire...'
       }
     }
 
     return NextResponse.json(response)
-  } catch (error) {
-    console.error('Chat API error:', error)
+  } catch {
     return NextResponse.json(
       { error: 'Internal server error', message: 'Sorry, something went wrong.' },
       { status: 500 }

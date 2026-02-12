@@ -153,8 +153,6 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    console.log(`[league-players] Fetched ${allRaw.length} players (positionType=${positionType}, season=${season || 'current'})`)
-
     // Remap stat IDs → display names for each player
     const entries: LeaguePlayerEntry[] = allRaw.map((p) => {
       const remapped: Record<string, number | string> = {}

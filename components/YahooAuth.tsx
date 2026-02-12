@@ -2,31 +2,15 @@
 
 import { useState, useEffect } from 'react'
 import { useYahooLeagues } from '@/hooks/useYahooLeagues'
+import { useYahooAuth } from '@/contexts/YahooAuthContext'
 import YahooTeams from './YahooTeams'
 
 export default function YahooAuth() {
-  const [isAuthenticated, setIsAuthenticated] = useState(false)
-  const [isLoading, setIsLoading] = useState(true)
+  const { isAuthenticated, isLoading, mutate } = useYahooAuth()
   const [selectedLeague, setSelectedLeague] = useState<string | null>(null)
-  
+
   // Fetch leagues when authenticated
   const { leagues, isLoading: leaguesLoading } = useYahooLeagues('mlb')
-
-  useEffect(() => {
-    checkAuthStatus()
-  }, [])
-
-  const checkAuthStatus = async () => {
-    try {
-      const response = await fetch('/api/yahoo/status')
-      const data = await response.json()
-      setIsAuthenticated(data.authenticated)
-    } catch (error) {
-      console.error('Error checking auth status:', error)
-    } finally {
-      setIsLoading(false)
-    }
-  }
 
   const handleConnect = () => {
     // Redirect to Yahoo OAuth
@@ -38,8 +22,8 @@ export default function YahooAuth() {
       // Clear cookies (in production, call API to revoke token)
       document.cookie = 'yahoo_access_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT'
       document.cookie = 'yahoo_refresh_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT'
-      setIsAuthenticated(false)
       setSelectedLeague(null)
+      mutate() // Revalidate auth state via SWR
     } catch (error) {
       console.error('Error disconnecting:', error)
     }

@@ -91,14 +91,11 @@ export default function ChatInterface({ leagueId, userId, initialMessages = [] }
     switch (action.type) {
       case 'create_league':
         // Navigate to league creation or show confirmation
-        console.log('Creating league:', action.data)
         break
       case 'set_lineup':
-        // Update lineup
-        console.log('Setting lineup:', action.data)
         break
       default:
-        console.log('Action:', action)
+        break
     }
   }
 

@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import useSWR from 'swr'
+import { fetcher } from '@/lib/yahoo/fetcher'
 
 export interface YahooRosterPlayer {
   player_key: string
@@ -29,44 +30,25 @@ export interface YahooRosterPlayer {
   position?: string
 }
 
+interface RosterResponse {
+  players: YahooRosterPlayer[]
+}
+
 export function useYahooRoster(teamKey: string | null) {
-  const [players, setPlayers] = useState<YahooRosterPlayer[]>([])
-  const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const { data, error, isLoading } = useSWR<RosterResponse>(
+    teamKey
+      ? `/api/yahoo/roster?teamKey=${encodeURIComponent(teamKey)}`
+      : null,
+    fetcher,
+    {
+      revalidateOnFocus: false,
+      dedupingInterval: 60_000,
+    },
+  )
 
-  useEffect(() => {
-    if (!teamKey) {
-      setPlayers([])
-      return
-    }
-
-    const fetchRoster = async () => {
-      try {
-        setIsLoading(true)
-        setError(null)
-        
-        const response = await fetch(`/api/yahoo/roster?teamKey=${encodeURIComponent(teamKey)}`)
-        
-        if (!response.ok) {
-          if (response.status === 401) {
-            setError('Not authenticated. Please connect your Yahoo account.')
-            return
-          }
-          throw new Error(`Failed to fetch roster: ${response.statusText}`)
-        }
-        
-        const data = await response.json()
-        setPlayers(data.players || [])
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to fetch roster')
-        console.error('Error fetching Yahoo roster:', err)
-      } finally {
-        setIsLoading(false)
-      }
-    }
-
-    fetchRoster()
-  }, [teamKey])
-
-  return { players, isLoading, error }
+  return {
+    players: data?.players ?? [],
+    isLoading,
+    error: error?.message ?? null,
+  }
 }

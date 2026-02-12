@@ -148,9 +148,19 @@ ALWAYS apply these principles when evaluating or suggesting trades:
 
 export class FantasyAI {
   private openaiApiKey: string
+  private _openaiClient: any | null = null
 
   constructor() {
     this.openaiApiKey = process.env.OPENAI_API_KEY || ''
+  }
+
+  /** Lazily create and cache a single OpenAI client instance. */
+  private async getOpenAIClient() {
+    if (!this._openaiClient) {
+      const { OpenAI } = await import('openai')
+      this._openaiClient = new OpenAI({ apiKey: this.openaiApiKey })
+    }
+    return this._openaiClient
   }
 
   async processMessage(
@@ -243,8 +253,7 @@ For trade questions, evaluate using replacement level, positional scarcity, and 
     conversationHistory: Array<{ role: 'user' | 'assistant'; content: string }>,
     context: AIContext
   ): Promise<AIResponse> {
-    const { OpenAI } = await import('openai')
-    const openai = new OpenAI({ apiKey: this.openaiApiKey })
+    const openai = await this.getOpenAIClient()
 
     const messages = [
       { role: 'system' as const, content: systemPrompt },

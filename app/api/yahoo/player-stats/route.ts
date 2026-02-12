@@ -1,17 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { YahooFantasyAPI } from '@/lib/yahoo/api'
+import { MLB_SEASON_TO_GAME_KEY } from '@/lib/yahoo/config'
 import { cookies } from 'next/headers'
 
 export const dynamic = 'force-dynamic'
-
-// Map season year to Yahoo game key for MLB
-const seasonToGameKey: Record<number, string> = {
-  2026: '469',
-  2025: '458',
-  2024: '431',
-  2023: '422',
-  2022: '414',
-}
 
 // Cache stat categories per game key to avoid repeated API calls
 const statCategoriesCache: Record<string, { categories: Record<string, { name: string; displayName: string; positionType: string }>; timestamp: number }> = {}
@@ -47,8 +39,8 @@ export async function GET(request: NextRequest) {
     
     // Determine game key for stat categories
     let gameKey = playerKey.split('.')[0] // Extract from player key
-    if (season && seasonToGameKey[season]) {
-      gameKey = seasonToGameKey[season]
+    if (season && MLB_SEASON_TO_GAME_KEY[season]) {
+      gameKey = MLB_SEASON_TO_GAME_KEY[season]
     }
     
     // Fetch player stats and stat categories in parallel
@@ -60,15 +52,17 @@ export async function GET(request: NextRequest) {
     // Remap stats from numeric IDs to proper display names
     const remappedStats = remapStats(statsResponse.stats, categoriesData)
     
-    return NextResponse.json({ 
-      stats: remappedStats,
-      playerKey,
-      leagueKey: leagueKey || null,
-      season: season || null,
-      hasStats: !!(remappedStats?.season_stats && Object.keys(remappedStats.season_stats).length > 0)
-    })
+    return NextResponse.json(
+      {
+        stats: remappedStats,
+        playerKey,
+        leagueKey: leagueKey || null,
+        season: season || null,
+        hasStats: !!(remappedStats?.season_stats && Object.keys(remappedStats.season_stats).length > 0),
+      },
+      { headers: { 'Cache-Control': 'private, s-maxage=30, stale-while-revalidate=120' } },
+    )
   } catch (error) {
-    console.error('Error fetching Yahoo player stats:', error)
     return NextResponse.json(
       { error: 'Failed to fetch player stats', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
@@ -92,9 +86,6 @@ async function getStatCategories(
       categories: result.categories,
       timestamp: Date.now()
     }
-    console.log(`Fetched stat categories for game ${gameKey}:`, 
-      Object.entries(result.categories).map(([id, cat]) => `${id}=${cat.displayName}(${cat.positionType})`).join(', ')
-    )
     return result.categories
   } catch (error) {
     console.error(`Failed to fetch stat categories for game ${gameKey}:`, error)

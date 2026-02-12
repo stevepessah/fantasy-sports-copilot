@@ -2,6 +2,7 @@
 // Handles fetching data from Yahoo Fantasy Sports API
 
 import { YahooOAuth2 } from './oauth2'
+import { MLB_SEASON_TO_GAME_KEY } from './config'
 import { parseLeaguesXML, parseTeamsXML, parseRosterXML, parsePlayerStatsXML, ParsedLeague, ParsedTeam, ParsedRosterPlayer } from './xmlParser'
 
 export interface YahooLeague {
@@ -146,8 +147,6 @@ export class YahooFantasyAPI {
         'football': '461',
       }
       const yahooGameKey = gameKeyMap[gameKey.toLowerCase()] || gameKey
-      
-      console.log(`[Yahoo API] getLeagues called with gameKey="${gameKey}", mapped to yahooGameKey="${yahooGameKey}"`)
       
       endpoint = `/users;use_login=1/games;game_keys=${yahooGameKey}/leagues`
     }
@@ -309,7 +308,6 @@ export class YahooFantasyAPI {
         }
       }
       
-      console.log(`Parsed ${Object.keys(categories).length} stat categories from game XML`)
     }
 
     return { categories, raw: response.raw }
@@ -384,15 +382,7 @@ export class YahooFantasyAPI {
       const playerIdMatch = playerKey.match(/\.p\.(\d+)$/)
       if (playerIdMatch) {
         const playerId = playerIdMatch[1]
-        // Map season to game key
-        const seasonToGameKey: Record<number, string> = {
-          2026: '469',
-          2025: '458',
-          2024: '431',
-          2023: '422',
-          2022: '414',
-        }
-        const gameKey = seasonToGameKey[season] || '469'
+      const gameKey = MLB_SEASON_TO_GAME_KEY[season] || '469'
         finalPlayerKey = `${gameKey}.p.${playerId}`
       }
     }
@@ -465,8 +455,6 @@ export class YahooFantasyAPI {
   private parseLeaguesResponse(response: any): YahooLeague[] {
     // Yahoo returns XML - for now, return empty array
     // The raw XML is in response.raw
-    // TODO: Implement proper XML parsing with xml2js or similar
-    console.log('Yahoo API Response (raw XML):', response.raw?.substring(0, 500))
     return []
   }
 

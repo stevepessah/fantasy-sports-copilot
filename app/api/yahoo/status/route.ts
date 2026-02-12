@@ -9,9 +9,10 @@ export async function GET(request: NextRequest) {
     const cookieStore = await cookies()
     const accessToken = cookieStore.get('yahoo_access_token')?.value
     
-    return NextResponse.json({
-      authenticated: !!accessToken,
-    })
+    return NextResponse.json(
+      { authenticated: !!accessToken },
+      { headers: { 'Cache-Control': 'private, no-store' } },
+    )
   } catch (error) {
     return NextResponse.json(
       { error: 'Failed to check status' },
