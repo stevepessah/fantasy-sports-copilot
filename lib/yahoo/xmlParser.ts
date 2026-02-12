@@ -308,6 +308,151 @@ export function parseRosterXML(xml: string): ParsedRosterPlayer[] {
   return players
 }
 
+// ── Standings ──
+
+export interface ParsedStandingsTeam {
+  team_key: string
+  team_id: string
+  name: string
+  url: string
+  logo_url?: string
+  managers?: Array<{
+    manager_id: string
+    nickname?: string
+    guid: string
+    is_commissioner?: string
+    is_current_login?: string
+  }>
+  // Standings data
+  rank: number
+  wins: number
+  losses: number
+  ties: number
+  percentage: string
+  points_for?: number
+  points_against?: number
+  points_change?: number
+  outcome_totals?: {
+    wins: number
+    losses: number
+    ties: number
+    percentage: string
+  }
+  streak?: {
+    type: string  // 'win' or 'loss'
+    value: number
+  }
+  playoff_seed?: number
+  clinched_playoffs?: boolean
+}
+
+/**
+ * Parse standings XML from Yahoo API
+ * The /league/{key}/standings endpoint returns teams with <team_standings> blocks
+ */
+export function parseStandingsXML(xml: string): ParsedStandingsTeam[] {
+  const teams: ParsedStandingsTeam[] = []
+
+  const teamRegex = /<team>([\s\S]*?)<\/team>/g
+  let teamMatch
+
+  while ((teamMatch = teamRegex.exec(xml)) !== null) {
+    const teamBlock = teamMatch[1]
+
+    const extractValue = (tag: string, block: string = teamBlock): string | undefined => {
+      const regex = new RegExp(`<${tag}>([\\s\\S]*?)<\\/${tag}>`)
+      const match = block.match(regex)
+      return match ? match[1].trim() : undefined
+    }
+
+    const team: Partial<ParsedStandingsTeam> = {}
+    team.team_key = extractValue('team_key') || ''
+    team.team_id = extractValue('team_id') || ''
+    team.name = extractValue('name') || ''
+    team.url = extractValue('url') || ''
+    team.logo_url = extractValue('logo_url')
+
+    // Extract managers
+    const managersBlock = teamBlock.match(/<managers>([\s\S]*?)<\/managers>/)?.[1]
+    if (managersBlock) {
+      const managerRegex = /<manager>([\s\S]*?)<\/manager>/g
+      const managers: NonNullable<ParsedStandingsTeam['managers']> = []
+      let mm
+      while ((mm = managerRegex.exec(managersBlock)) !== null) {
+        const mb = mm[1]
+        managers.push({
+          manager_id: extractValue('manager_id', mb) || '',
+          nickname: extractValue('nickname', mb),
+          guid: extractValue('guid', mb) || '',
+          is_commissioner: extractValue('is_commissioner', mb),
+          is_current_login: extractValue('is_current_login', mb),
+        })
+      }
+      if (managers.length > 0) team.managers = managers
+    }
+
+    // Extract standings block
+    const standingsBlock = teamBlock.match(/<team_standings>([\s\S]*?)<\/team_standings>/)?.[1]
+    if (standingsBlock) {
+      team.rank = parseInt(extractValue('rank', standingsBlock) || '0', 10)
+      team.playoff_seed = parseInt(extractValue('playoff_seed', standingsBlock) || '0', 10) || undefined
+      team.clinched_playoffs = extractValue('clinched_playoffs', standingsBlock) === '1'
+
+      const outcomeTotals = standingsBlock.match(/<outcome_totals>([\s\S]*?)<\/outcome_totals>/)?.[1]
+      if (outcomeTotals) {
+        team.wins = parseInt(extractValue('wins', outcomeTotals) || '0', 10)
+        team.losses = parseInt(extractValue('losses', outcomeTotals) || '0', 10)
+        team.ties = parseInt(extractValue('ties', outcomeTotals) || '0', 10)
+        team.percentage = extractValue('percentage', outcomeTotals) || '.000'
+        team.outcome_totals = {
+          wins: team.wins,
+          losses: team.losses,
+          ties: team.ties,
+          percentage: team.percentage,
+        }
+      }
+
+      const streakBlock = standingsBlock.match(/<streak>([\s\S]*?)<\/streak>/)?.[1]
+      if (streakBlock) {
+        team.streak = {
+          type: extractValue('type', streakBlock) || 'win',
+          value: parseInt(extractValue('value', streakBlock) || '0', 10),
+        }
+      }
+    }
+
+    // Extract team_points if available
+    const pointsBlock = teamBlock.match(/<team_points>([\s\S]*?)<\/team_points>/)?.[1]
+    if (pointsBlock) {
+      team.points_for = parseFloat(extractValue('total', pointsBlock) || '0')
+    }
+
+    // Some formats use <points_for> and <points_against> directly
+    if (!team.points_for) {
+      const pf = extractValue('points_for')
+      if (pf) team.points_for = parseFloat(pf)
+    }
+    const pa = extractValue('points_against')
+    if (pa) team.points_against = parseFloat(pa)
+
+    // Default wins/losses to 0 if standings block wasn't present
+    if (team.wins === undefined) team.wins = 0
+    if (team.losses === undefined) team.losses = 0
+    if (team.ties === undefined) team.ties = 0
+    if (team.rank === undefined) team.rank = 0
+    if (!team.percentage) team.percentage = '.000'
+
+    if (team.team_key) {
+      teams.push(team as ParsedStandingsTeam)
+    }
+  }
+
+  // Sort by rank
+  teams.sort((a, b) => a.rank - b.rank)
+
+  return teams
+}
+
 /**
  * Player statistics interface
  */

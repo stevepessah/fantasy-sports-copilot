@@ -29,6 +29,12 @@ const EnhancedCards = dynamic(
   () => import('./EnhancedCards').then((mod) => mod.EnhancedCards),
   { ssr: false },
 )
+
+// Lazy-load Season History (only when sidebar is visible & user is authenticated)
+const SeasonHistory = dynamic(() => import('./SeasonHistory'), {
+  loading: () => <div className="text-xs text-slate-400 py-2">Loading…</div>,
+  ssr: false,
+})
 // ── Static constants ──
 
 const BOUNCE_DELAY_200 = { animationDelay: '0.2s' } as const
@@ -580,6 +586,14 @@ export default function EnhancedChatInterface({ leagueId, userId, initialMessage
                   ))}
                 </div>
               </section>
+
+              {/* Season History */}
+              {isYahooConnected && (
+                <section>
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">Past Seasons</h3>
+                  <SeasonHistory />
+                </section>
+              )}
             </div>
           </nav>
         </div>
@@ -660,6 +674,14 @@ export default function EnhancedChatInterface({ leagueId, userId, initialMessage
                   ))}
                 </div>
               </section>
+
+              {/* Season History */}
+              {isYahooConnected && (
+                <section className="mt-6">
+                  <h2 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">Past Seasons</h2>
+                  <SeasonHistory />
+                </section>
+              )}
             </div>
           </aside>
         )}
