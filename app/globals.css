@@ -2,30 +2,64 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  --foreground-rgb: 0, 0, 0;
-  --background-start-rgb: 255, 255, 255;
-  --background-end-rgb: 255, 255, 255;
+/* ── Theme variables ─────────────────────────────── */
+
+:root,
+.theme-dark {
+  --foreground-rgb: 255, 255, 255;
+  --background-rgb: 15, 23, 42;
+  --surface-rgb: 30, 41, 59;
+  --border-rgb: 51, 65, 85;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --foreground-rgb: 255, 255, 255;
-    --background-start-rgb: 15, 23, 42;
-    --background-end-rgb: 15, 23, 42;
-  }
+.theme-light {
+  --foreground-rgb: 15, 23, 42;
+  --background-rgb: 248, 250, 252;
+  --surface-rgb: 255, 255, 255;
+  --border-rgb: 226, 232, 240;
 }
 
 body {
   color: rgb(var(--foreground-rgb));
-  background: #0f172a;
-  /* Prevent overscroll bounce on iOS */
+  background: rgb(var(--background-rgb));
   overscroll-behavior: none;
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 html {
-  background: #0f172a;
+  background: rgb(var(--background-rgb));
+  transition: background-color 0.3s ease;
 }
+
+/* ── Light-mode overrides ─────────────────────────── */
+.theme-light .bg-slate-900 { background-color: #f8fafc; }
+.theme-light .bg-slate-800 { background-color: #ffffff; }
+.theme-light .bg-slate-800\/30 { background-color: rgba(255,255,255,0.6); }
+.theme-light .bg-slate-800\/50 { background-color: rgba(255,255,255,0.8); }
+.theme-light .bg-slate-800\/70 { background-color: rgba(255,255,255,0.9); }
+.theme-light .bg-slate-700 { background-color: #e2e8f0; }
+.theme-light .bg-slate-700\/40 { background-color: rgba(226,232,240,0.4); }
+.theme-light .bg-slate-700\/50 { background-color: rgba(226,232,240,0.5); }
+.theme-light .bg-slate-700\/60 { background-color: rgba(226,232,240,0.6); }
+.theme-light .border-slate-700 { border-color: #e2e8f0; }
+.theme-light .border-slate-700\/40 { border-color: rgba(226,232,240,0.4); }
+.theme-light .border-slate-700\/50 { border-color: rgba(226,232,240,0.5); }
+.theme-light .border-slate-700\/60 { border-color: rgba(226,232,240,0.6); }
+.theme-light .border-slate-600 { border-color: #cbd5e1; }
+.theme-light .border-slate-600\/50 { border-color: rgba(203,213,225,0.5); }
+.theme-light .text-white { color: #0f172a; }
+.theme-light .text-slate-100 { color: #1e293b; }
+.theme-light .text-slate-200 { color: #334155; }
+.theme-light .text-slate-300 { color: #475569; }
+.theme-light .text-slate-400 { color: #64748b; }
+.theme-light .text-slate-500 { color: #94a3b8; }
+.theme-light .from-slate-800 { --tw-gradient-from: #ffffff; }
+.theme-light .to-slate-800\/80 { --tw-gradient-to: rgba(255,255,255,0.8); }
+.theme-light .from-slate-900 { --tw-gradient-from: #f8fafc; }
+.theme-light .via-slate-800\/95 { --tw-gradient-via: rgba(255,255,255,0.95); }
+.theme-light .shadow-black\/10 { --tw-shadow-color: rgba(0,0,0,0.03); }
+.theme-light input.bg-slate-800 { background-color: #f1f5f9; color: #0f172a; }
+.theme-light input.bg-slate-800::placeholder { color: #94a3b8; }
 
 @layer utilities {
   .text-balance {

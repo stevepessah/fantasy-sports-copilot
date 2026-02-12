@@ -58,7 +58,8 @@ function createLeague(data: any, currentSport: Sport, userId: string): League {
 
 export async function POST(request: NextRequest) {
   try {
-    const { message, leagueId, userId, sport, conversationHistory } = await request.json()
+    const body = await request.json()
+    const { message, leagueId, userId, sport, conversationHistory, stream: wantStream } = body
 
     if (!message || typeof message !== 'string') {
       return NextResponse.json(
@@ -110,7 +111,7 @@ export async function POST(request: NextRequest) {
 
     // ─── Inject Yahoo Roster + Stats Context ────────────────────────────────
     const cookieStore = await cookies()
-    const yahooAccessToken = cookieStore.get('yahoo_access_token')?.value
+    const yahooAccessToken = cookieStore.get('yahoo_access_token')?.value ?? undefined
 
     if (yahooAccessToken) {
       try {
@@ -164,6 +165,56 @@ export async function POST(request: NextRequest) {
 
     // Parse intent for better card generation
     const intent = parseIntent(message)
+
+    // ─── STREAMING PATH ──────────────────────────────────────────────────────
+    if (wantStream) {
+      const encoder = new TextEncoder()
+      const readable = new ReadableStream({
+        async start(controller) {
+          try {
+            // Stream AI text tokens
+            const gen = fantasyAI.streamMessage(
+              message,
+              context,
+              conversationHistory || []
+            )
+            let action: any = undefined
+            let done = false
+            while (!done) {
+              const { value, done: genDone } = await gen.next()
+              if (genDone) {
+                // The return value is the action
+                action = value
+                done = true
+              } else {
+                // value is a text chunk
+                controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'text', content: value })}\n\n`))
+              }
+            }
+
+            // After text is done, build cards (same logic as non-streaming path)
+            const cards = await buildCardsForIntent(intent, context, message, currentSport, yahooAccessToken)
+            
+            // Send final event with cards + action
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'done', cards, action })}\n\n`))
+            controller.close()
+          } catch (err) {
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'error', message: 'Something went wrong.' })}\n\n`))
+            controller.close()
+          }
+        },
+      })
+
+      return new Response(readable, {
+        headers: {
+          'Content-Type': 'text/event-stream',
+          'Cache-Control': 'no-cache',
+          Connection: 'keep-alive',
+        },
+      })
+    }
+
+    // ─── NON-STREAMING PATH (unchanged) ──────────────────────────────────────
     
     // Process message with AI
     const response = await fantasyAI.processMessage(
@@ -533,4 +584,162 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     )
   }
+}
+
+// ─── Card builder for streaming path ────────────────────────────────────────
+
+async function buildCardsForIntent(
+  intent: ReturnType<typeof parseIntent>,
+  context: any,
+  message: string,
+  currentSport: string,
+  yahooAccessToken: string | undefined,
+): Promise<any[]> {
+  const cards: any[] = []
+
+  try {
+    if ((intent.isShowLineup || intent.isSetLineup) && context.teamId && context.league) {
+      const optimal = getOptimalLineup(context.teamId, context.league.id)
+      if (optimal) {
+        cards.push({
+          type: 'lineup',
+          title: intent.isSetLineup ? 'Your Lineup (Optimized)' : 'Your Lineup',
+          payload: {
+            teamName: context.team?.name || 'Your Team',
+            week: context.league.week || 1,
+            slots: optimal.starters.map((s: any) => ({
+              slot: s.position,
+              player: {
+                name: playerDB.get(s.playerId)?.name || 'Unknown',
+                position: playerDB.get(s.playerId)?.position || '',
+                team: playerDB.get(s.playerId)?.team || '',
+                projectedPoints: s.projectedPoints,
+              },
+            })),
+            projectedTotal: optimal.totalProjected,
+          },
+        })
+      }
+    }
+
+    if (intent.isMatchup && context.teamId && context.league) {
+      const optimal = getOptimalLineup(context.teamId, context.league.id)
+      if (optimal) {
+        const myProj = optimal.totalProjected
+        const oppProj = myProj * 0.95 + Math.random() * 5
+        const diff = myProj - oppProj
+        const winProb = Math.max(5, Math.min(95, 50 + diff * 2.6))
+        cards.push({
+          type: 'matchup',
+          title: `Matchup: ${context.team?.name || 'Your Team'} vs Opponent`,
+          payload: {
+            week: context.league.week || 1,
+            home: { team: context.team?.name || 'Your Team', projected: myProj },
+            away: { team: 'Opponent', projected: oppProj },
+            winProbHome: winProb,
+            notes: [
+              diff > 6 ? 'You have a solid projected edge — prioritize stability.' :
+              diff < -6 ? 'You\'re trailing — consider upside plays.' :
+              'Toss-up — small moves can swing it.',
+            ],
+          },
+        })
+      }
+    }
+
+    if (intent.isViewTeams) {
+      let leagueIdToUse = context.leagueId
+      if (!leagueIdToUse) {
+        const allLeagues = leagueDB.getAll()
+        const baseballLeague = allLeagues.find((l: any) => l.sport === 'baseball')
+        if (baseballLeague) { leagueIdToUse = baseballLeague.id }
+        else {
+          try {
+            const setupResult = setupBaseballLeague()
+            leagueIdToUse = setupResult.league.id
+          } catch { /* skip */ }
+        }
+      }
+      if (leagueIdToUse) {
+        const allTeams = teamDB.getByLeague(leagueIdToUse)
+        if (allTeams.length > 0) {
+          const sorted = [...allTeams].sort((a, b) =>
+            b.wins !== a.wins ? b.wins - a.wins : b.pointsFor - a.pointsFor
+          )
+          cards.push({
+            type: 'teams',
+            title: 'League Standings',
+            payload: {
+              leagueName: context.league?.name || 'League',
+              teams: sorted.map((t, i) => ({
+                rank: i + 1, name: t.name, wins: t.wins, losses: t.losses,
+                ties: t.ties, pointsFor: t.pointsFor, pointsAgainst: t.pointsAgainst,
+                winPercentage: t.wins + t.losses + t.ties > 0
+                  ? ((t.wins + t.ties * 0.5) / (t.wins + t.losses + t.ties)).toFixed(3) : '0.000',
+              })),
+            },
+          })
+        }
+      }
+    }
+
+    if ((intent.isShowBatters || intent.isShowPitchers) && yahooAccessToken) {
+      try {
+        const api = new YahooFantasyAPI()
+        api.setAccessToken(yahooAccessToken)
+        const { leagues } = await api.getLeagues('mlb')
+        const yahooLeague = leagues.find((l: any) => l.is_finished !== '1') || leagues[0]
+        if (yahooLeague?.league_key) {
+          const positionType = intent.isShowBatters ? 'B' : 'P'
+          const label = intent.isShowBatters ? 'Batters' : 'Pitchers'
+          const data = await fetchLeaguePlayers(api, { leagueKey: yahooLeague.league_key, positionType })
+          cards.push({
+            type: 'roster_list',
+            title: `All ${label} in Your League`,
+            payload: { players: data.players, total: data.total, positionType, label, leagueKey: yahooLeague.league_key },
+          })
+        }
+      } catch { /* skip */ }
+    }
+
+    if (intent.isPlayerLookup && yahooAccessToken) {
+      const playerQuery = intent.playerName || message
+      try {
+        const api = new YahooFantasyAPI()
+        api.setAccessToken(yahooAccessToken)
+        const { leagues } = await api.getLeagues('mlb')
+        const yahooLeague = leagues.find((l: any) => l.is_finished !== '1') || leagues[0]
+        if (yahooLeague?.league_key) {
+          const ownership = await getPlayerOwnership(api, yahooLeague.league_key, playerQuery)
+          if (ownership) {
+            const yp = ownership.player
+            cards.push({
+              type: 'player',
+              title: 'Player Snapshot',
+              payload: {
+                player: {
+                  id: yp.player_id, name: yp.name.full, sport: 'baseball',
+                  position: yp.display_position || yp.eligible_positions?.[0] || 'UTIL',
+                  team: yp.editorial_team_abbr || 'FA',
+                  yahooPlayerKey: yp.player_key,
+                },
+                leagueKey: yahooLeague.league_key,
+                eligiblePositions: yp.eligible_positions || [],
+                ownershipStatus: ownership.ownershipStatus,
+                owningTeamName: ownership.owningTeam?.name,
+                insights: ['No injury concerns.'],
+                actions: [
+                  { label: 'Add', command: `add ${yp.name.full}` },
+                  { label: 'Drop', command: `drop ${yp.name.full}` },
+                  { label: 'Trade idea', command: `suggest a trade involving ${yp.name.full}` },
+                ],
+              },
+            })
+          }
+        }
+      } catch { /* skip */ }
+    }
+  } catch { /* fail gracefully */ }
+
+  return cards
 }

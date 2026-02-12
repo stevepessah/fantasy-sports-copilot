@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from 'next'
 import { Inter } from 'next/font/google'
 import { YahooAuthProvider } from '@/contexts/YahooAuthContext'
+import { ThemeProvider } from '@/contexts/ThemeContext'
+import { ToastProvider } from '@/components/Toast'
 import './globals.css'
 
 const inter = Inter({ subsets: ['latin'] })
@@ -60,9 +62,15 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en" className="bg-slate-900">
+    <html lang="en" className="theme-dark bg-slate-900">
       <body className={`${inter.className} bg-slate-900`}>
-        <YahooAuthProvider>{children}</YahooAuthProvider>
+        <YahooAuthProvider>
+          <ThemeProvider>
+            <ToastProvider>
+              {children}
+            </ToastProvider>
+          </ThemeProvider>
+        </YahooAuthProvider>
       </body>
     </html>
   )

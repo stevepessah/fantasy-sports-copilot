@@ -1,11 +1,16 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import dynamic from 'next/dynamic'
 import { Player, Sport } from '@/types'
 import { PlayerStats } from './PlayerStats'
+import { CardSkeleton } from './Skeleton'
+
+const CompareCard = dynamic(() => import('./CompareCard'), { ssr: false })
+const Sparkline = dynamic(() => import('./Sparkline'), { ssr: false })
 
 interface Card {
-  type: 'lineup' | 'matchup' | 'player' | 'waivers' | 'trade' | 'draft' | 'teams' | 'roster_list'
+  type: 'lineup' | 'matchup' | 'player' | 'waivers' | 'trade' | 'draft' | 'teams' | 'roster_list' | 'compare'
   title: string
   payload: any
 }
@@ -399,6 +404,18 @@ export function EnhancedCards({ card, onAction, sport }: EnhancedCardsProps) {
 
     case 'roster_list': {
       return <RosterListCard card={card} onAction={onAction} />
+    }
+
+    case 'compare': {
+      const p = card.payload
+      return (
+        <CompareCard
+          playerA={p.playerA}
+          playerB={p.playerB}
+          statKeys={p.statKeys || ['AVG', 'HR', 'RBI', 'R', 'SB', 'OPS']}
+          title={card.title}
+        />
+      )
     }
 
     default:

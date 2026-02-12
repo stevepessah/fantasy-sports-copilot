@@ -1,29 +1,57 @@
 'use client'
 
-import { useState, useRef, useEffect, useCallback } from 'react'
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import dynamic from 'next/dynamic'
 import { ChatMessage, Sport } from '@/types'
 import YahooAuth from './YahooAuth'
 import { useYahooAuth } from '@/contexts/YahooAuthContext'
+import { useTheme } from '@/contexts/ThemeContext'
+import { useToast } from './Toast'
+import { hapticTap, hapticSuccess } from '@/lib/haptics'
+import {
+  getConversations,
+  getActiveConversationId,
+  setActiveConversationId,
+  getConversation,
+  saveConversation,
+  deleteConversation,
+  generateTitle,
+  createNewConversation,
+  Conversation,
+} from '@/lib/chatStorage'
+import ChatMarkdown from './ChatMarkdown'
+import Onboarding, { useOnboarding } from './Onboarding'
+import NotificationBell from './NotificationBell'
+import LeagueSwitcher from './LeagueSwitcher'
 
-// Lazy-load the heavy cards component — only needed after first message
+// Lazy-load heavy components — only needed after first message
 const EnhancedCards = dynamic(
   () => import('./EnhancedCards').then((mod) => mod.EnhancedCards),
   { ssr: false },
 )
+const VoiceInput = dynamic(() => import('./VoiceInput'), { ssr: false })
 
-// ── Static constants (no re-creation on render) ──
+// ── Static constants ──
 
-const QUICK_ACTIONS = [
-  { label: '📋 Set optimal lineup', command: 'set my optimal lineup' },
-  { label: '⚔️ Show matchup', command: 'show matchup' },
+const BOUNCE_DELAY_200 = { animationDelay: '0.2s' } as const
+const BOUNCE_DELAY_400 = { animationDelay: '0.4s' } as const
+
+interface QuickAction {
+  label: string
+  command: string
+  context?: 'authenticated' | 'unauthenticated' | 'always'
+}
+
+const BASE_QUICK_ACTIONS: QuickAction[] = [
+  { label: '📋 Set optimal lineup', command: 'set my optimal lineup', context: 'authenticated' },
+  { label: '⚔️ Show matchup', command: 'show matchup', context: 'authenticated' },
   { label: '🏆 View all teams', command: 'show all teams' },
-  { label: '🏏 Show all batters', command: 'show all batters' },
-  { label: '⚾ Show all pitchers', command: 'show all pitchers' },
+  { label: '🏏 Show all batters', command: 'show all batters', context: 'authenticated' },
+  { label: '⚾ Show all pitchers', command: 'show all pitchers', context: 'authenticated' },
   { label: '🔍 Waiver targets', command: 'who should I pick up on waivers?' },
   { label: '🔄 Trade idea', command: 'suggest a trade' },
   { label: '📝 Draft advice', command: 'draft advice' },
-] as const
+]
 
 const SUGGESTION_PILLS = [
   { label: 'Set my best lineup', cmd: 'set my best lineup' },
@@ -31,9 +59,6 @@ const SUGGESTION_PILLS = [
   { label: 'Waiver targets', cmd: 'who should I pick up on waivers?' },
   { label: 'Suggest a trade', cmd: 'suggest a trade' },
 ] as const
-
-const BOUNCE_DELAY_200 = { animationDelay: '0.2s' } as const
-const BOUNCE_DELAY_400 = { animationDelay: '0.4s' } as const
 
 interface ChatInterfaceProps {
   leagueId?: string
@@ -45,17 +70,94 @@ export default function EnhancedChatInterface({ leagueId, userId, initialMessage
   const [messages, setMessages] = useState<ChatMessage[]>(initialMessages)
   const [input, setInput] = useState('')
   const [isLoading, setIsLoading] = useState(false)
+  const [streamingText, setStreamingText] = useState('')
   const [currentSport] = useState<Sport>('baseball')
   const [mounted, setMounted] = useState(false)
-  const [isNarrow, setIsNarrow] = useState(true)   // mobile-first default
+  const [isNarrow, setIsNarrow] = useState(true)
   const [isTiny, setIsTiny] = useState(false)
   const [showQuickActions, setShowQuickActions] = useState(false)
   const [drawerOpen, setDrawerOpen] = useState(false)
+  const [selectedLeagueKey, setSelectedLeagueKey] = useState<string | null>(null)
+  const [conversationId, setConversationId] = useState<string | null>(null)
+  const [conversations, setConversations] = useState<Conversation[]>([])
+  const [showHistory, setShowHistory] = useState(false)
+
   const { isAuthenticated: isYahooConnected } = useYahooAuth()
+  const { theme, toggleTheme } = useTheme()
+  const { addToast } = useToast()
+  const { isOnboardingComplete, markComplete: markOnboardingComplete } = useOnboarding()
+
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
-  // Debounced resize handler — only fires after 150ms of no resize events
+  // ── Contextual quick actions ──
+  const quickActions = useMemo(() => {
+    const lastMessage = messages[messages.length - 1]
+    const cards = lastMessage?.metadata?.cards
+    const hasCards = cards && cards.length > 0
+    const lastCardType = hasCards ? cards[0]?.type : null
+
+    const contextual: QuickAction[] = []
+
+    // Add context-specific actions based on last card
+    if (lastCardType === 'player') {
+      const playerName = cards?.[0]?.payload?.player?.name
+      if (playerName) {
+        contextual.push({ label: `📊 Compare ${playerName}`, command: `compare ${playerName} with` })
+        contextual.push({ label: `🔄 Trade ${playerName}`, command: `suggest a trade involving ${playerName}` })
+      }
+    }
+    if (lastCardType === 'matchup') {
+      contextual.push({ label: '⚾ Stream a pitcher', command: 'which pitchers should I stream this week?' })
+    }
+    if (lastCardType === 'lineup') {
+      contextual.push({ label: '🔍 Find upgrades', command: 'who should I pick up on waivers to upgrade my lineup?' })
+    }
+
+    // Filter base actions by auth state
+    const filtered = BASE_QUICK_ACTIONS.filter((a) => {
+      if (a.context === 'authenticated') return isYahooConnected
+      if (a.context === 'unauthenticated') return !isYahooConnected
+      return true
+    })
+
+    return [...contextual, ...filtered]
+  }, [messages, isYahooConnected])
+
+  // ── Persistence: Load conversations on mount ──
+  useEffect(() => {
+    const convs = getConversations()
+    setConversations(convs)
+    const activeId = getActiveConversationId()
+    if (activeId) {
+      const conv = getConversation(activeId)
+      if (conv && conv.messages.length > 0) {
+        setConversationId(activeId)
+        setMessages(conv.messages)
+        return
+      }
+    }
+    // Start a new conversation
+    const newConv = createNewConversation()
+    setConversationId(newConv.id)
+    setActiveConversationId(newConv.id)
+  }, [])
+
+  // ── Persistence: Save messages whenever they change ──
+  useEffect(() => {
+    if (!conversationId || messages.length === 0) return
+    const conv: Conversation = {
+      id: conversationId,
+      title: generateTitle(messages),
+      messages,
+      createdAt: getConversation(conversationId)?.createdAt || new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    }
+    saveConversation(conv)
+    setConversations(getConversations())
+  }, [messages, conversationId])
+
+  // ── Resize handler ──
   useEffect(() => {
     let timeoutId: ReturnType<typeof setTimeout>
     const checkSize = () => {
@@ -65,7 +167,6 @@ export default function EnhancedChatInterface({ leagueId, userId, initialMessage
         setIsTiny(window.innerWidth <= 520)
       }, 150)
     }
-    // Set initial values synchronously (no debounce on mount)
     setIsNarrow(window.innerWidth <= 900)
     setIsTiny(window.innerWidth <= 520)
     setMounted(true)
@@ -82,7 +183,7 @@ export default function EnhancedChatInterface({ leagueId, userId, initialMessage
 
   useEffect(() => {
     scrollToBottom()
-  }, [messages, scrollToBottom])
+  }, [messages, streamingText, scrollToBottom])
 
   useEffect(() => {
     inputRef.current?.focus()
@@ -105,11 +206,45 @@ export default function EnhancedChatInterface({ leagueId, userId, initialMessage
     return () => { document.body.style.overflow = '' }
   }, [drawerOpen])
 
+  // ── Keyboard shortcuts ──
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // "/" to focus input (when not already focused)
+      if (e.key === '/' && document.activeElement !== inputRef.current) {
+        e.preventDefault()
+        inputRef.current?.focus()
+      }
+      // Escape to close drawer or blur input
+      if (e.key === 'Escape') {
+        if (drawerOpen) setDrawerOpen(false)
+        else if (showQuickActions) setShowQuickActions(false)
+        else inputRef.current?.blur()
+      }
+      // Cmd/Ctrl+K — command palette (focus input with clear)
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault()
+        setInput('')
+        inputRef.current?.focus()
+      }
+      // Arrow Up — edit last message
+      if (e.key === 'ArrowUp' && document.activeElement === inputRef.current && !input) {
+        const lastUserMsg = [...messages].reverse().find((m) => m.role === 'user')
+        if (lastUserMsg) {
+          setInput(lastUserMsg.content)
+        }
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [drawerOpen, showQuickActions, input, messages])
 
+  // ── Chat submission with streaming ──
   const handleSubmit = async (e?: React.FormEvent) => {
     e?.preventDefault()
     const text = input.trim()
     if (!text || isLoading) return
+
+    hapticTap()
 
     const userMessage: ChatMessage = {
       id: Date.now().toString(),
@@ -121,6 +256,7 @@ export default function EnhancedChatInterface({ leagueId, userId, initialMessage
     setMessages((prev) => [...prev, userMessage])
     setInput('')
     setIsLoading(true)
+    setStreamingText('')
 
     try {
       const response = await fetch('/api/chat', {
@@ -131,6 +267,7 @@ export default function EnhancedChatInterface({ leagueId, userId, initialMessage
           leagueId,
           userId,
           sport: currentSport,
+          stream: true,
           conversationHistory: messages.slice(-10).map((m) => ({
             role: m.role,
             content: m.content,
@@ -138,25 +275,60 @@ export default function EnhancedChatInterface({ leagueId, userId, initialMessage
         }),
       })
 
-      const data = await response.json()
+      if (!response.ok || !response.body) {
+        throw new Error('Stream failed')
+      }
+
+      const reader = response.body.getReader()
+      const decoder = new TextDecoder()
+      let accumulated = ''
+      let cards: any[] = []
+      let action: any = undefined
+
+      while (true) {
+        const { value, done } = await reader.read()
+        if (done) break
+
+        const chunk = decoder.decode(value, { stream: true })
+        const lines = chunk.split('\n')
+
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue
+          try {
+            const data = JSON.parse(line.slice(6))
+            if (data.type === 'text') {
+              accumulated += data.content
+              setStreamingText(accumulated)
+            } else if (data.type === 'done') {
+              cards = data.cards || []
+              action = data.action
+            } else if (data.type === 'error') {
+              accumulated = data.message || 'Something went wrong.'
+            }
+          } catch {
+            // ignore parse errors on partial chunks
+          }
+        }
+      }
 
       const assistantMessage: ChatMessage = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: data.message,
+        content: accumulated || 'Sorry, I could not generate a response.',
         timestamp: new Date().toISOString(),
         metadata: {
-          ...(data.action ? { action: data.action.type, ...data.action.data } : {}),
-          ...(data.cards ? { cards: data.cards } : {}),
+          ...(action ? { action: action.type, ...action.data } : {}),
+          ...(cards.length > 0 ? { cards } : {}),
         },
       }
 
+      setStreamingText('')
       setMessages((prev) => [...prev, assistantMessage])
 
-      if (data.action) {
-        handleAction(data.action)
-      }
+      if (action) handleAction(action)
+      hapticSuccess()
     } catch {
+      setStreamingText('')
       const errorMessage: ChatMessage = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
@@ -166,9 +338,7 @@ export default function EnhancedChatInterface({ leagueId, userId, initialMessage
       setMessages((prev) => [...prev, errorMessage])
     } finally {
       setIsLoading(false)
-      setTimeout(() => {
-        inputRef.current?.focus()
-      }, 100)
+      setTimeout(() => inputRef.current?.focus(), 100)
     }
   }
 
@@ -186,14 +356,75 @@ export default function EnhancedChatInterface({ leagueId, userId, initialMessage
   }, [])
 
   const handleQuickAction = useCallback((command: string) => {
+    hapticTap()
     runCommand(command)
     setShowQuickActions(false)
     setDrawerOpen(false)
   }, [runCommand])
 
+  // ── Action confirmation with undo ──
+  const handleCardAction = useCallback((command: string) => {
+    hapticTap()
+    // For add/drop actions, show confirmation toast
+    if (command.startsWith('add ') || command.startsWith('drop ')) {
+      const verb = command.startsWith('add ') ? 'Adding' : 'Dropping'
+      const playerName = command.replace(/^(add|drop)\s+/i, '')
+      addToast({
+        message: `${verb} ${playerName}…`,
+        type: 'info',
+        duration: 3000,
+        undoAction: () => {
+          addToast({ message: `Cancelled ${verb.toLowerCase()} ${playerName}`, type: 'info', duration: 2000 })
+        },
+      })
+      // Delay the actual command to allow undo
+      setTimeout(() => runCommand(command), 3000)
+    } else {
+      runCommand(command)
+    }
+  }, [runCommand, addToast])
+
+  // ── Conversation management ──
+  const startNewChat = useCallback(() => {
+    const newConv = createNewConversation()
+    setConversationId(newConv.id)
+    setActiveConversationId(newConv.id)
+    setMessages([])
+    setShowHistory(false)
+    setDrawerOpen(false)
+  }, [])
+
+  const loadConversation = useCallback((id: string) => {
+    const conv = getConversation(id)
+    if (conv) {
+      setConversationId(conv.id)
+      setActiveConversationId(conv.id)
+      setMessages(conv.messages)
+    }
+    setShowHistory(false)
+    setDrawerOpen(false)
+  }, [])
+
+  const handleDeleteConversation = useCallback((id: string) => {
+    deleteConversation(id)
+    setConversations(getConversations())
+    if (conversationId === id) {
+      startNewChat()
+    }
+  }, [conversationId, startNewChat])
+
+  // ── Voice transcript handler ──
+  const handleVoiceTranscript = useCallback((text: string) => {
+    setInput(text)
+    hapticSuccess()
+  }, [])
+
+  // ── Show onboarding for first-time users ──
+  const showOnboarding = mounted && !isOnboardingComplete && messages.length === 0
+
   return (
-    <div className="h-[100dvh] bg-slate-900 text-white flex flex-col overflow-hidden">
-      {/* Header — top padding = safe-area (for notch/dynamic island) + 10px breathing room */}
+    <div className="h-[100dvh] bg-slate-900 dark:bg-slate-900 light:bg-slate-50 text-white flex flex-col overflow-hidden">
+      {/* Header */}
       <header className="landscape-compact-header px-3 sm:px-4 pt-[calc(env(safe-area-inset-top,0px)+0.625rem)] pb-2.5 sm:pb-3 bg-gradient-to-b from-slate-800 to-slate-800/80 backdrop-blur-md border-b border-slate-700/50 shadow-lg shadow-black/10 flex justify-between items-center shrink-0">
         <div className="flex items-center gap-3 min-w-0">
           {/* Mobile menu button */}
@@ -213,21 +444,52 @@ export default function EnhancedChatInterface({ leagueId, userId, initialMessage
             <p className="text-[10px] sm:text-xs text-slate-400">⚾ Baseball</p>
           </div>
         </div>
-        {/* Mobile: small Yahoo status indicator */}
-        {mounted && isNarrow && (
-          <YahooStatusBadge isAuthenticated={isYahooConnected} />
-        )}
+
+        <div className="flex items-center gap-1.5">
+          {/* League switcher (desktop) */}
+          {mounted && !isNarrow && (
+            <LeagueSwitcher
+              selectedLeagueKey={selectedLeagueKey}
+              onLeagueChange={setSelectedLeagueKey}
+            />
+          )}
+
+          {/* Notification bell */}
+          {mounted && <NotificationBell onAction={runCommand} />}
+
+          {/* Theme toggle */}
+          {mounted && (
+            <button
+              onClick={toggleTheme}
+              className="p-2 rounded-lg hover:bg-slate-700/50 active:bg-slate-700 transition-colors"
+              aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+            >
+              {theme === 'dark' ? (
+                <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                </svg>
+              ) : (
+                <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                </svg>
+              )}
+            </button>
+          )}
+
+          {/* Mobile Yahoo status */}
+          {mounted && isNarrow && (
+            <YahooStatusBadge isAuthenticated={isYahooConnected} />
+          )}
+        </div>
       </header>
 
       {/* Mobile drawer overlay */}
       {mounted && isNarrow && drawerOpen && (
         <div className="fixed inset-0 z-50 flex">
-          {/* Backdrop */}
           <div
             className="absolute inset-0 bg-black/60 backdrop-blur-sm"
             onClick={() => setDrawerOpen(false)}
           />
-          {/* Drawer panel */}
           <nav className="relative w-[85vw] max-w-[340px] h-full bg-slate-800 border-r border-slate-700 overflow-auto animate-slide-in flex flex-col" aria-label="Main menu">
             <div className="flex items-center justify-between px-4 py-3 border-b border-slate-700">
               <h2 className="text-sm font-bold text-white">Menu</h2>
@@ -243,6 +505,58 @@ export default function EnhancedChatInterface({ leagueId, userId, initialMessage
             </div>
 
             <div className="flex-1 overflow-auto p-4 space-y-6">
+              {/* New Chat button */}
+              <button
+                onClick={startNewChat}
+                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg border border-dashed border-slate-600 text-sm text-slate-300 hover:bg-slate-700/50 transition-colors"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                New Chat
+              </button>
+
+              {/* Chat History */}
+              {conversations.length > 0 && (
+                <section>
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">Recent Chats</h3>
+                  <div className="space-y-1 max-h-48 overflow-auto">
+                    {conversations.slice(0, 10).map((conv) => (
+                      <div key={conv.id} className="flex items-center gap-1">
+                        <button
+                          onClick={() => loadConversation(conv.id)}
+                          className={`flex-1 text-left px-3 py-2 rounded-lg text-xs truncate transition-colors ${
+                            conv.id === conversationId
+                              ? 'bg-primary-600/20 text-primary-400'
+                              : 'hover:bg-slate-700/50 text-slate-400'
+                          }`}
+                        >
+                          {conv.title}
+                        </button>
+                        <button
+                          onClick={() => handleDeleteConversation(conv.id)}
+                          className="p-1 rounded hover:bg-slate-700/50 text-slate-600 hover:text-slate-400"
+                          aria-label="Delete conversation"
+                        >
+                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </section>
+              )}
+
+              {/* League switcher (mobile) */}
+              <section>
+                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">League</h3>
+                <LeagueSwitcher
+                  selectedLeagueKey={selectedLeagueKey}
+                  onLeagueChange={(key) => { setSelectedLeagueKey(key); setDrawerOpen(false) }}
+                />
+              </section>
+
               {/* Yahoo Auth */}
               <section>
                 <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">Yahoo Fantasy</h3>
@@ -253,7 +567,7 @@ export default function EnhancedChatInterface({ leagueId, userId, initialMessage
               <section>
                 <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">Quick Actions</h3>
                 <div className="space-y-2">
-                  {QUICK_ACTIONS.map((action) => (
+                  {quickActions.map((action) => (
                     <button
                       key={action.label}
                       onClick={() => handleQuickAction(action.command)}
@@ -269,12 +583,62 @@ export default function EnhancedChatInterface({ leagueId, userId, initialMessage
         </div>
       )}
 
-
       <div className="flex flex-1 min-h-0">
-        {/* Desktop sidebar — hidden until mounted to prevent flash */}
+        {/* Desktop sidebar */}
         {!isNarrow && mounted && (
           <aside className="w-72 lg:w-80 border-r border-slate-700 bg-slate-800/30 overflow-auto flex flex-col">
             <div className="p-4">
+              {/* New Chat */}
+              <button
+                onClick={startNewChat}
+                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 mb-4 rounded-lg border border-dashed border-slate-600 text-sm text-slate-300 hover:bg-slate-700/50 transition-colors"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                New Chat
+              </button>
+
+              {/* Chat History */}
+              {conversations.length > 0 && (
+                <section className="mb-6">
+                  <div className="flex items-center justify-between mb-3">
+                    <h2 className="text-xs font-bold uppercase tracking-wider text-slate-400">Recent Chats</h2>
+                    <button
+                      onClick={() => setShowHistory(!showHistory)}
+                      className="text-[10px] text-primary-400 hover:underline"
+                    >
+                      {showHistory ? 'Collapse' : `Show all (${conversations.length})`}
+                    </button>
+                  </div>
+                  <div className="space-y-1">
+                    {conversations.slice(0, showHistory ? 20 : 5).map((conv) => (
+                      <div key={conv.id} className="flex items-center gap-1 group">
+                        <button
+                          onClick={() => loadConversation(conv.id)}
+                          className={`flex-1 text-left px-3 py-2 rounded-lg text-xs truncate transition-colors ${
+                            conv.id === conversationId
+                              ? 'bg-primary-600/20 text-primary-400'
+                              : 'hover:bg-slate-700/50 text-slate-400'
+                          }`}
+                        >
+                          {conv.title}
+                        </button>
+                        <button
+                          onClick={() => handleDeleteConversation(conv.id)}
+                          className="p-1 rounded opacity-0 group-hover:opacity-100 hover:bg-slate-700/50 text-slate-600 hover:text-slate-400 transition-opacity"
+                          aria-label="Delete conversation"
+                        >
+                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </section>
+              )}
+
               <section className="mb-6">
                 <h2 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">Yahoo Fantasy</h2>
                 <YahooAuth />
@@ -283,7 +647,7 @@ export default function EnhancedChatInterface({ leagueId, userId, initialMessage
               <section className="mt-6">
                 <h2 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">Quick Actions</h2>
                 <div className="space-y-2">
-                  {QUICK_ACTIONS.map((action) => (
+                  {quickActions.map((action) => (
                     <button
                       key={action.label}
                       onClick={() => handleQuickAction(action.command)}
@@ -301,14 +665,19 @@ export default function EnhancedChatInterface({ leagueId, userId, initialMessage
         {/* Chat Panel */}
         <main className="flex-1 flex flex-col min-w-0">
           <div className="flex-1 overflow-auto p-3 sm:p-4 space-y-3 sm:space-y-4 chat-scroll-fade">
-            {/* Welcome screen */}
-            {messages.length === 0 && (
+            {/* Onboarding or Welcome screen */}
+            {showOnboarding ? (
+              <Onboarding
+                onComplete={markOnboardingComplete}
+                onRunCommand={runCommand}
+              />
+            ) : messages.length === 0 && !isLoading ? (
               <div className="text-center text-slate-400 mt-8 sm:mt-12 max-w-2xl mx-auto px-2">
                 <h2 className="text-xl sm:text-2xl font-bold mb-3 sm:mb-4 text-white">Fantasy Baseball Copilot</h2>
                 <p className="mb-2 text-sm sm:text-base">Your AI-powered fantasy baseball assistant</p>
                 <p className="text-xs sm:text-sm mb-4">⚾ Baseball</p>
 
-                {/* Mobile: connect CTA — only show if not connected */}
+                {/* Mobile: connect CTA */}
                 {mounted && isNarrow && !isYahooConnected && (
                   <div className="mb-6 p-4 rounded-xl border border-purple-600/30 bg-purple-600/10">
                     <p className="text-sm text-slate-300 mb-3">Connect your Yahoo account to get started</p>
@@ -322,7 +691,6 @@ export default function EnhancedChatInterface({ leagueId, userId, initialMessage
                 )}
 
                 <p className="text-xs sm:text-sm">Try asking:</p>
-                {/* Mobile: tappable suggestion pills */}
                 {mounted && isNarrow ? (
                   <div className="mt-4 flex flex-wrap gap-2 justify-center">
                     {SUGGESTION_PILLS.map(s => (
@@ -343,8 +711,15 @@ export default function EnhancedChatInterface({ leagueId, userId, initialMessage
                     <li className="text-slate-300">• &quot;Drop Player X for Player Y&quot;</li>
                   </ul>
                 )}
+
+                {/* Keyboard shortcut hint (desktop) */}
+                {mounted && !isNarrow && (
+                  <p className="mt-6 text-[10px] text-slate-600">
+                    Tip: Press <kbd className="px-1 py-0.5 rounded bg-slate-800 text-slate-500 font-mono">/</kbd> to focus chat · <kbd className="px-1 py-0.5 rounded bg-slate-800 text-slate-500 font-mono">⌘K</kbd> to clear
+                  </p>
+                )}
               </div>
-            )}
+            ) : null}
 
             {messages.map((message) => (
               <div
@@ -362,18 +737,22 @@ export default function EnhancedChatInterface({ leagueId, userId, initialMessage
                       : 'bg-slate-800 border border-slate-700 text-slate-100'
                   }`}
                 >
-                  {/* Hide the text blurb only when there are actual cards to show */}
+                  {/* Render with markdown for assistant, plain for user */}
                   {!(message.metadata?.cards && message.metadata.cards.length > 0) && (
-                    <div className="whitespace-pre-wrap text-sm leading-relaxed">{message.content}</div>
+                    message.role === 'assistant' ? (
+                      <ChatMarkdown content={message.content} />
+                    ) : (
+                      <div className="whitespace-pre-wrap text-sm leading-relaxed">{message.content}</div>
+                    )
                   )}
-                  
+
                   {message.metadata?.cards && message.metadata.cards.length > 0 && (
                     <div className="space-y-3">
                       {message.metadata.cards.map((card: any, idx: number) => (
                         <EnhancedCards
                           key={idx}
                           card={card}
-                          onAction={runCommand}
+                          onAction={handleCardAction}
                           sport={currentSport}
                         />
                       ))}
@@ -383,7 +762,18 @@ export default function EnhancedChatInterface({ leagueId, userId, initialMessage
               </div>
             ))}
 
-            {isLoading && (
+            {/* Streaming text indicator */}
+            {isLoading && streamingText && (
+              <div className="flex justify-start max-w-4xl mx-auto">
+                <div className="max-w-[95%] sm:max-w-[85%] md:max-w-[80%] bg-slate-800 border border-slate-700 rounded-xl px-3 sm:px-4 py-2.5 sm:py-3">
+                  <ChatMarkdown content={streamingText} />
+                  <span className="inline-block w-2 h-4 bg-primary-500 animate-pulse rounded-sm ml-0.5" />
+                </div>
+              </div>
+            )}
+
+            {/* Typing indicator (before streaming starts) */}
+            {isLoading && !streamingText && (
               <div className="flex justify-start max-w-4xl mx-auto">
                 <div className="bg-slate-800 border border-slate-700 rounded-xl px-4 py-3">
                   <div className="flex space-x-2">
@@ -398,7 +788,7 @@ export default function EnhancedChatInterface({ leagueId, userId, initialMessage
             <div ref={messagesEndRef} />
           </div>
 
-          {/* Input Bar — bottom padding = safe-area (for home indicator in PWA) + base padding */}
+          {/* Input Bar */}
           <div className="landscape-compact-footer bg-gradient-to-t from-slate-900 via-slate-800/95 to-slate-800/80 backdrop-blur-md border-t border-slate-700/40 px-2.5 sm:px-4 pt-2.5 sm:pt-3 pb-[calc(env(safe-area-inset-bottom,0px)+0.625rem)] shrink-0">
             {/* Mobile quick actions toggle */}
             {mounted && isNarrow && (
@@ -417,7 +807,7 @@ export default function EnhancedChatInterface({ leagueId, userId, initialMessage
                 </button>
                 {showQuickActions && (
                   <div id="quick-actions-panel" className="mt-2 flex flex-wrap gap-2">
-                    {QUICK_ACTIONS.map((action) => (
+                    {quickActions.map((action) => (
                       <button
                         key={action.label}
                         type="button"
@@ -437,8 +827,8 @@ export default function EnhancedChatInterface({ leagueId, userId, initialMessage
                 type="text"
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                placeholder={isTiny ? 'Ask anything...' : 'Try: "set my optimal lineup"'}
-                className="flex-1 min-w-0 bg-slate-800 border border-slate-700/60 text-white rounded-xl px-3 sm:px-4 py-2.5 sm:py-3 focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
+                placeholder={isTiny ? 'Ask anything...' : 'Try: "set my optimal lineup" · Press / to focus'}
+                className="flex-1 min-w-0 bg-slate-800 border border-slate-700/60 text-white rounded-xl px-3 sm:px-4 py-2.5 sm:py-3 focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm placeholder:text-slate-500"
                 disabled={isLoading}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && !e.shiftKey) {
@@ -446,6 +836,11 @@ export default function EnhancedChatInterface({ leagueId, userId, initialMessage
                     handleSubmit()
                   }
                 }}
+              />
+              {/* Voice input */}
+              <VoiceInput
+                onTranscript={handleVoiceTranscript}
+                disabled={isLoading}
               />
               <button
                 type="submit"
@@ -469,8 +864,7 @@ export default function EnhancedChatInterface({ leagueId, userId, initialMessage
   )
 }
 
-/** Small status badge for the header on mobile — shows green/gray dot.
- *  Receives auth state from parent (no independent fetch). */
+/** Small status badge for the header on mobile */
 function YahooStatusBadge({ isAuthenticated }: { isAuthenticated: boolean }) {
   return (
     <div className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-slate-800 border border-slate-700 text-[10px] shrink-0">

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { PlayerStatsSkeleton } from './Skeleton'
 
 interface PlayerStatsProps {
   playerKey: string | null
@@ -215,11 +216,7 @@ export function PlayerStats({ playerKey, leagueKey, playerName, positions = [] }
   }
 
   if (isLoadingCurrent) {
-    return (
-      <div className="mt-2 p-2 bg-slate-800/50 rounded-lg">
-        <div className="text-xs text-slate-400">Loading stats…</div>
-      </div>
-    )
+    return <PlayerStatsSkeleton />
   }
 
   // Render the curated stats grid for a stats section
@@ -294,8 +291,16 @@ export function PlayerStats({ playerKey, leagueKey, playerName, positions = [] }
         </div>
 
         {isLoadingHistorical && (
-          <div className="p-2 bg-slate-700/20 rounded-lg">
-            <div className="text-[11px] text-slate-400">Loading {selectedHistoricalYear}…</div>
+          <div className="p-2 bg-slate-700/20 rounded-lg space-y-2">
+            <div className="animate-pulse rounded bg-slate-700/60 h-3 w-20" />
+            <div className="grid grid-cols-4 sm:grid-cols-6 gap-x-2 gap-y-2">
+              {Array.from({ length: 8 }).map((_, i) => (
+                <div key={i} className="space-y-1">
+                  <div className="animate-pulse rounded bg-slate-700/60 h-2 w-6" />
+                  <div className="animate-pulse rounded bg-slate-700/60 h-3.5 w-10" />
+                </div>
+              ))}
+            </div>
           </div>
         )}
 

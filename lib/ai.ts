@@ -678,6 +678,61 @@ For trade questions, evaluate using replacement level, positional scarcity, and 
     }
   }
 
+  /**
+   * Stream the AI response as an async generator of text chunks.
+   * Falls back to the non-streaming path if OpenAI is not configured.
+   */
+  async *streamMessage(
+    userMessage: string,
+    context: AIContext,
+    conversationHistory: Array<{ role: 'user' | 'assistant'; content: string }>
+  ): AsyncGenerator<string, AIResponse['action'] | undefined, unknown> {
+    const systemPrompt = this.buildSystemPrompt(context)
+
+    if (!this.openaiApiKey) {
+      // No streaming for rule-based fallback — yield the full message
+      const result = this.processWithRules(userMessage, context)
+      yield result.message
+      return result.action
+    }
+
+    try {
+      const openai = await this.getOpenAIClient()
+
+      const messages = [
+        { role: 'system' as const, content: systemPrompt },
+        ...conversationHistory.slice(-10),
+        { role: 'user' as const, content: userMessage },
+      ]
+
+      const stream = await openai.chat.completions.create({
+        model: 'gpt-4-turbo-preview',
+        messages,
+        temperature: 0.6,
+        max_tokens: 1500,
+        stream: true,
+      })
+
+      let fullText = ''
+      for await (const chunk of stream) {
+        const delta = chunk.choices?.[0]?.delta?.content
+        if (delta) {
+          fullText += delta
+          yield delta
+        }
+      }
+
+      // Extract action from the completed text
+      const action = this.extractAction(userMessage, fullText, context)
+      return action
+    } catch (error) {
+      console.error('Streaming error, falling back to rules:', error)
+      const result = this.processWithRules(userMessage, context)
+      yield result.message
+      return result.action
+    }
+  }
+
   private extractAction(
     userMessage: string,
     aiResponse: string,
