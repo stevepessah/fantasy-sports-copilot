@@ -505,6 +505,21 @@ const SEASON_OPTIONS = [
   { value: CURRENT_YEAR - 3, label: `${CURRENT_YEAR - 3}` },
 ]
 
+/** Abbreviate "Jonathan Aranda" → "J. Aranda" for compact mobile display */
+function abbreviateName(fullName: string): string {
+  const parts = fullName.trim().split(/\s+/)
+  if (parts.length < 2) return fullName
+  return `${parts[0][0]}. ${parts.slice(1).join(' ')}`
+}
+
+/** Compact position string: filter noise, abbreviate */
+function compactPositions(pl: any): string {
+  const HIDE = new Set(['Util', 'BN', 'IL', 'IL+', 'NA'])
+  const pos = (pl.positions || []).filter((p: string) => !HIDE.has(p))
+  if (pos.length > 0) return pos.join(',')
+  return pl.displayPosition || '-'
+}
+
 function RosterListCard({ card, onAction }: { card: Card; onAction?: (cmd: string) => void }) {
   const p = card.payload
   const isPitcher = p.positionType === 'P'
@@ -613,52 +628,54 @@ function RosterListCard({ card, onAction }: { card: Card; onAction?: (cmd: strin
     setSortAsc(false)
   }
 
+  // The "+" button column width in px — used for sticky left offsets
+  const ADD_COL_W = 22 // w-[22px]
+
   return (
     <CardShell title={card.title}>
-      {/* Season selector + filter + player count */}
-      <div className="flex items-center justify-between mb-2 gap-2 flex-wrap">
-        <div className="flex items-center gap-2">
+      {/* ── Controls: season, count, filter, page — compact single row on mobile ── */}
+      <div className="flex items-center justify-between mb-1.5 gap-1 sm:gap-2 flex-wrap">
+        <div className="flex items-center gap-1 sm:gap-2">
           <select
             value={selectedSeason}
             onChange={(e) => handleSeasonChange(parseInt(e.target.value, 10))}
-            className="text-[11px] bg-slate-700 border border-slate-600 rounded-md px-2 py-1 text-white focus:outline-none focus:ring-1 focus:ring-primary-500"
+            className="text-[10px] sm:text-[11px] bg-slate-700 border border-slate-600 rounded px-1.5 py-0.5 sm:px-2 sm:py-1 text-white focus:outline-none focus:ring-1 focus:ring-primary-500"
           >
             {SEASON_OPTIONS.map(opt => (
               <option key={opt.value} value={opt.value}>{opt.label}</option>
             ))}
           </select>
-          <span className="text-[11px] text-slate-400">
-            {filterText ? `${filtered.length} of ` : ''}{totalCount} players
+          <span className="text-[10px] sm:text-[11px] text-slate-400">
+            {filterText ? `${filtered.length}/` : ''}{totalCount}
           </span>
         </div>
-        <div className="flex items-center gap-2">
-          {/* Filter input */}
+        <div className="flex items-center gap-1 sm:gap-2">
           <div className="relative">
-            <svg className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-slate-500 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="absolute left-1.5 top-1/2 -translate-y-1/2 w-2.5 h-2.5 sm:w-3 sm:h-3 text-slate-500 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
             </svg>
             <input
               type="text"
               value={filterText}
               onChange={(e) => { setFilterText(e.target.value); setPage(0) }}
-              placeholder="Filter players…"
-              className="w-32 sm:w-44 text-[11px] bg-slate-700 border border-slate-600 rounded-md pl-6 pr-2 py-1 text-white placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+              placeholder="Filter…"
+              className="w-24 sm:w-44 text-[10px] sm:text-[11px] bg-slate-700 border border-slate-600 rounded pl-5 sm:pl-6 pr-1.5 sm:pr-2 py-0.5 sm:py-1 text-white placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
             />
             {filterText && (
               <button
                 onClick={() => { setFilterText(''); setPage(0) }}
-                className="absolute right-1.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
+                className="absolute right-1 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
                 aria-label="Clear filter"
               >
-                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
             )}
           </div>
           {totalPages > 1 && (
-            <span className="text-[11px] text-slate-400">
-              Page {page + 1}/{totalPages}
+            <span className="text-[10px] sm:text-[11px] text-slate-400 whitespace-nowrap">
+              {page + 1}/{totalPages}
             </span>
           )}
         </div>
@@ -666,35 +683,38 @@ function RosterListCard({ card, onAction }: { card: Card; onAction?: (cmd: strin
 
       {/* Loading state */}
       {loading && (
-        <div className="flex items-center justify-center py-8">
-          <div className="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-primary-500 mr-2" />
-          <span className="text-xs text-slate-400">Loading {selectedSeason} stats…</span>
+        <div className="flex items-center justify-center py-6">
+          <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-primary-500 mr-2" />
+          <span className="text-[10px] text-slate-400">Loading {selectedSeason} stats…</span>
         </div>
       )}
 
       {/* Error state */}
       {error && !loading && (
-        <div className="text-center py-4">
-          <p className="text-xs text-red-400">{error}</p>
+        <div className="text-center py-3">
+          <p className="text-[10px] text-red-400">{error}</p>
           <button
             onClick={() => { setError(null); fetchSeasonPlayers(selectedSeason) }}
-            className="mt-2 text-xs text-primary-400 hover:underline"
+            className="mt-1 text-[10px] text-primary-400 hover:underline"
           >
             Retry
           </button>
         </div>
       )}
 
-      {/* Table */}
+      {/* ── Table ── */}
       {!loading && !error && (
         <>
           <div className="overflow-x-auto -mx-2.5 sm:-mx-3">
-            <table className="w-full text-[11px] min-w-[600px]">
+            {/* Mobile: text-[9px], Desktop: text-[11px]. No min-width — let it scroll naturally */}
+            <table className="w-full text-[9px] sm:text-[11px]">
               <thead>
                 <tr className="border-b border-slate-700/60">
-                  <th className="w-8 px-1 py-1.5 sticky left-0 bg-slate-800/90 z-10" />
+                  {/* "+" column header — tiny on mobile */}
+                  <th className="w-[22px] sm:w-8 px-0.5 sm:px-1 py-1 sticky left-0 bg-slate-800/90 z-10" />
                   <th
-                    className="text-left px-1.5 py-1.5 text-slate-500 uppercase tracking-wide font-semibold cursor-pointer hover:text-slate-300 sticky left-8 bg-slate-800/90 z-10 min-w-[130px]"
+                    className="text-left px-0.5 sm:px-1.5 py-1 text-slate-500 uppercase tracking-wide font-semibold cursor-pointer hover:text-slate-300 sticky bg-slate-800/90 z-10 min-w-[90px] sm:min-w-[130px]"
+                    style={{ left: ADD_COL_W }}
                     onClick={() => handleSort('__name')}
                   >
                     Player{sortIndicator('__name')}
@@ -702,7 +722,7 @@ function RosterListCard({ card, onAction }: { card: Card; onAction?: (cmd: strin
                   {cols.map((col) => (
                     <th
                       key={col.key}
-                      className="text-right px-1.5 py-1.5 text-slate-500 uppercase tracking-wide font-semibold cursor-pointer hover:text-slate-300 whitespace-nowrap"
+                      className="text-right px-[3px] sm:px-1.5 py-1 text-slate-500 uppercase tracking-wide font-semibold cursor-pointer hover:text-slate-300 whitespace-nowrap"
                       onClick={() => handleSort(col.key)}
                     >
                       {col.label}{sortIndicator(col.key)}
@@ -710,11 +730,11 @@ function RosterListCard({ card, onAction }: { card: Card; onAction?: (cmd: strin
                   ))}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-700/30">
+              <tbody className="divide-y divide-slate-700/20">
                 {pageItems.length === 0 && (
                   <tr>
-                    <td colSpan={cols.length + 2} className="text-center py-6 text-xs text-slate-500">
-                      No players found for this season
+                    <td colSpan={cols.length + 2} className="text-center py-6 text-[10px] text-slate-500">
+                      No players found
                     </td>
                   </tr>
                 )}
@@ -723,26 +743,37 @@ function RosterListCard({ card, onAction }: { card: Card; onAction?: (cmd: strin
                     key={pl.playerKey || idx}
                     className="hover:bg-slate-700/20 transition-colors"
                   >
-                    <td className="px-1 py-1 sticky left-0 bg-slate-800/90 z-10">
+                    {/* "+" button — smaller on mobile */}
+                    <td className="px-0.5 sm:px-1 py-0.5 sm:py-1 sticky left-0 bg-slate-800/90 z-10 w-[22px] sm:w-8">
                       <button
                         onClick={(e) => { e.stopPropagation(); onAction && onAction(`add ${pl.name}`) }}
-                        className="w-6 h-6 flex items-center justify-center rounded-md bg-green-600/20 text-green-400 hover:bg-green-600/40 active:bg-green-600/60 border border-green-600/30 text-sm font-bold leading-none transition-colors"
+                        className="w-[18px] h-[18px] sm:w-6 sm:h-6 flex items-center justify-center rounded bg-green-600/20 text-green-400 hover:bg-green-600/40 active:bg-green-600/60 border border-green-600/30 text-[10px] sm:text-sm font-bold leading-none transition-colors"
                         title={`Add ${pl.name}`}
                       >
                         +
                       </button>
                     </td>
+                    {/* Player name — abbreviated on mobile, full on desktop */}
                     <td
-                      className="px-1.5 py-1 sticky left-8 bg-slate-800/90 z-10 min-w-[130px] cursor-pointer"
+                      className="px-0.5 sm:px-1.5 py-0.5 sm:py-1 sticky bg-slate-800/90 z-10 min-w-[90px] sm:min-w-[130px] cursor-pointer"
+                      style={{ left: ADD_COL_W }}
                       onClick={() => onAction && onAction(`tell me about ${pl.name}${pl.playerKey ? ` [pk:${pl.playerKey}]` : ''}`)}
                     >
-                      <div className="font-medium text-white truncate max-w-[160px] sm:max-w-[200px]">{pl.name}</div>
-                      <div className="text-[10px] text-slate-500 truncate">
-                        {pl.team} · {pl.positions?.filter((pos: string) => pos !== 'Util' && pos !== 'BN' && pos !== 'IL' && pos !== 'IL+' && pos !== 'NA').join(', ') || pl.displayPosition || '-'}
+                      {/* Mobile: single line — "J. Aranda  TB·1B,2B" */}
+                      <div className="sm:hidden">
+                        <span className="font-medium text-white truncate">{abbreviateName(pl.name)}</span>
+                        <span className="text-slate-500 ml-1">{pl.team}·{compactPositions(pl)}</span>
+                      </div>
+                      {/* Desktop: two-line */}
+                      <div className="hidden sm:block">
+                        <div className="font-medium text-white truncate max-w-[200px]">{pl.name}</div>
+                        <div className="text-[10px] text-slate-500 truncate">
+                          {pl.team} · {compactPositions(pl)}
+                        </div>
                       </div>
                     </td>
                     {cols.map((col) => (
-                      <td key={col.key} className="text-right px-1.5 py-1 text-slate-300 whitespace-nowrap tabular-nums">
+                      <td key={col.key} className="text-right px-[3px] sm:px-1.5 py-0.5 sm:py-1 text-slate-300 whitespace-nowrap tabular-nums">
                         {col.composite === 'h_ab'
                           ? buildHABList(pl.stats || {})
                           : fmtStat(pl.stats?.[col.key], col)}
@@ -754,25 +785,25 @@ function RosterListCard({ card, onAction }: { card: Card; onAction?: (cmd: strin
             </table>
           </div>
 
-          {/* Pagination */}
+          {/* Pagination — compact on mobile */}
           {totalPages > 1 && (
-            <div className="flex items-center justify-between mt-2 pt-2 border-t border-slate-700/50">
+            <div className="flex items-center justify-between mt-1.5 pt-1.5 border-t border-slate-700/50">
               <button
                 disabled={page === 0}
                 onClick={() => setPage((pg) => Math.max(0, pg - 1))}
-                className="px-2.5 py-1.5 text-xs rounded-lg border border-slate-700 bg-slate-800 hover:bg-slate-700 active:bg-slate-600 disabled:opacity-30 disabled:cursor-not-allowed text-white font-medium transition-colors"
+                className="px-2 py-1 sm:px-2.5 sm:py-1.5 text-[10px] sm:text-xs rounded-lg border border-slate-700 bg-slate-800 hover:bg-slate-700 active:bg-slate-600 disabled:opacity-30 disabled:cursor-not-allowed text-white font-medium transition-colors"
               >
-                ← Prev
+                ←
               </button>
-              <span className="text-[11px] text-slate-400">
+              <span className="text-[10px] sm:text-[11px] text-slate-400">
                 {startIdx + 1}–{Math.min(startIdx + PAGE_SIZE, sorted.length)} of {sorted.length}
               </span>
               <button
                 disabled={page >= totalPages - 1}
                 onClick={() => setPage((pg) => Math.min(totalPages - 1, pg + 1))}
-                className="px-2.5 py-1.5 text-xs rounded-lg border border-slate-700 bg-slate-800 hover:bg-slate-700 active:bg-slate-600 disabled:opacity-30 disabled:cursor-not-allowed text-white font-medium transition-colors"
+                className="px-2 py-1 sm:px-2.5 sm:py-1.5 text-[10px] sm:text-xs rounded-lg border border-slate-700 bg-slate-800 hover:bg-slate-700 active:bg-slate-600 disabled:opacity-30 disabled:cursor-not-allowed text-white font-medium transition-colors"
               >
-                Next →
+                →
               </button>
             </div>
           )}
@@ -785,10 +816,10 @@ function RosterListCard({ card, onAction }: { card: Card; onAction?: (cmd: strin
 function CardShell({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div className="rounded-xl border border-slate-700 bg-slate-800/50 overflow-hidden">
-      <div className="px-2.5 sm:px-3 py-1.5 sm:py-2 border-b border-slate-700 bg-slate-800/50">
-        <div className="text-xs sm:text-sm font-bold">{title}</div>
+      <div className="px-2 sm:px-3 py-1 sm:py-2 border-b border-slate-700 bg-slate-800/50">
+        <div className="text-[11px] sm:text-sm font-bold">{title}</div>
       </div>
-      <div className="p-2.5 sm:p-3">{children}</div>
+      <div className="p-1.5 sm:p-3">{children}</div>
     </div>
   )
 }
