@@ -182,67 +182,15 @@ export const matchupDB = {
   },
 }
 
-// Initialize with some sample players for MVP
+// Initialize sample player data
 export function initializeSampleData(sport?: 'football' | 'baseball') {
   if (sport === 'baseball') {
     initializeBaseballPlayers()
-  } else {
-    initializeFootballPlayers()
   }
 }
 
 // Track if baseball players have been loaded from CSV
 let baseballPlayersLoaded = false
-
-function initializeFootballPlayers() {
-  // Sample NFL players - expanded roster for MVP
-  const samplePlayers: Player[] = [
-    // QBs
-    { id: 'p1', name: 'Josh Allen', sport: 'football', position: 'QB', team: 'BUF', projectedPoints: 22.5, adp: 25 },
-    { id: 'p2', name: 'Lamar Jackson', sport: 'football', position: 'QB', team: 'BAL', projectedPoints: 21.8, adp: 30 },
-    { id: 'p3', name: 'Patrick Mahomes', sport: 'football', position: 'QB', team: 'KC', projectedPoints: 21.5, adp: 20 },
-    { id: 'p4', name: 'Jalen Hurts', sport: 'football', position: 'QB', team: 'PHI', projectedPoints: 21.2, adp: 22 },
-    { id: 'p5', name: 'Joe Burrow', sport: 'football', position: 'QB', team: 'CIN', projectedPoints: 20.8, adp: 28 },
-    
-    // RBs
-    { id: 'p6', name: 'Christian McCaffrey', sport: 'football', position: 'RB', team: 'SF', projectedPoints: 18.5, adp: 1 },
-    { id: 'p7', name: 'Austin Ekeler', sport: 'football', position: 'RB', team: 'LAC', projectedPoints: 17.2, adp: 5 },
-    { id: 'p8', name: 'Derrick Henry', sport: 'football', position: 'RB', team: 'TEN', projectedPoints: 16.8, adp: 8 },
-    { id: 'p9', name: 'Saquon Barkley', sport: 'football', position: 'RB', team: 'NYG', projectedPoints: 16.5, adp: 7 },
-    { id: 'p10', name: 'Josh Jacobs', sport: 'football', position: 'RB', team: 'LV', projectedPoints: 16.2, adp: 9 },
-    { id: 'p11', name: 'Jonathan Taylor', sport: 'football', position: 'RB', team: 'IND', projectedPoints: 15.8, adp: 12 },
-    { id: 'p12', name: 'Nick Chubb', sport: 'football', position: 'RB', team: 'CLE', projectedPoints: 15.5, adp: 11 },
-    { id: 'p13', name: 'Tony Pollard', sport: 'football', position: 'RB', team: 'DAL', projectedPoints: 15.2, adp: 15 },
-    
-    // WRs
-    { id: 'p14', name: 'Tyreek Hill', sport: 'football', position: 'WR', team: 'MIA', projectedPoints: 16.5, adp: 3 },
-    { id: 'p15', name: 'Justin Jefferson', sport: 'football', position: 'WR', team: 'MIN', projectedPoints: 16.2, adp: 2 },
-    { id: 'p16', name: 'CeeDee Lamb', sport: 'football', position: 'WR', team: 'DAL', projectedPoints: 15.8, adp: 6 },
-    { id: 'p17', name: 'Davante Adams', sport: 'football', position: 'WR', team: 'LV', projectedPoints: 15.5, adp: 13 },
-    { id: 'p18', name: 'Stefon Diggs', sport: 'football', position: 'WR', team: 'BUF', projectedPoints: 15.2, adp: 14 },
-    { id: 'p19', name: 'Amon-Ra St. Brown', sport: 'football', position: 'WR', team: 'DET', projectedPoints: 14.8, adp: 18 },
-    { id: 'p20', name: 'Cooper Kupp', sport: 'football', position: 'WR', team: 'LAR', projectedPoints: 14.5, adp: 16 },
-    { id: 'p21', name: 'AJ Brown', sport: 'football', position: 'WR', team: 'PHI', projectedPoints: 14.2, adp: 17 },
-    
-    // TEs
-    { id: 'p22', name: 'Travis Kelce', sport: 'football', position: 'TE', team: 'KC', projectedPoints: 14.5, adp: 10 },
-    { id: 'p23', name: 'Mark Andrews', sport: 'football', position: 'TE', team: 'BAL', projectedPoints: 12.2, adp: 35 },
-    { id: 'p24', name: 'T.J. Hockenson', sport: 'football', position: 'TE', team: 'MIN', projectedPoints: 11.8, adp: 40 },
-    { id: 'p25', name: 'Darren Waller', sport: 'football', position: 'TE', team: 'NYG', projectedPoints: 11.5, adp: 45 },
-    
-    // Ks
-    { id: 'p26', name: 'Justin Tucker', sport: 'football', position: 'K', team: 'BAL', projectedPoints: 9.5, adp: 120 },
-    { id: 'p27', name: 'Daniel Carlson', sport: 'football', position: 'K', team: 'LV', projectedPoints: 9.2, adp: 125 },
-    
-    // DEFs
-    { id: 'p28', name: 'Buffalo Bills', sport: 'football', position: 'DEF', team: 'BUF', projectedPoints: 8.5, adp: 110 },
-    { id: 'p29', name: 'San Francisco 49ers', sport: 'football', position: 'DEF', team: 'SF', projectedPoints: 8.2, adp: 115 },
-  ]
-
-  samplePlayers.forEach((player) => {
-    playerDB.create(player)
-  })
-}
 
 function initializeBaseballPlayers() {
   // Only load once to avoid duplicates
