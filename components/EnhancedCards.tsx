@@ -414,6 +414,8 @@ export function EnhancedCards({ card, onAction, sport }: EnhancedCardsProps) {
           playerB={p.playerB}
           statKeys={p.statKeys || ['AVG', 'HR', 'RBI', 'R', 'SB', 'OPS']}
           title={card.title}
+          isMixed={p.isMixed}
+          onAction={onAction}
         />
       )
     }

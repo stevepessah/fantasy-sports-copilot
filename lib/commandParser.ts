@@ -22,10 +22,13 @@ export interface ParsedIntent {
   isTrade: boolean
   isDraft: boolean
   isPlayerLookup: boolean
+  isCompare: boolean
   isViewTeams: boolean
   isShowBatters: boolean
   isShowPitchers: boolean
   playerName?: string
+  comparePlayerA?: string
+  comparePlayerB?: string
   dropPlayer?: string
   addPlayer?: string
   tradePlayer?: string
@@ -111,6 +114,66 @@ const BATTER_PHRASES = ['position players', 'position player']
 /** Pitcher subjects */
 const PITCHER_TOKENS = ['pitchers', 'pitcher', 'arms']
 const PITCHER_PHRASES = ['pitching staff']
+
+/** Comparison subjects */
+const COMPARE_TOKENS = ['compare', 'comparison']
+const COMPARE_PHRASES = [
+  'compare', 'head to head', 'h2h between', 'stack up against',
+  'stacks up against', 'stack up to', 'stacks up to',
+  "who's better", 'whos better', 'who is better',
+  'better between', 'better of',
+  'side by side', 'side-by-side',
+]
+
+/**
+ * Separators between two player names in a comparison query.
+ * Tried in order — first match wins.
+ */
+const COMPARE_SEPARATORS = [
+  ' compared to ', ' compared with ',
+  ' versus ', ' vs. ', ' vs ',
+  ' head to head with ', ' h2h with ', ' h2h ',
+  ' stack up against ', ' stacks up against ',
+  ' stack up to ', ' stacks up to ',
+  ' side by side with ', ' side-by-side with ',
+  ' against ', ' with ', ' and ', ' or ', ' to ',
+]
+
+/**
+ * Extract two player names from a comparison query.
+ * Returns [playerA, playerB] or undefined if the message doesn't look like a comparison.
+ */
+function extractCompareNames(input: string): [string, string] | undefined {
+  const s = input.trim()
+  if (!s) return undefined
+
+  // Strip leading compare-related verbs/phrases to get to the names
+  let stripped = s
+    .replace(/^(?:compare|comparison of|can you compare|could you compare|please compare)\s+/i, '')
+    .replace(/^(?:who's better|whos better|who is better)\s*[,:]?\s*/i, '')
+    .replace(/^(?:better between|better of)\s*/i, '')
+    .replace(/^(?:head to head|h2h|side by side|side-by-side)\s*(?:between|of|for|with|:)?\s*/i, '')
+
+  // Strip trailing comparison-related phrases that aren't part of names
+  stripped = stripped
+    .replace(/\s+(?:side by side|side-by-side|head to head|h2h|comparison|compared)$/i, '')
+
+  // Try each separator
+  for (const sep of COMPARE_SEPARATORS) {
+    const idx = stripped.toLowerCase().indexOf(sep)
+    if (idx > 0) {
+      const rawA = stripped.slice(0, idx).trim()
+      const rawB = stripped.slice(idx + sep.length).trim()
+      const nameA = cleanupName(rawA)
+      const nameB = cleanupName(rawB)
+      if (nameA && nameB && isLikelyName(nameA) && isLikelyName(nameB)) {
+        return [nameA, nameB]
+      }
+    }
+  }
+
+  return undefined
+}
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -225,9 +288,19 @@ export function parseIntent(input: string): ParsedIntent {
     (mentionsPitchers && (wantsToView || m.word('all', 'every', 'list', 'my'))) ||
     s === 'pitchers'
 
+  // ── Compare (must be checked BEFORE player lookup to avoid false-positive) ──
+  const compareNames = extractCompareNames(input)
+  const isCompare = Boolean(compareNames) && (
+    m.any(COMPARE_TOKENS, COMPARE_PHRASES) ||
+    m.phrase(' vs ', ' vs. ', ' versus ') ||
+    m.phrase("who's better", 'whos better', 'who is better') ||
+    // Even "Player A vs Player B" without "compare" should work
+    Boolean(compareNames)
+  )
+
   // ── Player lookup (most permissive — fallback intent) ──
-  const playerName = extractPlayerName(input)
-  const isPlayerLookup = shouldHandlePlayerLookup(s, words, {
+  const playerName = isCompare ? undefined : extractPlayerName(input)
+  const isPlayerLookup = !isCompare && shouldHandlePlayerLookup(s, words, {
     isHelp, isSetLineup, isShowLineup, isMatchup, isWaivers,
     isAddDrop, isTrade, isDraft, isViewTeams, isShowBatters, isShowPitchers,
   }, playerName)
@@ -244,8 +317,11 @@ export function parseIntent(input: string): ParsedIntent {
     isViewTeams,
     isShowBatters,
     isShowPitchers,
+    isCompare,
     isPlayerLookup,
     playerName,
+    comparePlayerA: compareNames?.[0],
+    comparePlayerB: compareNames?.[1],
     dropPlayer: extractDropPlayer(s),
     addPlayer: extractAddPlayer(s),
     tradePlayer: extractTradePlayer(s),
@@ -257,6 +333,7 @@ function emptyIntent(): ParsedIntent {
     isHelp: false, isSetLineup: false, isShowLineup: false,
     isMatchup: false, isWaivers: false, isAddDrop: false,
     isTrade: false, isDraft: false, isPlayerLookup: false,
+    isCompare: false,
     isViewTeams: false, isShowBatters: false, isShowPitchers: false,
   }
 }
@@ -398,8 +475,8 @@ const TRAILING_NOISE_WORDS = new Set([
   'stats', 'stat', 'statistics', 'numbers', 'performance',
   'doing', 'outlook', 'projection', 'projections', 'forecast',
   'analysis', 'breakdown', 'update', 'news', 'status',
-  // Comparative
-  'vs', 'versus', 'against', 'matchup', 'compared',
+  // Comparative (not 'vs', 'versus', 'against', 'compared' — those are comparison separators)
+  'matchup',
   // Filler
   'so', 'far', 'been', 'looking', 'playing', 'performing',
   'like', 'please',
@@ -479,7 +556,9 @@ function cleanupName(name: string): string {
   const cleaned = name.replace(/[?.!,]/g, '').trim()
   const tokens = cleaned.split(/\s+/).filter(Boolean)
   const strippedLeading = stripLeadingFiller(tokens)
-  const trimmedTokens = stripTrailingNoise(strippedLeading.length > 0 ? strippedLeading : tokens)
+  // If ALL words were filler, there's no name here — return empty
+  if (strippedLeading.length === 0) return ''
+  const trimmedTokens = stripTrailingNoise(strippedLeading)
   return trimmedTokens.join(' ').trim()
 }
 

@@ -394,6 +394,130 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // ─── Player comparison ──────────────────────────────────────────────────
+    if (intent.isCompare && intent.comparePlayerA && intent.comparePlayerB) {
+      if (yahooAccessToken) {
+        try {
+          const api = new YahooFantasyAPI()
+          api.setAccessToken(yahooAccessToken)
+          const { leagues } = await api.getLeagues('mlb')
+          const yahooLeague = leagues.find(l => l.is_finished !== '1') || leagues[0]
+
+          if (yahooLeague?.league_key) {
+            // Look up both players in parallel by name
+            const [ownershipA, ownershipB] = await Promise.all([
+              getPlayerOwnership(api, yahooLeague.league_key, intent.comparePlayerA).catch(() => null),
+              getPlayerOwnership(api, yahooLeague.league_key, intent.comparePlayerB).catch(() => null),
+            ])
+
+            if (ownershipA && ownershipB) {
+              const playerKeyA = ownershipA.player.player_key
+              const playerKeyB = ownershipB.player.player_key
+
+              // Fetch stats for both players in parallel
+              const [statsA, statsB] = await Promise.all([
+                api.getPlayerStats(playerKeyA, yahooLeague.league_key).catch(() => ({ stats: null })),
+                api.getPlayerStats(playerKeyB, yahooLeague.league_key).catch(() => ({ stats: null })),
+              ])
+
+              // Remap stats from numeric IDs to display names
+              const gameKey = playerKeyA.split('.')[0]
+              const categories = await getStatCategoriesForCompare(api, gameKey)
+
+              const remappedA = remapStatsForCompare(statsA.stats, categories)
+              const remappedB = remapStatsForCompare(statsB.stats, categories)
+
+              const posTypeA = ownershipA.player.position_type || (isPitcherPosition(ownershipA.player.eligible_positions) ? 'P' : 'B')
+              const posTypeB = ownershipB.player.position_type || (isPitcherPosition(ownershipB.player.eligible_positions) ? 'P' : 'B')
+
+              const isMixed = posTypeA !== posTypeB
+              const bothPitchers = posTypeA === 'P' && posTypeB === 'P'
+
+              // Choose stat keys based on position types
+              let statKeys: string[]
+              if (isMixed) {
+                // Option B: Fantasy-oriented universal metrics for mixed types
+                statKeys = ['GP', 'K']
+                // Add batter-specific stats they might share
+                const universalStats = ['GP', 'K', 'BB']
+                statKeys = universalStats.filter(k => 
+                  (remappedA[k] !== undefined || remappedB[k] !== undefined)
+                )
+                // If very few shared stats, just show all available stats from both
+                const allKeysA = Object.keys(remappedA)
+                const allKeysB = Object.keys(remappedB)
+                if (statKeys.length < 3) {
+                  statKeys = [...new Set([...allKeysA, ...allKeysB])].filter(k => k !== 'H' && k !== 'AB')
+                }
+              } else if (bothPitchers) {
+                statKeys = ['GP', 'IP', 'W', 'L', 'SV', 'HLD', 'K', 'ERA', 'WHIP', 'QS'].filter(k =>
+                  remappedA[k] !== undefined || remappedB[k] !== undefined
+                )
+              } else {
+                // Both batters
+                statKeys = ['GP', 'AVG', 'OBP', 'OPS', 'R', 'HR', 'RBI', 'SB', 'BB', 'K'].filter(k =>
+                  remappedA[k] !== undefined || remappedB[k] !== undefined
+                )
+              }
+
+              // Ensure we have at least some stat keys
+              if (statKeys.length === 0) {
+                const allKeys = [...new Set([...Object.keys(remappedA), ...Object.keys(remappedB)])]
+                statKeys = allKeys.filter(k => k !== 'H' && k !== 'AB').slice(0, 10)
+              }
+
+              const nameA = ownershipA.player.name.full
+              const nameB = ownershipB.player.name.full
+
+              response.cards.push({
+                type: 'compare',
+                title: `⚖️ ${nameA} vs ${nameB}`,
+                payload: {
+                  playerA: {
+                    name: nameA,
+                    team: ownershipA.player.editorial_team_abbr || 'FA',
+                    position: ownershipA.player.display_position || ownershipA.player.eligible_positions?.[0] || 'UTIL',
+                    stats: remappedA,
+                    positionType: posTypeA,
+                  },
+                  playerB: {
+                    name: nameB,
+                    team: ownershipB.player.editorial_team_abbr || 'FA',
+                    position: ownershipB.player.display_position || ownershipB.player.eligible_positions?.[0] || 'UTIL',
+                    stats: remappedB,
+                    positionType: posTypeB,
+                  },
+                  statKeys,
+                  isMixed,
+                  leagueKey: yahooLeague.league_key,
+                  playerKeyA,
+                  playerKeyB,
+                },
+              })
+
+              if (!response.message || response.message.includes('can ask me to')) {
+                if (isMixed) {
+                  response.message = `Here's the comparison between ${nameA} (${posTypeA === 'P' ? 'Pitcher' : 'Batter'}) and ${nameB} (${posTypeB === 'P' ? 'Pitcher' : 'Batter'}). Since they play different positions, I'm showing all available stats for a broader view.`
+                } else {
+                  response.message = `Here's the head-to-head comparison between ${nameA} and ${nameB}:`
+                }
+              }
+            } else {
+              const notFound = []
+              if (!ownershipA) notFound.push(intent.comparePlayerA)
+              if (!ownershipB) notFound.push(intent.comparePlayerB)
+              response.message = `Sorry, I couldn't find ${notFound.join(' or ')} in your league. Make sure the names are correct.`
+            }
+          }
+        } catch (e) {
+          console.error('Compare handler error:', e)
+          response.message = `Sorry, I had trouble comparing those players. Please try again.`
+        }
+      } else {
+        response.message = 'Please connect your Yahoo Fantasy account first to compare players.'
+      }
+    }
+
     if (intent.isPlayerLookup || embeddedPlayerKey) {
       const playerQuery = intent.playerName || cleanMessage
       let player = null
@@ -862,4 +986,65 @@ async function buildCardsForIntent(
   } catch { /* fail gracefully */ }
 
   return cards
+}
+
+// ─── Compare helpers ─────────────────────────────────────────────────────────
+
+/** Cache stat categories to avoid repeated API calls within the same request lifecycle */
+const compareCategoriesCache: Record<string, { categories: Record<string, { name: string; displayName: string; positionType: string }>; timestamp: number }> = {}
+const COMPARE_CACHE_TTL = 60 * 60 * 1000 // 1 hour
+
+async function getStatCategoriesForCompare(
+  api: YahooFantasyAPI,
+  gameKey: string
+): Promise<Record<string, { name: string; displayName: string; positionType: string }>> {
+  const cached = compareCategoriesCache[gameKey]
+  if (cached && Date.now() - cached.timestamp < COMPARE_CACHE_TTL) {
+    return cached.categories
+  }
+  try {
+    const result = await api.getStatCategories(gameKey)
+    compareCategoriesCache[gameKey] = { categories: result.categories, timestamp: Date.now() }
+    return result.categories
+  } catch {
+    return {}
+  }
+}
+
+/**
+ * Remap raw Yahoo stats (numeric IDs) into a flat { displayName: value } dict.
+ * Uses season_stats if available, falls back to ytd_stats or week_stats.
+ */
+function remapStatsForCompare(
+  rawStats: any,
+  categories: Record<string, { name: string; displayName: string; positionType: string }>
+): Record<string, number | string> {
+  if (!rawStats) return {}
+
+  // Pick the best available section
+  const sections = ['season_stats', 'ytd_stats', 'week_stats'] as const
+  let chosen: Record<string, any> | undefined
+  for (const section of sections) {
+    if (rawStats[section] && Object.keys(rawStats[section]).length > 0) {
+      chosen = rawStats[section]
+      break
+    }
+  }
+  if (!chosen) return {}
+
+  const result: Record<string, number | string> = {}
+  for (const [key, value] of Object.entries(chosen)) {
+    if (!/^\d+$/.test(key)) continue
+    const category = categories[key]
+    if (category) {
+      result[category.displayName] = value as number | string
+    }
+  }
+  return result
+}
+
+function isPitcherPosition(positions: string[]): boolean {
+  if (!positions || positions.length === 0) return false
+  const pitcherPos = ['SP', 'RP', 'P']
+  return positions.some(p => pitcherPos.includes(p.toUpperCase()))
 }
