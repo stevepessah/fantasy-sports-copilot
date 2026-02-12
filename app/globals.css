@@ -62,6 +62,26 @@ body {
   background: rgb(var(--background-start-rgb));
 }
 
+/* Subtle fading edges on the chat scroll area so content doesn't slam into header/footer */
+@supports (mask-image: linear-gradient(black, black)) {
+  .chat-scroll-fade {
+    mask-image: linear-gradient(
+      to bottom,
+      transparent 0%,
+      black 12px,
+      black calc(100% - 12px),
+      transparent 100%
+    );
+    -webkit-mask-image: linear-gradient(
+      to bottom,
+      transparent 0%,
+      black 12px,
+      black calc(100% - 12px),
+      transparent 100%
+    );
+  }
+}
+
 /* Mobile drawer slide animation */
 @keyframes slide-in {
   from {

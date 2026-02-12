@@ -178,7 +178,7 @@ export default function EnhancedChatInterface({ leagueId, userId, initialMessage
   return (
     <div className="h-[100dvh] bg-slate-900 text-white flex flex-col overflow-hidden">
       {/* Header */}
-      <header className="px-3 sm:px-4 py-2.5 sm:py-3 border-b border-slate-700 bg-slate-800/50 flex justify-between items-center safe-top shrink-0">
+      <header className="px-3 sm:px-4 pt-[max(env(safe-area-inset-top),0.5rem)] pb-2.5 sm:py-3 bg-gradient-to-b from-slate-800 to-slate-800/80 backdrop-blur-md border-b border-slate-700/50 shadow-lg shadow-black/10 flex justify-between items-center shrink-0">
         <div className="flex items-center gap-3 min-w-0">
           {/* Mobile menu button */}
           {isNarrow && (
@@ -284,7 +284,7 @@ export default function EnhancedChatInterface({ leagueId, userId, initialMessage
 
         {/* Chat Panel */}
         <main className="flex-1 flex flex-col min-w-0">
-          <div className="flex-1 overflow-auto p-3 sm:p-4 space-y-3 sm:space-y-4">
+          <div className="flex-1 overflow-auto p-3 sm:p-4 space-y-3 sm:space-y-4 chat-scroll-fade">
             {/* Welcome screen */}
             {messages.length === 0 && (
               <div className="text-center text-slate-400 mt-8 sm:mt-12 max-w-2xl mx-auto px-2">
@@ -388,7 +388,7 @@ export default function EnhancedChatInterface({ leagueId, userId, initialMessage
           </div>
 
           {/* Input Bar */}
-          <div className="border-t border-slate-700 bg-slate-800/50 p-2.5 sm:p-4 safe-bottom shrink-0">
+          <div className="bg-gradient-to-t from-slate-900 via-slate-800/95 to-slate-800/80 backdrop-blur-md border-t border-slate-700/40 px-2.5 sm:px-4 pt-2.5 sm:pt-3 pb-[max(env(safe-area-inset-bottom,0.75rem),0.75rem)] shrink-0">
             {/* Mobile quick actions toggle */}
             {isNarrow && (
               <div className="mb-2.5">
@@ -397,7 +397,7 @@ export default function EnhancedChatInterface({ leagueId, userId, initialMessage
                   onClick={() => setShowQuickActions((prev) => !prev)}
                   aria-expanded={showQuickActions}
                   aria-controls="quick-actions-panel"
-                  className="w-full flex items-center justify-between px-3 py-2 rounded-lg border border-slate-700 bg-slate-800/70 text-sm font-semibold text-slate-200 active:bg-slate-700"
+                  className="w-full flex items-center justify-between px-3 py-2 rounded-lg border border-slate-700/60 bg-slate-800/70 text-sm font-semibold text-slate-200 active:bg-slate-700"
                 >
                   <span>⚡ Quick actions</span>
                   <svg className={`w-4 h-4 text-slate-400 transition-transform ${showQuickActions ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -427,7 +427,7 @@ export default function EnhancedChatInterface({ leagueId, userId, initialMessage
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 placeholder={isTiny ? 'Ask anything...' : 'Try: "set my optimal lineup"'}
-                className="flex-1 min-w-0 bg-slate-800 border border-slate-700 text-white rounded-lg px-3 sm:px-4 py-2.5 sm:py-3 focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
+                className="flex-1 min-w-0 bg-slate-800 border border-slate-700/60 text-white rounded-xl px-3 sm:px-4 py-2.5 sm:py-3 focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
                 disabled={isLoading}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && !e.shiftKey) {
@@ -439,7 +439,7 @@ export default function EnhancedChatInterface({ leagueId, userId, initialMessage
               <button
                 type="submit"
                 disabled={isLoading || !input.trim()}
-                className="bg-primary-600 hover:bg-primary-700 active:bg-primary-800 disabled:bg-slate-700 disabled:cursor-not-allowed text-white px-4 sm:px-6 py-2.5 sm:py-3 rounded-lg font-semibold transition-colors shrink-0"
+                className="bg-primary-600 hover:bg-primary-700 active:bg-primary-800 disabled:bg-slate-700 disabled:cursor-not-allowed text-white px-4 sm:px-6 py-2.5 sm:py-3 rounded-xl font-semibold transition-colors shrink-0"
                 aria-label="Send message"
               >
                 {isTiny ? (
