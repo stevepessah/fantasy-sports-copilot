@@ -238,7 +238,31 @@ export default function EnhancedChatInterface({ leagueId, userId, initialMessage
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [drawerOpen, showQuickActions, input, messages])
 
-  // ── Chat submission with streaming ──
+  // ── Typewriter reveal — progressively shows the AI text after response ──
+  const typewriterRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const revealText = useCallback((fullText: string, onDone: () => void) => {
+    let idx = 0
+    const chunkSize = 3 // characters per tick
+    const tick = () => {
+      idx = Math.min(idx + chunkSize, fullText.length)
+      setStreamingText(fullText.slice(0, idx))
+      if (idx < fullText.length) {
+        typewriterRef.current = setTimeout(tick, 12)
+      } else {
+        setStreamingText('')
+        onDone()
+      }
+    }
+    tick()
+  }, [])
+
+  // Cleanup typewriter on unmount
+  useEffect(() => {
+    return () => { if (typewriterRef.current) clearTimeout(typewriterRef.current) }
+  }, [])
+
+  // ── Chat submission (JSON path — preserves function calling) ──
   const handleSubmit = async (e?: React.FormEvent) => {
     e?.preventDefault()
     const text = input.trim()
@@ -267,7 +291,6 @@ export default function EnhancedChatInterface({ leagueId, userId, initialMessage
           leagueId,
           userId,
           sport: currentSport,
-          stream: true,
           conversationHistory: messages.slice(-10).map((m) => ({
             role: m.role,
             content: m.content,
@@ -275,57 +298,34 @@ export default function EnhancedChatInterface({ leagueId, userId, initialMessage
         }),
       })
 
-      if (!response.ok || !response.body) {
-        throw new Error('Stream failed')
-      }
+      const data = await response.json()
 
-      const reader = response.body.getReader()
-      const decoder = new TextDecoder()
-      let accumulated = ''
-      let cards: any[] = []
-      let action: any = undefined
+      const hasCards = data.cards && data.cards.length > 0
+      const msgText: string = data.message || 'Sorry, I could not generate a response.'
 
-      while (true) {
-        const { value, done } = await reader.read()
-        if (done) break
-
-        const chunk = decoder.decode(value, { stream: true })
-        const lines = chunk.split('\n')
-
-        for (const line of lines) {
-          if (!line.startsWith('data: ')) continue
-          try {
-            const data = JSON.parse(line.slice(6))
-            if (data.type === 'text') {
-              accumulated += data.content
-              setStreamingText(accumulated)
-            } else if (data.type === 'done') {
-              cards = data.cards || []
-              action = data.action
-            } else if (data.type === 'error') {
-              accumulated = data.message || 'Something went wrong.'
-            }
-          } catch {
-            // ignore parse errors on partial chunks
-          }
-        }
-      }
-
-      const assistantMessage: ChatMessage = {
+      const buildAssistantMessage = (): ChatMessage => ({
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: accumulated || 'Sorry, I could not generate a response.',
+        content: msgText,
         timestamp: new Date().toISOString(),
         metadata: {
-          ...(action ? { action: action.type, ...action.data } : {}),
-          ...(cards.length > 0 ? { cards } : {}),
+          ...(data.action ? { action: data.action.type, ...data.action.data } : {}),
+          ...(hasCards ? { cards: data.cards } : {}),
         },
+      })
+
+      if (hasCards) {
+        // Cards present — show immediately (no typewriter, avoids flicker)
+        setMessages((prev) => [...prev, buildAssistantMessage()])
+      } else {
+        // Text-only — reveal with typewriter effect
+        setIsLoading(false) // hide bounce dots so streaming text shows
+        revealText(msgText, () => {
+          setMessages((prev) => [...prev, buildAssistantMessage()])
+        })
       }
 
-      setStreamingText('')
-      setMessages((prev) => [...prev, assistantMessage])
-
-      if (action) handleAction(action)
+      if (data.action) handleAction(data.action)
       hapticSuccess()
     } catch {
       setStreamingText('')
@@ -762,8 +762,8 @@ export default function EnhancedChatInterface({ leagueId, userId, initialMessage
               </div>
             ))}
 
-            {/* Streaming text indicator */}
-            {isLoading && streamingText && (
+            {/* Typewriter text reveal */}
+            {streamingText && (
               <div className="flex justify-start max-w-4xl mx-auto">
                 <div className="max-w-[95%] sm:max-w-[85%] md:max-w-[80%] bg-slate-800 border border-slate-700 rounded-xl px-3 sm:px-4 py-2.5 sm:py-3">
                   <ChatMarkdown content={streamingText} />
@@ -772,7 +772,7 @@ export default function EnhancedChatInterface({ leagueId, userId, initialMessage
               </div>
             )}
 
-            {/* Typing indicator (before streaming starts) */}
+            {/* Typing indicator (waiting for server) */}
             {isLoading && !streamingText && (
               <div className="flex justify-start max-w-4xl mx-auto">
                 <div className="bg-slate-800 border border-slate-700 rounded-xl px-4 py-3">
