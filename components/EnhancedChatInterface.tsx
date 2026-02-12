@@ -177,8 +177,8 @@ export default function EnhancedChatInterface({ leagueId, userId, initialMessage
 
   return (
     <div className="h-[100dvh] bg-slate-900 text-white flex flex-col overflow-hidden">
-      {/* Header */}
-      <header className="px-3 sm:px-4 pt-[max(env(safe-area-inset-top),0.5rem)] pb-2.5 sm:py-3 bg-gradient-to-b from-slate-800 to-slate-800/80 backdrop-blur-md border-b border-slate-700/50 shadow-lg shadow-black/10 flex justify-between items-center shrink-0">
+      {/* Header — top padding = safe-area (for notch/dynamic island) + 10px breathing room */}
+      <header className="px-3 sm:px-4 pt-[calc(env(safe-area-inset-top,0px)+0.625rem)] pb-2.5 sm:pb-3 bg-gradient-to-b from-slate-800 to-slate-800/80 backdrop-blur-md border-b border-slate-700/50 shadow-lg shadow-black/10 flex justify-between items-center shrink-0">
         <div className="flex items-center gap-3 min-w-0">
           {/* Mobile menu button */}
           {isNarrow && (
@@ -387,8 +387,8 @@ export default function EnhancedChatInterface({ leagueId, userId, initialMessage
             <div ref={messagesEndRef} />
           </div>
 
-          {/* Input Bar */}
-          <div className="bg-gradient-to-t from-slate-900 via-slate-800/95 to-slate-800/80 backdrop-blur-md border-t border-slate-700/40 px-2.5 sm:px-4 pt-2.5 sm:pt-3 pb-[max(env(safe-area-inset-bottom,0.75rem),0.75rem)] shrink-0">
+          {/* Input Bar — bottom padding = safe-area (for home indicator in PWA) + base padding */}
+          <div className="bg-gradient-to-t from-slate-900 via-slate-800/95 to-slate-800/80 backdrop-blur-md border-t border-slate-700/40 px-2.5 sm:px-4 pt-2.5 sm:pt-3 pb-[calc(env(safe-area-inset-bottom,0px)+0.625rem)] shrink-0">
             {/* Mobile quick actions toggle */}
             {isNarrow && (
               <div className="mb-2.5">
