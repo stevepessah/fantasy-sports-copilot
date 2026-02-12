@@ -344,7 +344,7 @@ export default function EnhancedChatInterface({ leagueId, userId, initialMessage
               >
                 <div
                   className={`${
-                    message.metadata?.cards
+                    message.metadata?.cards && message.metadata.cards.length > 0
                       ? 'max-w-[98%] sm:max-w-[95%] md:max-w-[90%] lg:max-w-full'
                       : 'max-w-[95%] sm:max-w-[85%] md:max-w-[80%]'
                   } rounded-xl px-3 sm:px-4 py-2.5 sm:py-3 ${
@@ -353,12 +353,12 @@ export default function EnhancedChatInterface({ leagueId, userId, initialMessage
                       : 'bg-slate-800 border border-slate-700 text-slate-100'
                   }`}
                 >
-                  {/* Hide the text blurb when cards are present so the card is front and center */}
-                  {!message.metadata?.cards && (
+                  {/* Hide the text blurb only when there are actual cards to show */}
+                  {!(message.metadata?.cards && message.metadata.cards.length > 0) && (
                     <div className="whitespace-pre-wrap text-sm leading-relaxed">{message.content}</div>
                   )}
                   
-                  {message.metadata?.cards && (
+                  {message.metadata?.cards && message.metadata.cards.length > 0 && (
                     <div className="space-y-3">
                       {message.metadata.cards.map((card: any, idx: number) => (
                         <EnhancedCards
