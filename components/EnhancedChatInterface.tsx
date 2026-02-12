@@ -433,7 +433,7 @@ export default function EnhancedChatInterface({ leagueId, userId, initialMessage
   return (
     <div className="h-[100dvh] bg-slate-900 dark:bg-slate-900 light:bg-slate-50 text-white flex flex-col overflow-hidden">
       {/* Header */}
-      <header className="landscape-compact-header px-3 sm:px-4 pt-[calc(env(safe-area-inset-top,0px)+0.625rem)] pb-2.5 sm:pb-3 bg-gradient-to-b from-slate-800 to-slate-800/80 backdrop-blur-md border-b border-slate-700/50 shadow-lg shadow-black/10 flex justify-between items-center shrink-0">
+      <header className="landscape-compact-header px-3 sm:px-4 pt-[calc(env(safe-area-inset-top,0px)+0.625rem)] pb-2.5 sm:pb-3 bg-gradient-to-b from-slate-800 to-slate-800/80 backdrop-blur-md border-b border-slate-700/50 shadow-lg shadow-black/10 flex justify-between items-center shrink-0 sticky top-0 z-40">
         <div className="flex items-center gap-3 min-w-0">
           {/* Mobile menu button */}
           {mounted && isNarrow && (
