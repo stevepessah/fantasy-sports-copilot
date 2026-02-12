@@ -30,6 +30,7 @@ export interface ParsedTeam {
     nickname?: string
     guid: string
     is_commissioner?: string
+    is_current_login?: string
   }>
 }
 
@@ -159,6 +160,7 @@ export function parseTeamsXML(xml: string): ParsedTeam[] {
           nickname: extractManagerValue('nickname'),
           guid: extractManagerValue('guid') || '',
           is_commissioner: extractManagerValue('is_commissioner'),
+          is_current_login: extractManagerValue('is_current_login'),
         }
         managers.push(manager)
       }

@@ -12,7 +12,139 @@ export interface AIContext {
   availablePlayers?: Player[]
   week?: number
   sport?: Sport
+  // Injected Yahoo data context — structured text for the LLM
+  yahooRosterContext?: string
+  yahooLeagueKey?: string
 }
+
+// ─── Deep Fantasy Baseball Knowledge ────────────────────────────────────────
+const FANTASY_BASEBALL_EXPERTISE = `
+## Fantasy Baseball Expertise — Use This Framework for ALL Recommendations
+
+### Scoring-Format Awareness (tailor every answer to the user's format)
+**Rotisserie (Roto):**
+- Cumulative stats across categories all season. Category balance is everything.
+- Punting a category is very risky — you lose those points for the entire year.
+- Marginal gains in categories you're trailing in are worth FAR more than adding 
+  to categories you already lead. Always think about rank movement per category.
+- At the trade deadline, overpay for categories you're close to gaining a rank in.
+
+**Head-to-Head Categories (H2H Cats):**
+- Weekly matchups. You only need to win the majority of categories each week.
+- Streaming pitchers for 2-start weeks is extremely valuable.
+- Consistency matters less than weekly upside — a player who's boom-or-bust 
+  can still win you weeks.
+- Late-season, target categories your opponent is weak in that week.
+
+**Head-to-Head Points / Points League:**
+- Volume is king. Plate appearances and innings pitched drive value.
+- Two-start pitchers are gold. Prioritize pitchers with favorable schedules.
+- Strikeouts (both hitting K and pitching K) swing points significantly.
+- Daily lineup management matters more — fill every slot every day.
+
+### Hitter Evaluation Framework
+When analyzing a hitter, consider these metrics in order of importance:
+1. **Barrel%** and **Exit Velocity (EV)** — These predict future power. A hitter 
+   with 90+ mph avg EV and 8%+ Barrel% will hit for power regardless of current HR total.
+2. **xBA / xSLG / xwOBA** — Expected stats based on batted-ball quality. Compare to 
+   actual stats: if xBA >> BA, the hitter is UNLUCKY and due for regression UP (buy low).
+   If BA >> xBA, the hitter is LUCKY and due for regression DOWN (sell high).
+3. **BB% and K%** — Discipline and contact. BB% > 10% is elite patience. K% < 20% is 
+   excellent contact. High K% hitters are volatile in AVG leagues.
+4. **Sprint Speed** — For stolen base evaluation. 28+ ft/s is elite speed. 
+   Combined with opportunity (batting order slot, team philosophy), predicts SB upside.
+5. **BABIP** — Batting average on balls in play. League average is ~.300. 
+   Sustained BABIP > .350 often regresses down; sustained < .260 often regresses up. 
+   Exceptions: elite speed guys sustain high BABIP; slow ground-ball hitters sustain low BABIP.
+6. **wRC+** — Weighted runs created plus, park- and league-adjusted. 100 is average. 
+   120+ is very good. 140+ is elite. Best single-number summary of hitting production.
+7. **Lineup slot / Team context** — Leadoff hitters score more Runs. 3-4-5 hitters get 
+   more RBI. Hitters on good offenses get more R and RBI regardless of individual talent.
+8. **Platoon splits** — Some hitters have extreme L/R splits. If a hitter only starts 
+   vs RHP, their counting stats have a ~60% ceiling. Full-time players are more valuable.
+
+### Pitcher Evaluation Framework
+When analyzing a pitcher, consider these metrics in order of importance:
+1. **Stuff+ / pitching+ / Location+** — Modern pitch-quality metrics. Stuff+ > 110 
+   indicates elite pitch quality that will sustain strikeout rates.
+2. **FIP / xFIP / SIERA** — Better predictors of future ERA than actual ERA.
+   A pitcher with 4.50 ERA but 3.20 FIP is a BUY — their defense/luck was bad.
+   A pitcher with 2.80 ERA but 4.10 FIP is a SELL — regression is coming.
+3. **SwStr% (Swinging Strike Rate)** — League average is ~11%. Above 12% = above-average 
+   K upside. Above 14% = elite strikeout pitcher. This is the #1 K predictor.
+4. **K% and K-BB%** — K% > 25% is very good. K-BB% > 15% is elite.
+   K-BB% is the single best quick-look stat for pitcher quality.
+5. **GB% (Ground Ball Rate)** — GB% > 50% helps suppress HR. Fly-ball pitchers in 
+   small parks (Coors, Yankee Stadium, Great American) are riskier.
+6. **HR/FB% (Home Run per Fly Ball)** — League average is ~12%. If a pitcher has 
+   HR/FB > 15%, their ERA is likely inflated and may regress down. If < 8%, their 
+   ERA is likely deflated and may regress up.
+7. **WHIP components** — A high WHIP from walks (BB) is more concerning than from hits, 
+   because walk rates are more stable. A pitcher who walks many will continue to.
+8. **Workload & Innings limit** — Young pitchers may have innings caps. A pitcher 
+   shut down in September has zero value in roto finishes.
+9. **Team context** — Pitchers on teams with good offenses get more Win opportunities. 
+   Closers on bad teams may lose their job or get fewer save chances.
+
+### Trade Evaluation Principles
+ALWAYS apply these principles when evaluating or suggesting trades:
+
+1. **Replacement Level Thinking** — Value players based on how much better they are 
+   than what's freely available on waivers. A top-5 SP is worth more than a top-5 OF 
+   because replacement-level SPs (~4.50 ERA) are much worse than replacement-level OF 
+   (~.240 AVG, 18 HR). The gap above replacement is what matters.
+
+2. **Positional Scarcity** — Positions with fewer elite options are more valuable:
+   - Most scarce: C, SS, 2B (fewest elite options)
+   - Medium scarcity: 3B, SP (moderate depth)
+   - Least scarce: OF, 1B, RP (deep talent pools)
+   Always factor this in. An elite SS is worth more than an equally-performing OF.
+
+3. **Category Need / Format Fit** — A trade that improves your 2 weakest categories by 
+   2 ranks each while costing you 1 rank in a strong category is a GREAT trade in roto. 
+   Always frame trade value relative to the user's team needs.
+
+4. **Buy Low / Sell High Signals:**
+   - BUY LOW: Player with poor surface stats but strong underlying metrics 
+     (xBA >> BA, FIP << ERA, high Barrel%, low BABIP). The market undervalues them.
+   - SELL HIGH: Player with great surface stats but weak underlyings 
+     (BA >> xBA, ERA << FIP, high BABIP, low Barrel%). Sell before regression.
+
+5. **Consolidation Wins** — In 2-for-1 trades, the side getting the single best player 
+   usually wins. Roster spots have value — the 2-for-1 side gains a streaming slot.
+
+6. **Rest-of-Season (ROS) vs Year-to-Date (YTD)** — Never value a player purely on 
+   YTD stats. Weight the last 30 days more heavily than full season for trend detection,
+   but use 2-3 year track records for true talent estimation.
+
+7. **Age Curve** — Hitters typically peak at 27-29. Pitchers are riskier after 32+.
+   Young breakouts (age 24-26 with elite metrics) often have their best years ahead.
+   Aging veterans with declining metrics should be sold, not held.
+
+### Team Management Principles
+- **Daily Lineup Management:** Fill every roster slot every day. Even a mediocre hitter 
+  playing > an empty slot. This is the #1 mistake casual players make.
+- **Streaming:** In H2H formats, stream pitchers on favorable matchups (vs bad lineups, 
+  in pitcher-friendly parks). In roto, stream cautiously — bad starts hurt ratios all year.
+- **IL Stashes:** Stash high-upside injured players when IL slots are available. 
+  A top-30 player returning in 3 weeks is worth an IL slot over a marginal roster player.
+- **Roster Flexibility:** Multi-position eligible players (2B/SS, OF/1B, SP/RP) are 
+  more valuable than single-position players because they give lineup flexibility.
+- **Waiver Priority:** Don't burn high waiver claims on marginal upgrades. Save them for 
+  breakout players or closer promotions. In FAAB leagues, spend 15-25% on clear impact adds.
+- **Schedule Awareness:** Players with more games in a week are more valuable in H2H. 
+  Check the weekly schedule before setting lineups.
+
+### Communication Style for Recommendations
+- Always state your recommendation clearly first, then explain WHY
+- Reference specific stats to justify your reasoning
+- Acknowledge uncertainty — "Based on his underlying metrics, I expect..." not "He WILL..."
+- If the user's roster context is available, personalize advice to THEIR specific team needs
+- When comparing players, use a structured format: strengths, weaknesses, verdict
+- Proactively flag injury risks, platoon concerns, and schedule notes
+`
+
+// ─── AI Class ───────────────────────────────────────────────────────────────
 
 export class FantasyAI {
   private openaiApiKey: string
@@ -26,17 +158,12 @@ export class FantasyAI {
     context: AIContext,
     conversationHistory: Array<{ role: 'user' | 'assistant'; content: string }>
   ): Promise<AIResponse> {
-    // For MVP, we'll use a rule-based system with OpenAI for natural language
-    // In production, this would be more sophisticated
-
     const systemPrompt = this.buildSystemPrompt(context)
     
     try {
-      // If OpenAI key is available, use it for natural language processing
       if (this.openaiApiKey) {
         return await this.processWithOpenAI(userMessage, systemPrompt, conversationHistory, context)
       } else {
-        // Fallback to rule-based system
         return this.processWithRules(userMessage, context)
       }
     } catch (error) {
@@ -46,70 +173,66 @@ export class FantasyAI {
   }
 
   private buildSystemPrompt(context: AIContext): string {
-    const sport = context.sport || 'baseball'
-    
-    let prompt = `You are Fantasy Baseball Copilot, an AI assistant for fantasy baseball. 
-You help users manage their fantasy teams through natural conversation.
+    let prompt = `You are Fantasy Baseball Copilot — an expert-level AI assistant for fantasy baseball.
+You combine deep sabermetric knowledge with practical fantasy strategy to help users 
+win their leagues through natural conversation.
 
-Core principles:
-- Be conversational, helpful, and explain your reasoning
-- Always explain WHY you're recommending something
-- Use plain English, not fantasy jargon unless the user does
-- Be proactive about potential issues (injuries, schedule, matchups)
-- When suggesting actions, explain the impact
-- Remember you're helping with baseball
-- Understand user intent even when phrased differently - be flexible with language
-- If a user asks about "teams", "standings", "who's in my league", etc., they want to see all teams
-- If a user asks "who should I start", "set my lineup", "best lineup", they want lineup optimization
-- If a user asks about "matchup", "opponent", "who am I playing", they want matchup info
+## Core Principles
+- Lead with your recommendation, then explain the reasoning using specific stats
+- Always explain WHY you're recommending something — cite the metrics
+- Tailor advice to the user's scoring format (roto, H2H cats, points) when known
+- Be proactive about risks: injuries, innings limits, platoon concerns, cold streaks
+- When the user's roster is available, personalize ALL advice to their specific team needs
+- Understand user intent from natural language — be flexible, not rigid
+- Be conversational and confident, but acknowledge uncertainty when projecting
 
-Current context:
-- Sport: baseball
+${FANTASY_BASEBALL_EXPERTISE}
+
+## Current Context
+- Sport: Baseball
 `
 
     if (context.league) {
       prompt += `- League: ${context.league.name} (${context.league.numTeams} teams, ${context.league.scoringType} scoring)\n`
+      prompt += `- Scoring Format: ${context.league.scoringType} — TAILOR ALL ADVICE to this format\n`
       prompt += `- Status: ${context.league.status}\n`
     }
 
     if (context.team) {
-      prompt += `- Your team: ${context.team.name} (${context.team.wins}-${context.team.losses})\n`
+      prompt += `- User's team: ${context.team.name} (Record: ${context.team.wins}-${context.team.losses})\n`
     }
 
     if (context.week) {
       prompt += `- Current week: ${context.week}\n`
     }
 
+    // Inject real Yahoo roster + stats context if available
+    if (context.yahooRosterContext) {
+      prompt += `\n## User's Actual Roster & Statistics (from Yahoo Fantasy)\n`
+      prompt += `USE THIS DATA to give personalized, data-driven advice.\n`
+      prompt += `When evaluating trades, compare against THESE players.\n`
+      prompt += `When suggesting pickups, identify weaknesses in THIS roster.\n\n`
+      prompt += context.yahooRosterContext
+      prompt += `\n`
+    }
+
     prompt += `
-Available actions and their conversational variations:
-- View teams/standings: 
-  * "show teams", "show all teams", "view teams", "list teams", "who's in my league", 
-    "what teams are in my league", "show standings", "league standings", "standings"
-- Set lineup: 
-  * "set my lineup", "set optimal lineup", "who should I start", "best lineup", 
-    "optimize lineup", "set my best lineup"
-- View lineup: 
-  * "show my lineup", "view lineup", "current lineup", "my lineup"
-- Matchup: 
-  * "show matchup", "my matchup", "who am I playing", "who am I facing", "opponent"
-- Waivers: 
-  * "waiver wire", "who should I pick up", "free agents", "available players"
-- Add/drop: 
-  * "drop Player X for Player Y", "add Player X", "pick up Player X"
-- Draft help: 
-  * "who should I draft", "draft advice", "best SP available"
-- Trade evaluation: 
-  * "is this trade fair", "evaluate trade", "suggest a trade"
-- Create league: 
-  * "create a 12-team roto league"
-- General questions: Answer about fantasy baseball strategy, players, matchups
+## Available Actions (understand flexibly from natural language)
+- View teams/standings: "show teams", "standings", "who's in my league"
+- Set lineup: "set my lineup", "who should I start", "best lineup", "optimize lineup"
+- View lineup: "show my lineup", "view lineup", "current lineup"
+- Matchup: "show matchup", "who am I playing", "my opponent"
+- Waivers: "waiver wire", "who should I pick up", "free agents"
+- Add/drop: "drop Player X for Player Y", "add Player X"
+- Draft help: "who should I draft", "draft advice"
+- Trade evaluation: "should I trade X for Y", "evaluate trade", "suggest a trade"
+- Player analysis: "tell me about [player]", "how is [player] doing"
+- Create league: "create a 12-team roto league"
+- General strategy: Answer any fantasy baseball strategy question with expert analysis
 
-IMPORTANT: Understand user intent from natural language. Don't require exact phrases. 
-If someone says "show teams" or "what teams are in my league" or "standings", they want to see all teams.
-If someone says "who should I start" or "set my lineup", they want lineup help.
-Be flexible and conversational!`
-
-    prompt += `\n\nAlways respond in a friendly, conversational tone. Explain your reasoning clearly.`
+IMPORTANT: Be flexible with user intent. Don't require exact phrases.
+When roster data is available, ALWAYS reference it in your analysis.
+For trade questions, evaluate using replacement level, positional scarcity, and category need.`
 
     return prompt
   }
@@ -125,7 +248,7 @@ Be flexible and conversational!`
 
     const messages = [
       { role: 'system' as const, content: systemPrompt },
-      ...conversationHistory.slice(-10), // Last 10 messages for context
+      ...conversationHistory.slice(-10),
       { role: 'user' as const, content: userMessage },
     ]
 
@@ -134,41 +257,75 @@ Be flexible and conversational!`
       {
         name: 'view_teams',
         description: 'Show all teams in the league with standings',
-        parameters: {
-          type: 'object',
-          properties: {},
-        },
+        parameters: { type: 'object', properties: {} },
       },
       {
         name: 'set_lineup',
         description: 'Set or optimize the user\'s lineup',
-        parameters: {
-          type: 'object',
-          properties: {},
-        },
+        parameters: { type: 'object', properties: {} },
       },
       {
         name: 'show_lineup',
         description: 'Show the user\'s current lineup',
-        parameters: {
-          type: 'object',
-          properties: {},
-        },
+        parameters: { type: 'object', properties: {} },
       },
       {
         name: 'show_matchup',
         description: 'Show the user\'s current matchup/opponent',
-        parameters: {
-          type: 'object',
-          properties: {},
-        },
+        parameters: { type: 'object', properties: {} },
       },
       {
         name: 'show_waivers',
         description: 'Show available players on waivers or free agents',
+        parameters: { type: 'object', properties: {} },
+      },
+      {
+        name: 'evaluate_trade',
+        description: 'Evaluate a proposed trade between players. Use when the user asks about trading, whether a trade is fair, or wants trade advice. Analyze using replacement level, positional scarcity, category need, and underlying metrics.',
         parameters: {
           type: 'object',
-          properties: {},
+          properties: {
+            giving_players: {
+              type: 'string',
+              description: 'Comma-separated names of players the user would give away',
+            },
+            receiving_players: {
+              type: 'string',
+              description: 'Comma-separated names of players the user would receive',
+            },
+            analysis: {
+              type: 'string',
+              description: 'Your detailed analysis of the trade, referencing specific stats and the user\'s roster needs',
+            },
+          },
+          required: ['analysis'],
+        },
+      },
+      {
+        name: 'suggest_roster_move',
+        description: 'Suggest an add/drop, waiver claim, or roster management move. Use when the user asks for roster advice, who to pick up, or who to drop.',
+        parameters: {
+          type: 'object',
+          properties: {
+            action: {
+              type: 'string',
+              enum: ['add', 'drop', 'add_drop', 'stream', 'stash'],
+              description: 'Type of roster move',
+            },
+            player_name: {
+              type: 'string',
+              description: 'Player to add, stream, or stash',
+            },
+            drop_player_name: {
+              type: 'string',
+              description: 'Player to drop (for add/drop swaps)',
+            },
+            reasoning: {
+              type: 'string',
+              description: 'Detailed reasoning for the roster move',
+            },
+          },
+          required: ['action', 'reasoning'],
         },
       },
     ]
@@ -178,9 +335,9 @@ Be flexible and conversational!`
         model: 'gpt-4-turbo-preview',
         messages,
         functions,
-        function_call: 'auto', // Let the model decide when to call functions
-        temperature: 0.7,
-        max_tokens: 1000,
+        function_call: 'auto',
+        temperature: 0.6, // Slightly lower for more consistent analytical reasoning
+        max_tokens: 1500, // More room for detailed analysis
       })
 
       const responseMessage = completion.choices[0]?.message
@@ -189,9 +346,27 @@ Be flexible and conversational!`
       // Check if the model wants to call a function
       if (responseMessage?.function_call) {
         const functionName = responseMessage.function_call.name
-        const action = this.mapFunctionToAction(functionName, context)
+        let functionArgs: any = {}
+        try {
+          functionArgs = JSON.parse(responseMessage.function_call.arguments || '{}')
+        } catch { /* ignore parse errors */ }
+
+        const action = this.mapFunctionToAction(functionName, context, functionArgs)
         
-        // Generate a natural language response based on the function call
+        // For analytical functions, use the model's analysis as the response
+        if (functionName === 'evaluate_trade' && functionArgs.analysis) {
+          return {
+            message: functionArgs.analysis,
+            action,
+          }
+        }
+        if (functionName === 'suggest_roster_move' && functionArgs.reasoning) {
+          return {
+            message: functionArgs.reasoning,
+            action,
+          }
+        }
+
         const naturalResponse = this.generateResponseForAction(functionName, context)
         
         return {
@@ -209,12 +384,11 @@ Be flexible and conversational!`
       }
     } catch (error) {
       console.error('OpenAI API error:', error)
-      // Fallback to rule-based
       return this.processWithRules(userMessage, context)
     }
   }
 
-  private mapFunctionToAction(functionName: string, context: AIContext): AIResponse['action'] {
+  private mapFunctionToAction(functionName: string, context: AIContext, args?: any): AIResponse['action'] {
     switch (functionName) {
       case 'view_teams':
         return { type: 'view_teams' }
@@ -234,8 +408,25 @@ Be flexible and conversational!`
           data: { teamId: context.teamId, leagueId: context.leagueId },
         }
       case 'show_waivers':
+        return { type: 'show_waivers' }
+      case 'evaluate_trade':
         return {
-          type: 'show_waivers',
+          type: 'propose_trade',
+          data: {
+            player1: args?.giving_players,
+            player2: args?.receiving_players,
+            analysis: args?.analysis,
+          },
+        }
+      case 'suggest_roster_move':
+        return {
+          type: 'add_player',
+          data: {
+            action: args?.action,
+            addPlayer: args?.player_name,
+            dropPlayer: args?.drop_player_name,
+            reasoning: args?.reasoning,
+          },
         }
       default:
         return undefined

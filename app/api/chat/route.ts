@@ -6,7 +6,12 @@ import { parseIntent, findPlayerByNameApprox } from '@/lib/commandParser'
 import { setupBaseballLeague } from '@/lib/setupBaseballLeague'
 import { YahooFantasyAPI } from '@/lib/yahoo/api'
 import { searchPlayerInLeague, searchPlayerInFreeAgents, getPlayerOwnership } from '@/lib/yahoo/playerSearch'
+import { buildRosterContext, buildRosterSummary } from '@/lib/rosterContext'
 import { cookies } from 'next/headers'
+
+// Simple in-memory cache for roster context to avoid re-fetching on every message
+const rosterContextCache: Record<string, { context: string; timestamp: number }> = {}
+const ROSTER_CACHE_TTL = 5 * 60 * 1000 // 5 minutes
 
 export async function POST(request: NextRequest) {
   try {
@@ -60,6 +65,74 @@ export async function POST(request: NextRequest) {
             }
           }
         }
+      }
+    }
+
+    // ─── Inject Yahoo Roster + Stats Context ────────────────────────────────
+    // If the user is authenticated with Yahoo, fetch their actual roster and stats
+    // and inject them into the AI context so the LLM can give personalized advice.
+    const cookieStore = await cookies()
+    const yahooAccessToken = cookieStore.get('yahoo_access_token')?.value
+
+    if (yahooAccessToken) {
+      try {
+        const api = new YahooFantasyAPI()
+        api.setAccessToken(yahooAccessToken)
+
+        // Get the user's active Yahoo league
+        const { leagues } = await api.getLeagues('mlb')
+        const yahooLeague = leagues.find(l => l.is_finished !== '1') || leagues[0]
+
+        if (yahooLeague?.league_key) {
+          context.yahooLeagueKey = yahooLeague.league_key
+
+          // Find the user's team in the Yahoo league
+          const { teams: yahooTeams } = await api.getLeagueTeams(yahooLeague.league_key)
+          const userTeam = yahooTeams.find(t =>
+            t.managers?.some(m => m.is_current_login === '1')
+          )
+
+          if (userTeam?.team_key) {
+            const cacheKey = `${userTeam.team_key}:${yahooLeague.league_key}`
+            const cached = rosterContextCache[cacheKey]
+
+            if (cached && Date.now() - cached.timestamp < ROSTER_CACHE_TTL) {
+              // Use cached roster context
+              context.yahooRosterContext = cached.context
+              console.log(`[Chat] Using cached roster context for ${userTeam.name}`)
+            } else {
+              // Determine whether we need full stats or just a summary.
+              // For trade, strategy, lineup, and player-related queries → full stats
+              // For simple actions (show teams, create league) → lightweight summary
+              const intent = parseIntent(message)
+              const needsFullStats = !intent.isViewTeams && !intent.isHelp
+
+              if (needsFullStats) {
+                console.log(`[Chat] Building full roster context for ${userTeam.name}...`)
+                const rosterResult = await buildRosterContext(
+                  api,
+                  userTeam.team_key,
+                  yahooLeague.league_key
+                )
+                context.yahooRosterContext = rosterResult.contextString
+
+                // Cache it
+                rosterContextCache[cacheKey] = {
+                  context: rosterResult.contextString,
+                  timestamp: Date.now(),
+                }
+                console.log(`[Chat] Roster context built: ${rosterResult.batterCount} batters, ${rosterResult.pitcherCount} pitchers`)
+              } else {
+                console.log(`[Chat] Building lightweight roster summary for ${userTeam.name}...`)
+                const summary = await buildRosterSummary(api, userTeam.team_key)
+                context.yahooRosterContext = summary
+              }
+            }
+          }
+        }
+      } catch (error) {
+        // Don't fail the whole chat if roster context fails — just skip it
+        console.error('[Chat] Error building Yahoo roster context (non-fatal):', error)
       }
     }
 
