@@ -700,12 +700,12 @@ function RosterListCard({ card, onAction }: { card: Card; onAction?: (cmd: strin
                     >
                       {/* Mobile: single line — "J. Aranda  TB·1B,2B" */}
                       <div className="sm:hidden">
-                        <span className="font-medium text-white truncate">{abbreviateName(pl.name)}</span>
+                        <span className="font-medium text-white truncate text-[14px]">{abbreviateName(pl.name)}</span>
                         <span className="text-slate-500 ml-1">{pl.team}·{compactPositions(pl)}</span>
                       </div>
                       {/* Desktop: two-line */}
                       <div className="hidden sm:block">
-                        <div className="font-medium text-white truncate max-w-[200px]">{pl.name}</div>
+                        <div className="font-medium text-white truncate max-w-[200px] text-[14px]">{pl.name}</div>
                         <div className="text-[10px] text-slate-500 truncate">
                           {pl.team} · {compactPositions(pl)}
                         </div>
