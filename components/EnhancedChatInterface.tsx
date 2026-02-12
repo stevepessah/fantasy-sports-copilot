@@ -29,8 +29,6 @@ const EnhancedCards = dynamic(
   () => import('./EnhancedCards').then((mod) => mod.EnhancedCards),
   { ssr: false },
 )
-const VoiceInput = dynamic(() => import('./VoiceInput'), { ssr: false })
-
 // ── Static constants ──
 
 const BOUNCE_DELAY_200 = { animationDelay: '0.2s' } as const
@@ -413,11 +411,6 @@ export default function EnhancedChatInterface({ leagueId, userId, initialMessage
     }
   }, [conversationId, startNewChat])
 
-  // ── Voice transcript handler ──
-  const handleVoiceTranscript = useCallback((text: string) => {
-    setInput(text)
-    hapticSuccess()
-  }, [])
 
   // ── Show onboarding for first-time users ──
   const showOnboarding = mounted && !isOnboardingComplete && messages.length === 0
@@ -721,15 +714,19 @@ export default function EnhancedChatInterface({ leagueId, userId, initialMessage
               </div>
             ) : null}
 
-            {messages.map((message) => (
+            {messages.map((message) => {
+              const hasCards = message.metadata?.cards && message.metadata.cards.length > 0
+              return (
               <div
                 key={message.id}
-                className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'} max-w-4xl mx-auto`}
+                className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'} max-w-4xl mx-auto ${
+                  hasCards ? 'w-full' : ''
+                }`}
               >
                 <div
                   className={`${
-                    message.metadata?.cards && message.metadata.cards.length > 0
-                      ? 'max-w-[98%] sm:max-w-[95%] md:max-w-[90%] lg:max-w-full'
+                    hasCards
+                      ? 'w-full'
                       : 'max-w-[95%] sm:max-w-[85%] md:max-w-[80%]'
                   } rounded-xl px-3 sm:px-4 py-2.5 sm:py-3 ${
                     message.role === 'user'
@@ -760,7 +757,8 @@ export default function EnhancedChatInterface({ leagueId, userId, initialMessage
                   )}
                 </div>
               </div>
-            ))}
+              )
+            })}
 
             {/* Typewriter text reveal */}
             {streamingText && (
@@ -836,11 +834,6 @@ export default function EnhancedChatInterface({ leagueId, userId, initialMessage
                     handleSubmit()
                   }
                 }}
-              />
-              {/* Voice input */}
-              <VoiceInput
-                onTranscript={handleVoiceTranscript}
-                disabled={isLoading}
               />
               <button
                 type="submit"

@@ -512,6 +512,7 @@ function RosterListCard({ card, onAction }: { card: Card; onAction?: (cmd: strin
   const [page, setPage] = useState(0)
   const [sortCol, setSortCol] = useState<string | null>(null)
   const [sortAsc, setSortAsc] = useState(false)
+  const [filterText, setFilterText] = useState('')
 
   // Season toggle state
   const [selectedSeason, setSelectedSeason] = useState(0) // 0 = current
@@ -557,8 +558,20 @@ function RosterListCard({ card, onAction }: { card: Card; onAction?: (cmd: strin
   const allPlayers: any[] = seasonPlayers[selectedSeason] || []
   const totalCount = seasonTotals[selectedSeason] || 0
 
+  // Filter players
+  const filtered = filterText.trim()
+    ? allPlayers.filter((pl: any) => {
+        const q = filterText.toLowerCase()
+        const name = (pl.name || '').toLowerCase()
+        const team = (pl.team || '').toLowerCase()
+        const positions = (pl.positions || []).join(' ').toLowerCase()
+        const displayPos = (pl.displayPosition || '').toLowerCase()
+        return name.includes(q) || team.includes(q) || positions.includes(q) || displayPos.includes(q)
+      })
+    : allPlayers
+
   // Sort players
-  const sorted = [...allPlayers]
+  const sorted = [...filtered]
   if (sortCol !== null) {
     const colDef = cols.find(c => c.key === sortCol)
     sorted.sort((a, b) => {
@@ -600,7 +613,7 @@ function RosterListCard({ card, onAction }: { card: Card; onAction?: (cmd: strin
 
   return (
     <CardShell title={card.title}>
-      {/* Season selector + player count + pagination info */}
+      {/* Season selector + filter + player count */}
       <div className="flex items-center justify-between mb-2 gap-2 flex-wrap">
         <div className="flex items-center gap-2">
           <select
@@ -612,13 +625,41 @@ function RosterListCard({ card, onAction }: { card: Card; onAction?: (cmd: strin
               <option key={opt.value} value={opt.value}>{opt.label}</option>
             ))}
           </select>
-          <span className="text-[11px] text-slate-400">{totalCount} players</span>
-        </div>
-        {totalPages > 1 && (
           <span className="text-[11px] text-slate-400">
-            Page {page + 1}/{totalPages}
+            {filterText ? `${filtered.length} of ` : ''}{totalCount} players
           </span>
-        )}
+        </div>
+        <div className="flex items-center gap-2">
+          {/* Filter input */}
+          <div className="relative">
+            <svg className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-slate-500 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+            <input
+              type="text"
+              value={filterText}
+              onChange={(e) => { setFilterText(e.target.value); setPage(0) }}
+              placeholder="Filter players…"
+              className="w-32 sm:w-44 text-[11px] bg-slate-700 border border-slate-600 rounded-md pl-6 pr-2 py-1 text-white placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+            />
+            {filterText && (
+              <button
+                onClick={() => { setFilterText(''); setPage(0) }}
+                className="absolute right-1.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
+                aria-label="Clear filter"
+              >
+                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            )}
+          </div>
+          {totalPages > 1 && (
+            <span className="text-[11px] text-slate-400">
+              Page {page + 1}/{totalPages}
+            </span>
+          )}
+        </div>
       </div>
 
       {/* Loading state */}
