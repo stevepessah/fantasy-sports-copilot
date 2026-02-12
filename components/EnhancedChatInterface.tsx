@@ -260,18 +260,24 @@ export default function EnhancedChatInterface({ leagueId, userId, initialMessage
     return () => { if (typewriterRef.current) clearTimeout(typewriterRef.current) }
   }, [])
 
+  // ── Ref to always hold the latest handleSubmit (avoids stale closure in runCommand) ──
+  const handleSubmitRef = useRef<(e?: React.FormEvent, directMessage?: string) => Promise<void>>(async () => {})
+
   // ── Chat submission (JSON path — preserves function calling) ──
-  const handleSubmit = async (e?: React.FormEvent) => {
+  const handleSubmit = async (e?: React.FormEvent, directMessage?: string) => {
     e?.preventDefault()
-    const text = input.trim()
-    if (!text || isLoading) return
+    const rawText = (directMessage || input).trim()
+    if (!rawText || isLoading) return
 
     hapticTap()
+
+    // Strip embedded metadata tags (e.g. [pk:...]) for display, keep for API
+    const displayText = rawText.replace(/\s*\[pk:[^\]]*\]/g, '').trim()
 
     const userMessage: ChatMessage = {
       id: Date.now().toString(),
       role: 'user',
-      content: text,
+      content: displayText,
       timestamp: new Date().toISOString(),
     }
 
@@ -285,7 +291,7 @@ export default function EnhancedChatInterface({ leagueId, userId, initialMessage
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          message: text,
+          message: rawText,
           leagueId,
           userId,
           sport: currentSport,
@@ -347,10 +353,13 @@ export default function EnhancedChatInterface({ leagueId, userId, initialMessage
     }
   }
 
+  // Keep ref pointing to the latest handleSubmit every render
+  handleSubmitRef.current = handleSubmit
+
   const runCommand = useCallback((command: string) => {
     setInput(command)
-    setTimeout(() => handleSubmit(), 0)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // Use ref so we always call the latest handleSubmit (avoids stale closure)
+    handleSubmitRef.current(undefined, command)
   }, [])
 
   const handleQuickAction = useCallback((command: string) => {

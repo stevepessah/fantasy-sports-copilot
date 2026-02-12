@@ -68,6 +68,12 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Extract embedded player key tag [pk:422.p.12345] if present
+    const pkMatch = message.match(/\[pk:([^\]]+)\]/)
+    const embeddedPlayerKey = pkMatch ? pkMatch[1] : undefined
+    // Strip the tag so AI and intent parsing see clean text
+    const cleanMessage = message.replace(/\s*\[pk:[^\]]*\]/g, '').trim()
+
     const currentSport = sport || 'baseball'
 
     // Build context
@@ -136,7 +142,7 @@ export async function POST(request: NextRequest) {
             if (cached && Date.now() - cached.timestamp < ROSTER_CACHE_TTL) {
               context.yahooRosterContext = cached.context
             } else {
-              const intent = parseIntent(message)
+              const intent = parseIntent(cleanMessage)
               const needsFullStats = !intent.isViewTeams && !intent.isHelp
 
               if (needsFullStats) {
@@ -164,7 +170,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Parse intent for better card generation
-    const intent = parseIntent(message)
+    const intent = parseIntent(cleanMessage)
 
     // ─── STREAMING PATH ──────────────────────────────────────────────────────
     if (wantStream) {
@@ -174,7 +180,7 @@ export async function POST(request: NextRequest) {
           try {
             // Stream AI text tokens
             const gen = fantasyAI.streamMessage(
-              message,
+              cleanMessage,
               context,
               conversationHistory || []
             )
@@ -193,7 +199,7 @@ export async function POST(request: NextRequest) {
             }
 
             // After text is done, build cards (same logic as non-streaming path)
-            const cards = await buildCardsForIntent(intent, context, message, currentSport, yahooAccessToken)
+            const cards = await buildCardsForIntent(intent, context, cleanMessage, currentSport, yahooAccessToken, embeddedPlayerKey)
             
             // Send final event with cards + action
             controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'done', cards, action })}\n\n`))
@@ -216,9 +222,9 @@ export async function POST(request: NextRequest) {
 
     // ─── NON-STREAMING PATH (unchanged) ──────────────────────────────────────
     
-    // Process message with AI
+    // Process message with AI (use clean message without metadata tags)
     const response = await fantasyAI.processMessage(
-      message,
+      cleanMessage,
       context,
       conversationHistory || []
     )
@@ -388,10 +394,10 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    if (intent.isPlayerLookup) {
-      const playerQuery = intent.playerName || message
+    if (intent.isPlayerLookup || embeddedPlayerKey) {
+      const playerQuery = intent.playerName || cleanMessage
       let player = null
-      let yahooPlayerKey: string | undefined = undefined
+      let yahooPlayerKey: string | undefined = embeddedPlayerKey
       let yahooLeagueKey: string | undefined = undefined
       let eligiblePositions: string[] = []
       let ownershipStatus: 'free_agent' | 'taken' | 'unknown' = 'unknown'
@@ -407,26 +413,74 @@ export async function POST(request: NextRequest) {
           
           if (yahooLeague && yahooLeague.league_key) {
             yahooLeagueKey = yahooLeague.league_key
+
+            // If we have an embedded player key, fetch the player directly by key
+            // This is MUCH faster than searching through all rosters
+            if (embeddedPlayerKey) {
+              try {
+                const { stats, raw } = await api.getPlayerStats(embeddedPlayerKey, yahooLeague.league_key)
+                if (stats) {
+                  yahooPlayerKey = stats.player_key || embeddedPlayerKey
+                  const playerName = stats.name?.full || playerQuery
+
+                  // Also try to find ownership info
+                  const ownership = await getPlayerOwnership(api, yahooLeague.league_key, playerName)
+                  if (ownership) {
+                    eligiblePositions = ownership.player.eligible_positions || []
+                    ownershipStatus = ownership.ownershipStatus
+                    owningTeamName = ownership.owningTeam?.name
+                    
+                    player = {
+                      id: ownership.player.player_id || stats.player_id,
+                      name: ownership.player.name.full,
+                      sport: 'baseball' as const,
+                      position: (ownership.player.display_position || ownership.player.selected_position?.position || ownership.player.eligible_positions[0] || 'UTIL') as any,
+                      team: ownership.player.editorial_team_abbr || 'FA',
+                      injuryStatus: ownership.player.injury_status === 'DTD' ? 'questionable' : 
+                                   ownership.player.injury_status === 'O' ? 'out' :
+                                   ownership.player.injury_status === 'IL' ? 'IL' : 'healthy',
+                      yahooPlayerKey: yahooPlayerKey,
+                    }
+                  } else {
+                    // Ownership search failed but we still have basic info from getPlayerStats
+                    player = {
+                      id: stats.player_id || embeddedPlayerKey,
+                      name: playerName,
+                      sport: 'baseball' as const,
+                      position: 'UTIL' as any,
+                      team: 'Unknown',
+                      yahooPlayerKey: yahooPlayerKey,
+                    }
+                  }
+                }
+              } catch {
+                // Fall through to name-based search
+              }
+            }
             
-            const ownership = await getPlayerOwnership(api, yahooLeague.league_key, playerQuery)
-            
-            if (ownership) {
-              const yahooPlayer = ownership.player
-              yahooPlayerKey = yahooPlayer.player_key
-              eligiblePositions = yahooPlayer.eligible_positions || []
-              ownershipStatus = ownership.ownershipStatus
-              owningTeamName = ownership.owningTeam?.name
+            // If we still don't have a player (no embedded key or direct lookup failed),
+            // fall back to the name-based search
+            if (!player) {
+              const ownership = await getPlayerOwnership(api, yahooLeague.league_key, playerQuery)
               
-              player = {
-                id: yahooPlayer.player_id,
-                name: yahooPlayer.name.full,
-                sport: 'baseball' as const,
-                position: (yahooPlayer.display_position || yahooPlayer.selected_position?.position || yahooPlayer.eligible_positions[0] || 'UTIL') as any,
-                team: yahooPlayer.editorial_team_abbr || 'FA',
-                injuryStatus: yahooPlayer.injury_status === 'DTD' ? 'questionable' : 
-                             yahooPlayer.injury_status === 'O' ? 'out' :
-                             yahooPlayer.injury_status === 'IL' ? 'IL' : 'healthy',
-                yahooPlayerKey: yahooPlayer.player_key,
+              if (ownership) {
+                const yahooPlayer = ownership.player
+                yahooPlayerKey = yahooPlayer.player_key
+                eligiblePositions = yahooPlayer.eligible_positions || []
+                ownershipStatus = ownership.ownershipStatus
+                owningTeamName = ownership.owningTeam?.name
+                
+                player = {
+                  id: yahooPlayer.player_id,
+                  name: yahooPlayer.name.full,
+                  sport: 'baseball' as const,
+                  position: (yahooPlayer.display_position || yahooPlayer.selected_position?.position || yahooPlayer.eligible_positions[0] || 'UTIL') as any,
+                  team: yahooPlayer.editorial_team_abbr || 'FA',
+                  injuryStatus: yahooPlayer.injury_status === 'DTD' ? 'questionable' : 
+                               yahooPlayer.injury_status === 'O' ? 'out' :
+                               yahooPlayer.injury_status === 'IL' ? 'IL' : 'healthy',
+                  yahooPlayerKey: yahooPlayer.player_key,
+                }
               }
             }
           }
@@ -594,6 +648,7 @@ async function buildCardsForIntent(
   message: string,
   currentSport: string,
   yahooAccessToken: string | undefined,
+  embeddedPlayerKey?: string,
 ): Promise<any[]> {
   const cards: any[] = []
 
@@ -702,7 +757,7 @@ async function buildCardsForIntent(
       } catch { /* skip */ }
     }
 
-    if (intent.isPlayerLookup && yahooAccessToken) {
+    if ((intent.isPlayerLookup || embeddedPlayerKey) && yahooAccessToken) {
       const playerQuery = intent.playerName || message
       try {
         const api = new YahooFantasyAPI()
@@ -710,31 +765,96 @@ async function buildCardsForIntent(
         const { leagues } = await api.getLeagues('mlb')
         const yahooLeague = leagues.find((l: any) => l.is_finished !== '1') || leagues[0]
         if (yahooLeague?.league_key) {
-          const ownership = await getPlayerOwnership(api, yahooLeague.league_key, playerQuery)
-          if (ownership) {
-            const yp = ownership.player
-            cards.push({
-              type: 'player',
-              title: 'Player Snapshot',
-              payload: {
-                player: {
-                  id: yp.player_id, name: yp.name.full, sport: 'baseball',
-                  position: yp.display_position || yp.eligible_positions?.[0] || 'UTIL',
-                  team: yp.editorial_team_abbr || 'FA',
-                  yahooPlayerKey: yp.player_key,
+          let foundPlayer = false
+
+          // If we have an embedded player key, try direct lookup first
+          if (embeddedPlayerKey) {
+            try {
+              const { stats } = await api.getPlayerStats(embeddedPlayerKey, yahooLeague.league_key)
+              if (stats) {
+                const playerName = stats.name?.full || playerQuery
+                // Try to get ownership info by name
+                const ownership = await getPlayerOwnership(api, yahooLeague.league_key, playerName)
+                if (ownership) {
+                  const yp = ownership.player
+                  cards.push({
+                    type: 'player',
+                    title: 'Player Snapshot',
+                    payload: {
+                      player: {
+                        id: yp.player_id, name: yp.name.full, sport: 'baseball',
+                        position: yp.display_position || yp.eligible_positions?.[0] || 'UTIL',
+                        team: yp.editorial_team_abbr || 'FA',
+                        yahooPlayerKey: yp.player_key || embeddedPlayerKey,
+                      },
+                      leagueKey: yahooLeague.league_key,
+                      eligiblePositions: yp.eligible_positions || [],
+                      ownershipStatus: ownership.ownershipStatus,
+                      owningTeamName: ownership.owningTeam?.name,
+                      insights: ['No injury concerns.'],
+                      actions: [
+                        { label: 'Add', command: `add ${yp.name.full}` },
+                        { label: 'Drop', command: `drop ${yp.name.full}` },
+                        { label: 'Trade idea', command: `suggest a trade involving ${yp.name.full}` },
+                      ],
+                    },
+                  })
+                  foundPlayer = true
+                } else {
+                  // Ownership search failed — still build card from stats data
+                  cards.push({
+                    type: 'player',
+                    title: 'Player Snapshot',
+                    payload: {
+                      player: {
+                        id: stats.player_id || embeddedPlayerKey, name: playerName, sport: 'baseball',
+                        position: 'UTIL', team: 'Unknown',
+                        yahooPlayerKey: embeddedPlayerKey,
+                      },
+                      leagueKey: yahooLeague.league_key,
+                      eligiblePositions: [],
+                      ownershipStatus: 'unknown',
+                      insights: [],
+                      actions: [
+                        { label: 'Add', command: `add ${playerName}` },
+                        { label: 'Drop', command: `drop ${playerName}` },
+                      ],
+                    },
+                  })
+                  foundPlayer = true
+                }
+              }
+            } catch { /* fall through to name search */ }
+          }
+
+          // Fall back to name-based search if direct lookup didn't work
+          if (!foundPlayer) {
+            const ownership = await getPlayerOwnership(api, yahooLeague.league_key, playerQuery)
+            if (ownership) {
+              const yp = ownership.player
+              cards.push({
+                type: 'player',
+                title: 'Player Snapshot',
+                payload: {
+                  player: {
+                    id: yp.player_id, name: yp.name.full, sport: 'baseball',
+                    position: yp.display_position || yp.eligible_positions?.[0] || 'UTIL',
+                    team: yp.editorial_team_abbr || 'FA',
+                    yahooPlayerKey: yp.player_key,
+                  },
+                  leagueKey: yahooLeague.league_key,
+                  eligiblePositions: yp.eligible_positions || [],
+                  ownershipStatus: ownership.ownershipStatus,
+                  owningTeamName: ownership.owningTeam?.name,
+                  insights: ['No injury concerns.'],
+                  actions: [
+                    { label: 'Add', command: `add ${yp.name.full}` },
+                    { label: 'Drop', command: `drop ${yp.name.full}` },
+                    { label: 'Trade idea', command: `suggest a trade involving ${yp.name.full}` },
+                  ],
                 },
-                leagueKey: yahooLeague.league_key,
-                eligiblePositions: yp.eligible_positions || [],
-                ownershipStatus: ownership.ownershipStatus,
-                owningTeamName: ownership.owningTeam?.name,
-                insights: ['No injury concerns.'],
-                actions: [
-                  { label: 'Add', command: `add ${yp.name.full}` },
-                  { label: 'Drop', command: `drop ${yp.name.full}` },
-                  { label: 'Trade idea', command: `suggest a trade involving ${yp.name.full}` },
-                ],
-              },
-            })
+              })
+            }
           }
         }
       } catch { /* skip */ }

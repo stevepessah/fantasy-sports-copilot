@@ -732,7 +732,7 @@ function RosterListCard({ card, onAction }: { card: Card; onAction?: (cmd: strin
                     </td>
                     <td
                       className="px-1.5 py-1 sticky left-8 bg-slate-800/90 z-10 min-w-[130px] cursor-pointer"
-                      onClick={() => onAction && onAction(`tell me about ${pl.name}`)}
+                      onClick={() => onAction && onAction(`tell me about ${pl.name}${pl.playerKey ? ` [pk:${pl.playerKey}]` : ''}`)}
                     >
                       <div className="font-medium text-white truncate max-w-[160px] sm:max-w-[200px]">{pl.name}</div>
                       <div className="text-[10px] text-slate-500 truncate">
