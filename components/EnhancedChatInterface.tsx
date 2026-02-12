@@ -16,7 +16,8 @@ export default function EnhancedChatInterface({ leagueId, userId, initialMessage
   const [input, setInput] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [currentSport] = useState<Sport>('baseball')
-  const [isNarrow, setIsNarrow] = useState(false)
+  const [mounted, setMounted] = useState(false)
+  const [isNarrow, setIsNarrow] = useState(true)   // mobile-first default
   const [isTiny, setIsTiny] = useState(false)
   const [showQuickActions, setShowQuickActions] = useState(false)
   const [drawerOpen, setDrawerOpen] = useState(false)
@@ -30,6 +31,7 @@ export default function EnhancedChatInterface({ leagueId, userId, initialMessage
       setIsTiny(window.innerWidth <= 520)
     }
     checkSize()
+    setMounted(true)
     window.addEventListener('resize', checkSize)
     return () => window.removeEventListener('resize', checkSize)
   }, [])
@@ -178,10 +180,10 @@ export default function EnhancedChatInterface({ leagueId, userId, initialMessage
   return (
     <div className="h-[100dvh] bg-slate-900 text-white flex flex-col overflow-hidden">
       {/* Header — top padding = safe-area (for notch/dynamic island) + 10px breathing room */}
-      <header className="px-3 sm:px-4 pt-[calc(env(safe-area-inset-top,0px)+0.625rem)] pb-2.5 sm:pb-3 bg-gradient-to-b from-slate-800 to-slate-800/80 backdrop-blur-md border-b border-slate-700/50 shadow-lg shadow-black/10 flex justify-between items-center shrink-0">
+      <header className="landscape-compact-header px-3 sm:px-4 pt-[calc(env(safe-area-inset-top,0px)+0.625rem)] pb-2.5 sm:pb-3 bg-gradient-to-b from-slate-800 to-slate-800/80 backdrop-blur-md border-b border-slate-700/50 shadow-lg shadow-black/10 flex justify-between items-center shrink-0">
         <div className="flex items-center gap-3 min-w-0">
           {/* Mobile menu button */}
-          {isNarrow && (
+          {mounted && isNarrow && (
             <button
               onClick={() => setDrawerOpen(true)}
               className="p-2 -ml-1 rounded-lg hover:bg-slate-700/50 active:bg-slate-700 transition-colors"
@@ -198,13 +200,13 @@ export default function EnhancedChatInterface({ leagueId, userId, initialMessage
           </div>
         </div>
         {/* Mobile: small Yahoo status indicator */}
-        {isNarrow && (
+        {mounted && isNarrow && (
           <YahooStatusBadge />
         )}
       </header>
 
       {/* Mobile drawer overlay */}
-      {isNarrow && drawerOpen && (
+      {mounted && isNarrow && drawerOpen && (
         <div className="fixed inset-0 z-50 flex">
           {/* Backdrop */}
           <div
@@ -255,9 +257,9 @@ export default function EnhancedChatInterface({ leagueId, userId, initialMessage
 
 
       <div className="flex flex-1 min-h-0">
-        {/* Desktop sidebar */}
-        {!isNarrow && (
-          <aside className="w-80 border-r border-slate-700 bg-slate-800/30 overflow-auto flex flex-col">
+        {/* Desktop sidebar — hidden until mounted to prevent flash */}
+        {!isNarrow && mounted && (
+          <aside className="w-72 lg:w-80 border-r border-slate-700 bg-slate-800/30 overflow-auto flex flex-col">
             <div className="p-4">
               <div className="mb-6">
                 <h2 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">Yahoo Fantasy</h2>
@@ -271,7 +273,7 @@ export default function EnhancedChatInterface({ leagueId, userId, initialMessage
                     <button
                       key={action.label}
                       onClick={() => handleQuickAction(action.command)}
-                      className="w-full text-left px-3 py-2 rounded-lg border border-slate-700 bg-slate-800/50 hover:bg-slate-700 transition-colors text-sm"
+                      className="w-full text-left px-3 py-2.5 rounded-lg border border-slate-700 bg-slate-800/50 hover:bg-slate-700 active:bg-slate-600 transition-colors text-sm"
                     >
                       {action.label}
                     </button>
@@ -293,7 +295,7 @@ export default function EnhancedChatInterface({ leagueId, userId, initialMessage
                 <p className="text-xs sm:text-sm mb-4">⚾ Baseball</p>
 
                 {/* Mobile: connect CTA — only show if not connected */}
-                {isNarrow && !isYahooConnected && (
+                {mounted && isNarrow && !isYahooConnected && (
                   <div className="mb-6 p-4 rounded-xl border border-purple-600/30 bg-purple-600/10">
                     <p className="text-sm text-slate-300 mb-3">Connect your Yahoo account to get started</p>
                     <button
@@ -307,7 +309,7 @@ export default function EnhancedChatInterface({ leagueId, userId, initialMessage
 
                 <p className="text-xs sm:text-sm">Try asking:</p>
                 {/* Mobile: tappable suggestion pills */}
-                {isNarrow ? (
+                {mounted && isNarrow ? (
                   <div className="mt-4 flex flex-wrap gap-2 justify-center">
                     {[
                       { label: 'Set my best lineup', cmd: 'set my best lineup' },
@@ -343,8 +345,8 @@ export default function EnhancedChatInterface({ leagueId, userId, initialMessage
                 <div
                   className={`${
                     message.metadata?.cards
-                      ? 'max-w-[98%] sm:max-w-[95%] lg:max-w-full'
-                      : isTiny ? 'max-w-[95%]' : 'max-w-[85%]'
+                      ? 'max-w-[98%] sm:max-w-[95%] md:max-w-[90%] lg:max-w-full'
+                      : 'max-w-[95%] sm:max-w-[85%] md:max-w-[80%]'
                   } rounded-xl px-3 sm:px-4 py-2.5 sm:py-3 ${
                     message.role === 'user'
                       ? 'bg-primary-600 text-white'
@@ -388,9 +390,9 @@ export default function EnhancedChatInterface({ leagueId, userId, initialMessage
           </div>
 
           {/* Input Bar — bottom padding = safe-area (for home indicator in PWA) + base padding */}
-          <div className="bg-gradient-to-t from-slate-900 via-slate-800/95 to-slate-800/80 backdrop-blur-md border-t border-slate-700/40 px-2.5 sm:px-4 pt-2.5 sm:pt-3 pb-[calc(env(safe-area-inset-bottom,0px)+0.625rem)] shrink-0">
+          <div className="landscape-compact-footer bg-gradient-to-t from-slate-900 via-slate-800/95 to-slate-800/80 backdrop-blur-md border-t border-slate-700/40 px-2.5 sm:px-4 pt-2.5 sm:pt-3 pb-[calc(env(safe-area-inset-bottom,0px)+0.625rem)] shrink-0">
             {/* Mobile quick actions toggle */}
-            {isNarrow && (
+            {mounted && isNarrow && (
               <div className="mb-2.5">
                 <button
                   type="button"

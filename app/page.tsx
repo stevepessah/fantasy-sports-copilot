@@ -2,7 +2,7 @@ import EnhancedChatInterface from '@/components/EnhancedChatInterface'
 
 export default function Home() {
   return (
-    <main className="min-h-screen">
+    <main>
       <EnhancedChatInterface />
     </main>
   )

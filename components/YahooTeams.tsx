@@ -17,7 +17,7 @@ export default function YahooTeams({ leagueKey }: YahooTeamsProps) {
 
   if (!leagueKey) {
     return (
-      <div className="px-4 py-2 text-sm text-slate-400">
+      <div className="py-2 text-sm text-slate-400">
         Select a league to view teams
       </div>
     )
@@ -25,7 +25,7 @@ export default function YahooTeams({ leagueKey }: YahooTeamsProps) {
 
   if (isLoading) {
     return (
-      <div className="px-4 py-2 text-sm text-slate-400">
+      <div className="py-2 text-sm text-slate-400">
         Loading teams...
       </div>
     )
@@ -33,7 +33,7 @@ export default function YahooTeams({ leagueKey }: YahooTeamsProps) {
 
   if (error) {
     return (
-      <div className="px-4 py-2 text-sm text-red-400">
+      <div className="py-2 text-sm text-red-400">
         {error}
       </div>
     )
@@ -41,14 +41,14 @@ export default function YahooTeams({ leagueKey }: YahooTeamsProps) {
 
   if (teams.length === 0) {
     return (
-      <div className="px-4 py-2 text-sm text-slate-400">
+      <div className="py-2 text-sm text-slate-400">
         No teams found
       </div>
     )
   }
 
   return (
-    <div className="px-4 py-2 space-y-3">
+    <div className="py-2 space-y-3">
       <div>
         <label className="text-xs text-slate-400 block mb-2">Teams ({teams.length}):</label>
         <select
