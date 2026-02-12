@@ -15,6 +15,8 @@ export interface ParsedLeague {
   draft_status: string
   is_finished?: string
   current_week?: string
+  start_week?: string
+  end_week?: string
   start_date?: string
   end_date?: string
 }
@@ -104,6 +106,8 @@ export function parseLeaguesXML(xml: string): ParsedLeague[] {
     league.draft_status = extractValue('draft_status') || ''
     league.is_finished = extractValue('is_finished')
     league.current_week = extractValue('current_week')
+    league.start_week = extractValue('start_week')
+    league.end_week = extractValue('end_week')
     league.start_date = extractValue('start_date')
     league.end_date = extractValue('end_date')
     
@@ -451,6 +455,156 @@ export function parseStandingsXML(xml: string): ParsedStandingsTeam[] {
   teams.sort((a, b) => a.rank - b.rank)
 
   return teams
+}
+
+// ── Scoreboard / Matchups ──
+
+export interface ParsedMatchupTeam {
+  team_key: string
+  team_id: string
+  name: string
+  logo_url?: string
+  managers?: Array<{
+    manager_id: string
+    nickname?: string
+    guid: string
+    is_current_login?: string
+  }>
+  /** Points-based leagues: total points for this matchup period */
+  points?: number
+  /** Category-based leagues: per-stat values keyed by stat_id */
+  stats?: Record<string, number | string>
+  /** Win probability (0-1) if Yahoo provides it */
+  win_probability?: number
+}
+
+export interface ParsedMatchup {
+  week: number
+  week_start?: string
+  week_end?: string
+  /** 'midevent' (live), 'postevent' (done), 'preevent' (upcoming) */
+  status?: string
+  is_tied?: boolean
+  winner_team_key?: string
+  teams: ParsedMatchupTeam[]
+}
+
+export interface ParsedScoreboard {
+  league_key?: string
+  week: number
+  matchups: ParsedMatchup[]
+}
+
+/**
+ * Parse scoreboard XML returned by /league/{key}/scoreboard;week=N
+ *
+ * Yahoo wraps the response in <fantasy_content><league>...<scoreboard>...</scoreboard></league>…
+ * Each <matchup> block contains two <team> blocks with optional <team_stats> and <team_points>.
+ */
+export function parseScoreboardXML(xml: string): ParsedScoreboard {
+  const extractValue = (tag: string, block: string): string | undefined => {
+    const regex = new RegExp(`<${tag}>([\\s\\S]*?)<\\/${tag}>`)
+    const m = block.match(regex)
+    return m ? m[1].trim() : undefined
+  }
+
+  // Pull week from the <scoreboard> wrapper or first <matchup>
+  const scoreboardBlock = xml.match(/<scoreboard>([\s\S]*)<\/scoreboard>/)?.[1] ?? xml
+  const leagueKey = extractValue('league_key', xml)
+  const sbWeek = parseInt(extractValue('week', scoreboardBlock) || '0', 10)
+
+  const matchups: ParsedMatchup[] = []
+
+  // Iterate <matchup> blocks — use a non-greedy regex
+  const matchupRegex = /<matchup>([\s\S]*?)<\/matchup>/g
+  let mm
+  while ((mm = matchupRegex.exec(scoreboardBlock)) !== null) {
+    const mBlock = mm[1]
+
+    const week = parseInt(extractValue('week', mBlock) || String(sbWeek), 10)
+    const week_start = extractValue('week_start', mBlock)
+    const week_end = extractValue('week_end', mBlock)
+    const status = extractValue('status', mBlock) // 'midevent', 'postevent', 'preevent'
+    const is_tied = extractValue('is_tied', mBlock) === '1'
+    const winner_team_key = extractValue('winner_team_key', mBlock)
+
+    const teams: ParsedMatchupTeam[] = []
+
+    // Each matchup has exactly two <team> blocks
+    const teamRegex = /<team>([\s\S]*?)<\/team>/g
+    let tm
+    while ((tm = teamRegex.exec(mBlock)) !== null) {
+      const tBlock = tm[1]
+
+      const team: ParsedMatchupTeam = {
+        team_key: extractValue('team_key', tBlock) || '',
+        team_id: extractValue('team_id', tBlock) || '',
+        name: extractValue('name', tBlock) || '',
+        logo_url: extractValue('logo_url', tBlock),
+      }
+
+      // Managers
+      const managersBlock = tBlock.match(/<managers>([\s\S]*?)<\/managers>/)?.[1]
+      if (managersBlock) {
+        const managers: NonNullable<ParsedMatchupTeam['managers']> = []
+        const mgrRegex = /<manager>([\s\S]*?)<\/manager>/g
+        let mg
+        while ((mg = mgrRegex.exec(managersBlock)) !== null) {
+          managers.push({
+            manager_id: extractValue('manager_id', mg[1]) || '',
+            nickname: extractValue('nickname', mg[1]),
+            guid: extractValue('guid', mg[1]) || '',
+            is_current_login: extractValue('is_current_login', mg[1]),
+          })
+        }
+        if (managers.length) team.managers = managers
+      }
+
+      // Points
+      const pointsBlock = tBlock.match(/<team_points>([\s\S]*?)<\/team_points>/)?.[1]
+      if (pointsBlock) {
+        const total = extractValue('total', pointsBlock)
+        if (total) team.points = parseFloat(total)
+      }
+
+      // Win probability
+      const wp = extractValue('win_probability', tBlock)
+      if (wp) team.win_probability = parseFloat(wp)
+
+      // Category stats
+      const statsBlock = tBlock.match(/<team_stats>([\s\S]*?)<\/team_stats>/)?.[1]
+      if (statsBlock) {
+        const statMap: Record<string, number | string> = {}
+        const statRegex = /<stat>\s*<stat_id>(\d+)<\/stat_id>\s*<value>([\s\S]*?)<\/value>\s*<\/stat>/g
+        let sm
+        while ((sm = statRegex.exec(statsBlock)) !== null) {
+          const id = sm[1]
+          const raw = sm[2].trim()
+          const num = parseFloat(raw)
+          statMap[id] = isNaN(num) ? raw : num
+        }
+        if (Object.keys(statMap).length) team.stats = statMap
+      }
+
+      if (team.team_key) teams.push(team)
+    }
+
+    matchups.push({
+      week,
+      week_start,
+      week_end,
+      status,
+      is_tied,
+      winner_team_key,
+      teams,
+    })
+  }
+
+  return {
+    league_key: leagueKey,
+    week: sbWeek || matchups[0]?.week || 0,
+    matchups,
+  }
 }
 
 /**

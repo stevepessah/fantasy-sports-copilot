@@ -16,6 +16,124 @@ import { League, Sport } from '@/types'
 const rosterContextCache: Record<string, { context: string; timestamp: number }> = {}
 const ROSTER_CACHE_TTL = 5 * 60 * 1000 // 5 minutes
 
+// ── Stat ID → abbreviation fallback map (same as rosterContext.ts) ──
+const STAT_ID_TO_ABBR: Record<string, string> = {
+  '60': 'H/AB', '7': 'R', '8': 'H', '9': '2B', '10': '3B',
+  '12': 'HR', '13': 'RBI', '16': 'SB', '18': 'BB', '21': 'K',
+  '3': 'AVG', '4': 'OBP', '5': 'SLG', '55': 'OPS', '6': 'AB', '1': 'GP',
+  '28': 'W', '29': 'L', '32': 'SV', '42': 'HLD', '26': 'ERA',
+  '27': 'WHIP', '39': 'IP', '34': 'K(P)', '37': 'BB(P)', '48': 'QS', '25': 'GS',
+}
+
+/** Build a rich matchup card payload from Yahoo scoreboard data. */
+async function buildMatchupCards(
+  api: YahooFantasyAPI,
+  leagueKey: string,
+  userTeamKey: string,
+  week?: number,
+): Promise<any[]> {
+  const { scoreboard } = await api.getMatchups(leagueKey, week)
+  if (!scoreboard || !scoreboard.matchups.length) return []
+
+  // Identify the user's matchup
+  const userMatchup = scoreboard.matchups.find(m =>
+    m.teams.some(t => t.team_key === userTeamKey)
+  )
+
+  // Try to get league metadata for current_week / end_week
+  let currentWeek = scoreboard.week
+  let totalWeeks: number | undefined
+
+  try {
+    const { leagues } = await api.getLeagues('mlb')
+    const league = leagues.find((l: any) => l.league_key === leagueKey)
+    if (league) {
+      if (league.current_week) currentWeek = parseInt(league.current_week, 10)
+      if (league.end_week) totalWeeks = parseInt(league.end_week, 10)
+    }
+  } catch { /* non-critical */ }
+
+  // Resolve stat IDs to display names (try dynamic first, fall back to static map)
+  let statIdMap: Record<string, string> = { ...STAT_ID_TO_ABBR }
+  try {
+    const gameKey = leagueKey.split('.')[0] // e.g. '469'
+    const { categories } = await api.getStatCategories(gameKey)
+    for (const [id, cat] of Object.entries(categories)) {
+      statIdMap[id] = cat.displayName || cat.name
+    }
+  } catch { /* use fallback */ }
+
+  // Helper: convert raw stat map { stat_id: value } → { displayName: value }
+  const mapStats = (raw?: Record<string, number | string>): Record<string, number | string> => {
+    if (!raw) return {}
+    const mapped: Record<string, number | string> = {}
+    for (const [id, val] of Object.entries(raw)) {
+      const name = statIdMap[id] || `stat_${id}`
+      mapped[name] = val
+    }
+    return mapped
+  }
+
+  // Format a single matchup for the card payload
+  const formatMatchup = (m: any) => {
+    const t1 = m.teams[0]
+    const t2 = m.teams[1]
+    return {
+      week: m.week,
+      weekStart: m.week_start,
+      weekEnd: m.week_end,
+      status: m.status, // 'midevent' | 'postevent' | 'preevent'
+      isTied: m.is_tied,
+      winnerTeamKey: m.winner_team_key,
+      teams: [
+        {
+          teamKey: t1.team_key,
+          name: t1.name,
+          logoUrl: t1.logo_url,
+          points: t1.points,
+          winProbability: t1.win_probability != null ? Math.round(t1.win_probability * 100) : undefined,
+          stats: mapStats(t1.stats),
+          isUser: t1.team_key === userTeamKey,
+        },
+        {
+          teamKey: t2.team_key,
+          name: t2.name,
+          logoUrl: t2.logo_url,
+          points: t2.points,
+          winProbability: t2.win_probability != null ? Math.round(t2.win_probability * 100) : undefined,
+          stats: mapStats(t2.stats),
+          isUser: t2.team_key === userTeamKey,
+        },
+      ],
+    }
+  }
+
+  const cards: any[] = []
+
+  if (userMatchup) {
+    const userTeam = userMatchup.teams.find(t => t.team_key === userTeamKey)
+    const oppTeam = userMatchup.teams.find(t => t.team_key !== userTeamKey)
+
+    cards.push({
+      type: 'matchup',
+      title: `⚾ Week ${scoreboard.week}: ${userTeam?.name || 'Your Team'} vs ${oppTeam?.name || 'Opponent'}`,
+      payload: {
+        leagueKey,
+        userTeamKey,
+        currentWeek,
+        displayedWeek: scoreboard.week,
+        totalWeeks,
+        userMatchup: formatMatchup(userMatchup),
+        otherMatchups: scoreboard.matchups
+          .filter(m => m !== userMatchup)
+          .map(formatMatchup),
+      },
+    })
+  }
+
+  return cards
+}
+
 // ── Helpers (avoid self-fetch) ──────────────────────────────────────────────
 
 /** Optimise lineup via direct function call instead of HTTP round-trip. */
@@ -266,30 +384,18 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    if (intent.isMatchup && context.teamId && context.league) {
+    if (intent.isMatchup && yahooAccessToken && context.yahooLeagueKey) {
       try {
-        const optimal = getOptimalLineup(context.teamId, context.league.id)
-        if (optimal) {
-          const myProj = optimal.totalProjected
-          const oppProj = myProj * 0.95 + Math.random() * 5
-          const diff = myProj - oppProj
-          const winProb = Math.max(5, Math.min(95, 50 + diff * 2.6))
-
-          response.cards.push({
-            type: 'matchup',
-            title: `Matchup: ${context.team?.name || 'Your Team'} vs Opponent`,
-            payload: {
-              week: context.league.week || 1,
-              home: { team: context.team?.name || 'Your Team', projected: myProj },
-              away: { team: 'Opponent', projected: oppProj },
-              winProbHome: winProb,
-              notes: [
-                diff > 6 ? 'You have a solid projected edge — prioritize stability.' :
-                diff < -6 ? 'You\'re trailing — consider upside plays.' :
-                'Toss-up — small moves can swing it.',
-              ],
-            },
-          })
+        const api = new YahooFantasyAPI()
+        api.setAccessToken(yahooAccessToken)
+        const { teams: yahooTeams } = await api.getLeagueTeams(context.yahooLeagueKey)
+        const userTeam = yahooTeams.find((t: any) => t.managers?.some((m: any) => m.is_current_login === '1'))
+        if (userTeam?.team_key) {
+          // Extract optional week number from the message
+          const weekMatch = cleanMessage.match(/week\s*(\d+)/i)
+          const requestedWeek = weekMatch ? parseInt(weekMatch[1], 10) : undefined
+          const matchupCards = await buildMatchupCards(api, context.yahooLeagueKey, userTeam.team_key, requestedWeek)
+          response.cards.push(...matchupCards)
         }
       } catch {
         // silently skip
@@ -801,29 +907,19 @@ async function buildCardsForIntent(
       }
     }
 
-    if (intent.isMatchup && context.teamId && context.league) {
-      const optimal = getOptimalLineup(context.teamId, context.league.id)
-      if (optimal) {
-        const myProj = optimal.totalProjected
-        const oppProj = myProj * 0.95 + Math.random() * 5
-        const diff = myProj - oppProj
-        const winProb = Math.max(5, Math.min(95, 50 + diff * 2.6))
-        cards.push({
-          type: 'matchup',
-          title: `Matchup: ${context.team?.name || 'Your Team'} vs Opponent`,
-          payload: {
-            week: context.league.week || 1,
-            home: { team: context.team?.name || 'Your Team', projected: myProj },
-            away: { team: 'Opponent', projected: oppProj },
-            winProbHome: winProb,
-            notes: [
-              diff > 6 ? 'You have a solid projected edge — prioritize stability.' :
-              diff < -6 ? 'You\'re trailing — consider upside plays.' :
-              'Toss-up — small moves can swing it.',
-            ],
-          },
-        })
-      }
+    if (intent.isMatchup && yahooAccessToken && context.yahooLeagueKey) {
+      try {
+        const api = new YahooFantasyAPI()
+        api.setAccessToken(yahooAccessToken)
+        const { teams: yahooTeams } = await api.getLeagueTeams(context.yahooLeagueKey)
+        const userTeam = yahooTeams.find((t: any) => t.managers?.some((m: any) => m.is_current_login === '1'))
+        if (userTeam?.team_key) {
+          const weekMatch = message.match(/week\s*(\d+)/i)
+          const requestedWeek = weekMatch ? parseInt(weekMatch[1], 10) : undefined
+          const matchupCards = await buildMatchupCards(api, context.yahooLeagueKey, userTeam.team_key, requestedWeek)
+          cards.push(...matchupCards)
+        }
+      } catch { /* skip */ }
     }
 
     if (intent.isViewTeams) {

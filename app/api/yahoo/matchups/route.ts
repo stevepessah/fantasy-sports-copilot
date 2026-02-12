@@ -1,4 +1,4 @@
-// Get matchups for a Yahoo league
+// Get matchups for a Yahoo league — returns parsed scoreboard data
 import { NextRequest, NextResponse } from 'next/server'
 import { YahooFantasyAPI } from '@/lib/yahoo/api'
 import { cookies } from 'next/headers'
@@ -31,9 +31,9 @@ export async function GET(request: NextRequest) {
     const api = new YahooFantasyAPI()
     api.setAccessToken(accessToken)
     
-    const matchups = await api.getMatchups(leagueKey, week ? parseInt(week) : undefined)
+    const { scoreboard } = await api.getMatchups(leagueKey, week ? parseInt(week) : undefined)
     
-    return NextResponse.json({ matchups })
+    return NextResponse.json({ scoreboard })
   } catch (error) {
     console.error('Error fetching Yahoo matchups:', error)
     return NextResponse.json(

@@ -3,7 +3,7 @@
 
 import { YahooOAuth2 } from './oauth2'
 import { MLB_SEASON_TO_GAME_KEY } from './config'
-import { parseLeaguesXML, parseTeamsXML, parseRosterXML, parsePlayerStatsXML, parseStandingsXML, ParsedLeague, ParsedTeam, ParsedRosterPlayer, ParsedStandingsTeam } from './xmlParser'
+import { parseLeaguesXML, parseTeamsXML, parseRosterXML, parsePlayerStatsXML, parseStandingsXML, parseScoreboardXML, ParsedLeague, ParsedTeam, ParsedRosterPlayer, ParsedStandingsTeam, ParsedScoreboard } from './xmlParser'
 
 export interface YahooLeague {
   league_key: string
@@ -218,9 +218,11 @@ export class YahooFantasyAPI {
   }
 
   /**
-   * Get matchups for a league
+   * Get matchups for a league (parsed)
+   * @param leagueKey  Full league key, e.g. 469.l.12345
+   * @param week       Optional week number. Omit for the current week.
    */
-  async getMatchups(leagueKey: string, week?: number): Promise<any> {
+  async getMatchups(leagueKey: string, week?: number): Promise<{ scoreboard: ParsedScoreboard; raw?: string }> {
     if (!this.accessToken) {
       throw new Error('Access token not set. Please authenticate first.')
     }
@@ -234,7 +236,12 @@ export class YahooFantasyAPI {
       this.accessToken
     )
 
-    return response
+    let scoreboard: ParsedScoreboard = { week: week || 0, matchups: [] }
+    if (response.raw) {
+      scoreboard = parseScoreboardXML(response.raw)
+    }
+
+    return { scoreboard, raw: response.raw }
   }
 
   /**
