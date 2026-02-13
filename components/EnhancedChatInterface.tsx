@@ -129,19 +129,10 @@ export default function EnhancedChatInterface({ leagueId, userId, initialMessage
   }, [messages, isYahooConnected])
 
   // ── Persistence: Load conversations on mount ──
+  // Always start a fresh chat on return; old conversations are still in the sidebar.
   useEffect(() => {
     const convs = getConversations()
     setConversations(convs)
-    const activeId = getActiveConversationId()
-    if (activeId) {
-      const conv = getConversation(activeId)
-      if (conv && conv.messages.length > 0) {
-        setConversationId(activeId)
-        setMessages(conv.messages)
-        return
-      }
-    }
-    // Start a new conversation
     const newConv = createNewConversation()
     setConversationId(newConv.id)
     setActiveConversationId(newConv.id)
