@@ -25,9 +25,8 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       const stored = localStorage.getItem(STORAGE_KEY) as Theme | null
       if (stored === 'light' || stored === 'dark') {
         setTheme(stored)
-      } else if (window.matchMedia('(prefers-color-scheme: light)').matches) {
-        setTheme('light')
       }
+      // No stored preference → keep the default ('dark')
     } catch {
       // silent
     }
