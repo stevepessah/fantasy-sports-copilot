@@ -1,140 +1,156 @@
-// Utility function to set up the 12-team baseball league
+// Utility function to set up the baseball league from Yahoo API data
 import { leagueDB, teamDB, matchupDB, rosterDB } from '@/lib/db'
-import { League, Team, Matchup } from '@/types'
-
-export const TEAM_NAMES = [
-  'Smithtown Scallywags',
-  'Andino Smiles',
-  'Better than Chris',
-  'Ellytric Corbin Copies',
-  'Goshen Dusters',
-  'Isotopes',
-  'Lloyd Harbor Llamas',
-  'Lizards',
-  'Schwarberless',
-  'Yeah Jeets !',
-  'Yordan Brand',
-  'Top Gunnar',
-]
+import { League, Team } from '@/types'
+import { YahooFantasyAPI } from '@/lib/yahoo/api'
+import { ParsedLeague, ParsedStandingsTeam } from '@/lib/yahoo/xmlParser'
 
 export const REGULAR_SEASON_WEEKS = 22
 export const PLAYOFF_WEEKS = 3
 export const TOTAL_WEEKS = 25
 
-// Generate round-robin schedule for 12 teams
-function generateSchedule(numTeams: number, numWeeks: number): number[][] {
-  const schedule: number[][] = []
-  const teams = Array.from({ length: numTeams }, (_, i) => i)
-  
-  // For round-robin: fix team 0, rotate others
-  for (let week = 0; week < numWeeks; week++) {
-    const weekMatchups: number[] = []
-    
-    // Create rotation: team 0 stays fixed, others rotate
-    const rotation = week % (numTeams - 1)
-    const rotated = [
-      0, // Team 0 stays fixed
-      ...teams.slice(1).map((_, idx) => {
-        const newIdx = (idx + rotation) % (numTeams - 1)
-        return teams[1 + newIdx]
-      })
-    ]
-    
-    // Pair teams: first with last, second with second-to-last, etc.
-    for (let i = 0; i < numTeams / 2; i++) {
-      weekMatchups.push(rotated[i], rotated[numTeams - 1 - i])
-    }
-    
-    schedule.push(weekMatchups)
-  }
-  
-  return schedule
-}
+/**
+ * Set up the baseball league by fetching real data from the Yahoo Fantasy API.
+ * Populates the in-memory DB with the authenticated user's league, teams, and standings.
+ *
+ * @param accessToken  Yahoo OAuth2 access token
+ * @param gameKey      Yahoo game key (defaults to 'mlb' → current season)
+ * @returns The hydrated league, teams list, and the user's team key
+ */
+export async function setupBaseballLeague(accessToken: string, gameKey: string = 'mlb') {
+  const api = new YahooFantasyAPI()
+  api.setAccessToken(accessToken)
 
-export function setupBaseballLeague() {
-  // Create league
+  // 1. Fetch the user's leagues for this game key
+  const { leagues: yahooLeagues } = await api.getLeagues(gameKey)
+
+  // Pick the active (not finished) league, or fall back to the first one
+  const yahooLeague: ParsedLeague | undefined =
+    yahooLeagues.find(l => l.is_finished !== '1') || yahooLeagues[0]
+
+  if (!yahooLeague) {
+    throw new Error('No Yahoo Fantasy Baseball league found for the authenticated user.')
+  }
+
+  // Avoid re-creating if this Yahoo league is already in the in-memory DB
+  const existing = leagueDB.get(yahooLeague.league_key)
+  if (existing) {
+    const teams = teamDB.getByLeague(existing.id)
+    return { league: existing, teams, yahooLeagueKey: yahooLeague.league_key }
+  }
+
+  // 2. Create the League record from Yahoo data
   const league: League = {
-    id: `league_baseball_${Date.now()}`,
-    name: 'Fantasy Baseball League 2025',
-    commissionerId: 'commissioner_1',
+    id: yahooLeague.league_key,
+    name: yahooLeague.name,
+    commissionerId: '', // filled below if we can identify
     sport: 'baseball',
     type: 'redraft',
-    numTeams: 12,
-    scoringType: 'head-to-head',
+    numTeams: yahooLeague.num_teams,
+    scoringType: mapScoringType(yahooLeague.scoring_type),
     draftType: 'snake',
-    status: 'setup',
+    status: mapLeagueStatus(yahooLeague),
     createdAt: new Date().toISOString(),
-    period: 1, // Start at week 1
-    season: 2025,
+    period: yahooLeague.current_week ? parseInt(yahooLeague.current_week, 10) : 1,
+    season: yahooLeague.season ? parseInt(yahooLeague.season, 10) : new Date().getFullYear(),
   }
 
   const createdLeague = leagueDB.create(league)
 
-  // Create teams
-  const teams: Team[] = []
-  TEAM_NAMES.forEach((name, index) => {
-    const team: Team = {
-      id: `team_${createdLeague.id}_${index + 1}`,
-      leagueId: createdLeague.id,
-      ownerId: `owner_${index + 1}`,
-      name: name,
-      draftPosition: index + 1,
-      wins: 0,
-      losses: 0,
-      ties: 0,
-      pointsFor: 0,
-      pointsAgainst: 0,
-    }
-    teamDB.create(team)
-    teams.push(team)
-    
-    // Create empty roster for each team
-    rosterDB.create({
-      teamId: team.id,
-      players: [],
-    })
-  })
+  // 3. Fetch standings (includes team records, wins/losses, etc.)
+  let standingsTeams: ParsedStandingsTeam[] = []
+  try {
+    const { standings } = await api.getStandings(yahooLeague.league_key)
+    standingsTeams = standings
+  } catch {
+    // If standings aren't available (e.g. pre-season), fall back to plain teams
+  }
 
-  // Generate schedule
-  const schedule = generateSchedule(12, TOTAL_WEEKS)
+  // 4. If we got standings, use those (they include W/L data). Otherwise fetch plain teams.
+  let teams: Team[] = []
 
-  // Create matchups for all weeks
-  const matchups: Matchup[] = []
-  for (let week = 1; week <= TOTAL_WEEKS; week++) {
-    const weekIndex = week - 1
-    const weekMatchups = schedule[weekIndex]
-    
-    for (let i = 0; i < weekMatchups.length; i += 2) {
-      const team1Index = weekMatchups[i]
-      const team2Index = weekMatchups[i + 1]
-      
-      if (team1Index === undefined || team2Index === undefined) continue
-      
-      const team1 = teams[team1Index]
-      const team2 = teams[team2Index]
-      
-      const matchup: Matchup = {
-        id: `matchup_${createdLeague.id}_week${week}_${i / 2}`,
-        leagueId: createdLeague.id,
-        period: week, // Use period for baseball weeks
-        team1Id: team1.id,
-        team2Id: team2.id,
-        team1Score: 0,
-        team2Score: 0,
-        status: 'upcoming',
+  if (standingsTeams.length > 0) {
+    teams = standingsTeams.map((st, index) => {
+      const isCommissioner = st.managers?.some(m => m.is_commissioner === '1')
+      if (isCommissioner && !createdLeague.commissionerId) {
+        const commMgr = st.managers!.find(m => m.is_commissioner === '1')
+        createdLeague.commissionerId = commMgr?.guid || commMgr?.manager_id || ''
+        leagueDB.update(createdLeague.id, { commissionerId: createdLeague.commissionerId })
       }
-      
-      matchupDB.create(matchup)
-      matchups.push(matchup)
-    }
+
+      const ownerId = st.managers?.[0]?.guid || st.managers?.[0]?.manager_id || `owner_${index + 1}`
+      const team: Team = {
+        id: st.team_key,
+        leagueId: createdLeague.id,
+        ownerId,
+        name: st.name,
+        draftPosition: index + 1,
+        wins: st.wins ?? 0,
+        losses: st.losses ?? 0,
+        ties: st.ties ?? 0,
+        pointsFor: st.points_for ?? 0,
+        pointsAgainst: st.points_against ?? 0,
+      }
+
+      teamDB.create(team)
+
+      // Create empty roster for each team (will be populated on demand)
+      rosterDB.create({ teamId: team.id, players: [] })
+
+      return team
+    })
+  } else {
+    // Fallback: use plain team list (no W/L data yet)
+    const { teams: yahooTeams } = await api.getLeagueTeams(yahooLeague.league_key)
+
+    teams = yahooTeams.map((yt, index) => {
+      const isCommissioner = yt.managers?.some(m => m.is_commissioner === '1')
+      if (isCommissioner && !createdLeague.commissionerId) {
+        const commMgr = yt.managers!.find(m => m.is_commissioner === '1')
+        createdLeague.commissionerId = commMgr?.guid || commMgr?.manager_id || ''
+        leagueDB.update(createdLeague.id, { commissionerId: createdLeague.commissionerId })
+      }
+
+      const ownerId = yt.managers?.[0]?.guid || yt.managers?.[0]?.manager_id || `owner_${index + 1}`
+      const team: Team = {
+        id: yt.team_key,
+        leagueId: createdLeague.id,
+        ownerId,
+        name: yt.name,
+        draftPosition: index + 1,
+        wins: 0,
+        losses: 0,
+        ties: 0,
+        pointsFor: 0,
+        pointsAgainst: 0,
+      }
+
+      teamDB.create(team)
+      rosterDB.create({ teamId: team.id, players: [] })
+
+      return team
+    })
   }
 
   return {
     league: createdLeague,
     teams,
-    matchups,
-    regularSeasonWeeks: REGULAR_SEASON_WEEKS,
-    playoffWeeks: PLAYOFF_WEEKS,
-    totalWeeks: TOTAL_WEEKS,
+    yahooLeagueKey: yahooLeague.league_key,
   }
+}
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
+
+function mapScoringType(yahoScoringType: string): League['scoringType'] {
+  const lower = yahoScoringType.toLowerCase()
+  if (lower.includes('roto')) return 'roto'
+  if (lower.includes('point')) return 'points'
+  if (lower.includes('head')) return 'head-to-head'
+  return 'head-to-head'
+}
+
+function mapLeagueStatus(yahooLeague: ParsedLeague): League['status'] {
+  if (yahooLeague.is_finished === '1') return 'completed'
+  if (yahooLeague.draft_status === 'predraft') return 'setup'
+  if (yahooLeague.draft_status === 'draft') return 'draft'
+  return 'active'
 }

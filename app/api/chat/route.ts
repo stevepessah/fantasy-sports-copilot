@@ -412,16 +412,19 @@ export async function POST(request: NextRequest) {
             leagueIdToUse = baseballLeague.id
             context.leagueId = leagueIdToUse
             context.league = baseballLeague
-          } else {
+          } else if (yahooAccessToken) {
             try {
-              const setupResult = setupBaseballLeague()
+              const setupResult = await setupBaseballLeague(yahooAccessToken)
               leagueIdToUse = setupResult.league.id
               context.leagueId = leagueIdToUse
               context.league = setupResult.league
             } catch {
-              response.message = "No league found and could not create one automatically. Please create a league first."
+              response.message = "No league found. Please connect your Yahoo account and make sure you have an active Fantasy Baseball league."
               return NextResponse.json(response)
             }
+          } else {
+            response.message = "No league found. Please connect your Yahoo account to get started."
+            return NextResponse.json(response)
           }
         }
 
@@ -928,9 +931,9 @@ async function buildCardsForIntent(
         const allLeagues = leagueDB.getAll()
         const baseballLeague = allLeagues.find((l: any) => l.sport === 'baseball')
         if (baseballLeague) { leagueIdToUse = baseballLeague.id }
-        else {
+        else if (yahooAccessToken) {
           try {
-            const setupResult = setupBaseballLeague()
+            const setupResult = await setupBaseballLeague(yahooAccessToken)
             leagueIdToUse = setupResult.league.id
           } catch { /* skip */ }
         }
