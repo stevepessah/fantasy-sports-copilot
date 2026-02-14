@@ -126,7 +126,7 @@ export function EnhancedCards({ card, onAction, sport }: EnhancedCardsProps) {
               playerKey={player.yahooPlayerKey || null} 
               leagueKey={p.leagueKey}
               playerName={player.name}
-              positions={p.eligiblePositions || (player.position ? [player.position] : [])}
+              positions={p.eligiblePositions?.length > 0 ? p.eligiblePositions : (player.position ? [player.position] : [])}
             />
           )}
 

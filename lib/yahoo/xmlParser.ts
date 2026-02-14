@@ -618,6 +618,10 @@ export interface ParsedPlayerStats {
     first: string
     last: string
   }
+  position_type?: string           // 'P' for pitcher, 'B' for batter
+  display_position?: string        // e.g. 'SP,P' or '1B,2B'
+  eligible_positions?: string[]    // e.g. ['SP', 'P']
+  editorial_team_abbr?: string     // e.g. 'LAA'
   // Season stats
   season_stats?: {
     [statName: string]: number | string
@@ -666,6 +670,25 @@ export function parsePlayerStatsXML(xml: string): ParsedPlayerStats | null {
       full: extractValue('full', nameBlock) || '',
       first: extractValue('first', nameBlock) || '',
       last: extractValue('last', nameBlock) || '',
+    }
+  }
+
+  // Extract position info
+  stats.position_type = extractValue('position_type') || undefined
+  stats.display_position = extractValue('display_position') || undefined
+  stats.editorial_team_abbr = extractValue('editorial_team_abbr') || undefined
+
+  // Extract eligible positions
+  const eligPosBlock = playerBlock.match(/<eligible_positions>(.*?)<\/eligible_positions>/s)?.[1]
+  if (eligPosBlock) {
+    const posRegex = /<position>(.*?)<\/position>/g
+    const positions: string[] = []
+    let posMatch
+    while ((posMatch = posRegex.exec(eligPosBlock)) !== null) {
+      positions.push(posMatch[1].trim())
+    }
+    if (positions.length > 0) {
+      stats.eligible_positions = positions
     }
   }
 

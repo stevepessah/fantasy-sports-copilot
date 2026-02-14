@@ -675,13 +675,17 @@ export async function POST(request: NextRequest) {
                       yahooPlayerKey: yahooPlayerKey,
                     }
                   } else {
-                    // Ownership search failed but we still have basic info from getPlayerStats
+                    // Ownership search failed — use position data from the stats response
+                    const statsPosition = stats.display_position || stats.eligible_positions?.[0] || 'UTIL'
+                    if (stats.eligible_positions && stats.eligible_positions.length > 0) {
+                      eligiblePositions = stats.eligible_positions
+                    }
                     player = {
                       id: stats.player_id || embeddedPlayerKey,
                       name: playerName,
                       sport: 'baseball' as const,
-                      position: 'UTIL' as any,
-                      team: 'Unknown',
+                      position: statsPosition as any,
+                      team: stats.editorial_team_abbr || 'Unknown',
                       yahooPlayerKey: yahooPlayerKey,
                     }
                   }
@@ -1024,18 +1028,19 @@ async function buildCardsForIntent(
                   })
                   foundPlayer = true
                 } else {
-                  // Ownership search failed — still build card from stats data
+                  // Ownership search failed — use position data from the stats response
+                  const statsPosition = stats.display_position || stats.eligible_positions?.[0] || 'UTIL'
                   cards.push({
                     type: 'player',
                     title: 'Player Snapshot',
                     payload: {
                       player: {
                         id: stats.player_id || embeddedPlayerKey, name: playerName, sport: 'baseball',
-                        position: 'UTIL', team: 'Unknown',
+                        position: statsPosition, team: stats.editorial_team_abbr || 'Unknown',
                         yahooPlayerKey: embeddedPlayerKey,
                       },
                       leagueKey: yahooLeague.league_key,
-                      eligiblePositions: [],
+                      eligiblePositions: stats.eligible_positions || [],
                       ownershipStatus: 'unknown',
                       insights: [],
                       actions: [
