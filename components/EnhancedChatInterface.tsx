@@ -387,7 +387,17 @@ export default function EnhancedChatInterface({ leagueId, userId, initialMessage
       setInput(action.command)
       setShowQuickActions(false)
       setDrawerOpen(false)
-      setTimeout(() => inputRef.current?.focus(), 0)
+      setTimeout(() => {
+        const el = inputRef.current
+        if (el) {
+          el.focus()
+          // Move cursor to end of the prefilled text
+          const len = action.command.length
+          if ('setSelectionRange' in el) {
+            ;(el as HTMLInputElement).setSelectionRange(len, len)
+          }
+        }
+      }, 0)
     } else {
       runCommand(action.command)
       setShowQuickActions(false)
