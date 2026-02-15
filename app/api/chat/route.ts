@@ -384,6 +384,46 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // ─── Yahoo roster fallback: show roster card from Yahoo when no local league ──
+    if (intent.isShowLineup && !context.teamId && yahooAccessToken && context.yahooLeagueKey) {
+      try {
+        const api = new YahooFantasyAPI()
+        api.setAccessToken(yahooAccessToken)
+        const { teams: yahooTeams } = await api.getLeagueTeams(context.yahooLeagueKey)
+        const userTeam = yahooTeams.find((t: any) => t.managers?.some((m: any) => m.is_current_login === '1'))
+
+        if (userTeam?.team_key) {
+          const { players } = await api.getTeamRoster(userTeam.team_key)
+
+          if (players && players.length > 0) {
+            const slots = players.map((p: any) => ({
+              slot: p.selected_position?.position || '?',
+              player: {
+                name: p.name?.full || 'Unknown',
+                position: p.display_position || p.eligible_positions?.[0] || '',
+                team: p.editorial_team_abbr || '',
+                injuryStatus: p.injury_status || undefined,
+              },
+            }))
+
+            response.cards.push({
+              type: 'lineup',
+              title: `📋 ${userTeam.name} — Your Roster`,
+              payload: {
+                teamName: userTeam.name,
+                slots,
+                // No projections from Yahoo basic roster
+                projectedTotal: null,
+              },
+            })
+            response.message = `Here's your current roster for **${userTeam.name}**:`
+          }
+        }
+      } catch {
+        // silently skip — AI text response still goes through
+      }
+    }
+
     if (intent.isMatchup && yahooAccessToken && context.yahooLeagueKey) {
       try {
         const api = new YahooFantasyAPI()

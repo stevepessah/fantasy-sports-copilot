@@ -29,25 +29,41 @@ export function EnhancedCards({ card, onAction, sport }: EnhancedCardsProps) {
   switch (card.type) {
     case 'lineup': {
       const p = card.payload
+      const hasProjections = p.projectedTotal != null
       return (
         <CardShell title={card.title}>
           <div className="text-xs text-slate-400 mb-3">
-            {p.teamName} • Week {p.week} • Projected: <span className="font-bold text-white">{p.projectedTotal?.toFixed(1) || '0.0'}</span>
+            {p.teamName}
+            {p.week != null && <> • Week {p.week}</>}
+            {hasProjections && <> • Projected: <span className="font-bold text-white">{p.projectedTotal.toFixed(1)}</span></>}
           </div>
           <div className="space-y-2">
-            {p.slots?.map((slot: any) => (
-              <div key={slot.slot} className="flex items-center gap-3 py-2 border-b border-slate-700/50 last:border-0">
+            {p.slots?.map((slot: any, idx: number) => (
+              <div key={`${slot.slot}-${idx}`} className="flex items-center gap-3 py-2 border-b border-slate-700/50 last:border-0">
                 <div className="w-16 text-xs font-bold text-slate-400">{slot.slot}</div>
                 <div className="flex-1 min-w-0">
                   {slot.player ? (
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="font-medium truncate">{slot.player.name}</span>
                       <span className="text-xs text-slate-400">
-                        ({slot.player.position}-{slot.player.team})
+                        ({slot.player.position}{slot.player.team ? `-${slot.player.team}` : ''})
                       </span>
-                      <span className="px-2 py-0.5 text-xs rounded-full bg-slate-700 text-slate-300">
-                        {slot.player.projectedPoints?.toFixed(1) || '0.0'} pts
-                      </span>
+                      {slot.player.projectedPoints != null && (
+                        <span className="px-2 py-0.5 text-xs rounded-full bg-slate-700 text-slate-300">
+                          {slot.player.projectedPoints.toFixed(1)} pts
+                        </span>
+                      )}
+                      {slot.player.injuryStatus && (
+                        <span className={`px-2 py-0.5 text-[10px] rounded-full font-semibold ${
+                          slot.player.injuryStatus === 'O' || slot.player.injuryStatus === 'OUT'
+                            ? 'bg-red-600/20 text-red-400 border border-red-600/30'
+                            : slot.player.injuryStatus === 'DTD'
+                            ? 'bg-yellow-600/20 text-yellow-400 border border-yellow-600/30'
+                            : 'bg-orange-600/20 text-orange-400 border border-orange-600/30'
+                        }`}>
+                          {slot.player.injuryStatus}
+                        </span>
+                      )}
                       {slot.note && (
                         <span className="px-2 py-0.5 text-xs rounded-full bg-yellow-600/20 text-yellow-400 border border-yellow-600/30">
                           {slot.note}
@@ -66,7 +82,7 @@ export function EnhancedCards({ card, onAction, sport }: EnhancedCardsProps) {
               onClick={() => runCommand('set my optimal lineup')}
               className="px-3 py-2.5 text-sm rounded-lg bg-primary-600 hover:bg-primary-700 active:bg-primary-800 text-white font-semibold transition-colors"
             >
-              Optimize again
+              Optimize lineup
             </button>
             <button
               onClick={() => runCommand('show matchup')}
