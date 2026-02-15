@@ -5,7 +5,7 @@ import { LeagueManager } from '@/lib/league'
 import { parseIntent, findPlayerByNameApprox } from '@/lib/commandParser'
 import { setupBaseballLeague } from '@/lib/setupBaseballLeague'
 import { YahooFantasyAPI } from '@/lib/yahoo/api'
-import { searchPlayerInLeague, searchPlayerInFreeAgents, getPlayerOwnership } from '@/lib/yahoo/playerSearch'
+import { searchPlayerInLeague, searchPlayerInFreeAgents, getPlayerOwnership, getPlayerOwnershipPair } from '@/lib/yahoo/playerSearch'
 import { buildRosterContext, buildRosterSummary } from '@/lib/rosterContext'
 import { fetchLeaguePlayers } from '@/lib/yahoo/leaguePlayers'
 import { getDefaultScoringType } from '@/lib/sports'
@@ -601,11 +601,11 @@ export async function POST(request: NextRequest) {
           const yahooLeague = leagues.find(l => l.is_finished !== '1') || leagues[0]
 
           if (yahooLeague?.league_key) {
-            // Look up both players in parallel by name
-            const [ownershipA, ownershipB] = await Promise.all([
-              getPlayerOwnership(api, yahooLeague.league_key, intent.comparePlayerA).catch(() => null),
-              getPlayerOwnership(api, yahooLeague.league_key, intent.comparePlayerB).catch(() => null),
-            ])
+            // Look up both players in a SINGLE pass through rosters + free agents
+            // (avoids doubling Yahoo API calls and triggering rate limits)
+            const [ownershipA, ownershipB] = await getPlayerOwnershipPair(
+              api, yahooLeague.league_key, intent.comparePlayerA, intent.comparePlayerB,
+            )
 
             if (ownershipA && ownershipB) {
               const playerKeyA = ownershipA.player.player_key

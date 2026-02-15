@@ -82,6 +82,79 @@ export async function getPlayerOwnership(
 }
 
 /**
+ * Look up TWO players in a single pass through all rosters + free agents.
+ * Avoids the rate-limit / timeout problems of running two getPlayerOwnership
+ * calls in parallel (each of which iterates through every team).
+ */
+export async function getPlayerOwnershipPair(
+  api: YahooFantasyAPI,
+  leagueKey: string,
+  nameA: string,
+  nameB: string,
+): Promise<[PlayerOwnership | null, PlayerOwnership | null]> {
+  let resultA: PlayerOwnership | null = null
+  let resultB: PlayerOwnership | null = null
+
+  const matchesName = (player: ParsedRosterPlayer, query: string): boolean => {
+    const normalizedQuery = query.toLowerCase().trim()
+    const queryParts = normalizedQuery.split(/\s+/).filter(Boolean)
+    const fullName = player.name.full.toLowerCase()
+    const firstName = player.name.first.toLowerCase()
+    const lastName = player.name.last.toLowerCase()
+
+    if (fullName === normalizedQuery) return true
+    if (queryParts.length >= 2) {
+      const firstMatches = firstName.includes(queryParts[0]) || queryParts[0].includes(firstName)
+      const lastMatches = lastName.includes(queryParts[queryParts.length - 1]) || queryParts[queryParts.length - 1].includes(lastName)
+      if (firstMatches && lastMatches) return true
+    }
+    return (
+      fullName.includes(normalizedQuery) ||
+      normalizedQuery.includes(fullName) ||
+      `${firstName} ${lastName}`.includes(normalizedQuery) ||
+      lastName.includes(normalizedQuery) ||
+      (queryParts.length === 2 &&
+        (firstName.includes(queryParts[0]) || queryParts[0].includes(firstName)) &&
+        (lastName.includes(queryParts[1]) || queryParts[1].includes(lastName)))
+    )
+  }
+
+  try {
+    // Single fetch of all teams
+    const { teams } = await api.getLeagueTeams(leagueKey)
+
+    // Walk each roster ONCE, checking for both players
+    for (const team of teams) {
+      if (resultA && resultB) break
+      const { players } = await api.getTeamRoster(team.team_key)
+      for (const p of players) {
+        if (!resultA && matchesName(p, nameA)) {
+          resultA = { player: p, ownershipStatus: 'taken', owningTeam: team }
+        }
+        if (!resultB && matchesName(p, nameB)) {
+          resultB = { player: p, ownershipStatus: 'taken', owningTeam: team }
+        }
+        if (resultA && resultB) break
+      }
+    }
+
+    // For any still-missing player, check free agents (one at a time to stay under rate limits)
+    if (!resultA) {
+      const fa = await searchPlayerInFreeAgents(api, leagueKey, nameA)
+      if (fa) resultA = { player: fa, ownershipStatus: 'free_agent' }
+    }
+    if (!resultB) {
+      const fb = await searchPlayerInFreeAgents(api, leagueKey, nameB)
+      if (fb) resultB = { player: fb, ownershipStatus: 'free_agent' }
+    }
+  } catch (error) {
+    console.error('Error in getPlayerOwnershipPair:', error)
+  }
+
+  return [resultA, resultB]
+}
+
+/**
  * Search for a player across all teams in a league
  */
 export async function searchPlayerInLeague(
