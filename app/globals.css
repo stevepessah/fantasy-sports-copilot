@@ -58,8 +58,10 @@ html {
 .theme-light .from-slate-900 { --tw-gradient-from: #f8fafc; }
 .theme-light .via-slate-800\/95 { --tw-gradient-via: rgba(255,255,255,0.95); }
 .theme-light .shadow-black\/10 { --tw-shadow-color: rgba(0,0,0,0.03); }
-.theme-light input.bg-slate-800 { background-color: #f1f5f9; color: #0f172a; }
-.theme-light input.bg-slate-800::placeholder { color: #94a3b8; }
+.theme-light input.bg-slate-800,
+.theme-light textarea.bg-slate-800 { background-color: #f1f5f9; color: #0f172a; }
+.theme-light input.bg-slate-800::placeholder,
+.theme-light textarea.bg-slate-800::placeholder { color: #94a3b8; }
 
 @layer utilities {
   .text-balance {
@@ -127,6 +129,13 @@ html {
 
 .animate-slide-in {
   animation: slide-in 0.2s ease-out;
+}
+
+/* Prevent iOS auto-zoom on input focus (triggers when font-size < 16px) */
+@supports (-webkit-touch-callout: none) {
+  input, textarea, select {
+    font-size: 16px;
+  }
 }
 
 /* Improve tap highlight on mobile */
