@@ -394,7 +394,7 @@ export default function EnhancedChatInterface({ leagueId, userId, initialMessage
           // Move cursor to end of the prefilled text
           const len = action.command.length
           if ('setSelectionRange' in el) {
-            ;(el as HTMLInputElement).setSelectionRange(len, len)
+            el.setSelectionRange(len, len)
           }
         }
       }, 0)
