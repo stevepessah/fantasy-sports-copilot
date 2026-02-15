@@ -443,64 +443,112 @@ export async function POST(request: NextRequest) {
     }
 
     if (intent.isViewTeams) {
-      try {
-        let leagueIdToUse = context.leagueId
-        if (!leagueIdToUse) {
-          const allLeagues = leagueDB.getAll()
-          const baseballLeague = allLeagues.find((l) => l.sport === 'baseball')
-          if (baseballLeague) {
-            leagueIdToUse = baseballLeague.id
-            context.leagueId = leagueIdToUse
-            context.league = baseballLeague
-          } else if (yahooAccessToken) {
-            try {
-              const setupResult = await setupBaseballLeague(yahooAccessToken)
-              leagueIdToUse = setupResult.league.id
+      let standingsHandled = false
+
+      // ── Prefer Yahoo standings (live data with GB, waiver, moves) ──
+      if (yahooAccessToken) {
+        try {
+          const api = new YahooFantasyAPI()
+          api.setAccessToken(yahooAccessToken)
+          const { leagues } = await api.getLeagues('mlb')
+          const yahooLeague = leagues.find(l => l.is_finished !== '1') || leagues[0]
+
+          if (yahooLeague?.league_key) {
+            const { standings } = await api.getStandings(yahooLeague.league_key)
+            if (standings.length > 0) {
+              // Compute games back relative to 1st-place team
+              const leader = standings[0]
+              const leaderWinPct = parseFloat(leader.percentage) || 0
+
+              response.cards.push({
+                type: 'teams',
+                title: 'League Standings',
+                payload: {
+                  leagueName: yahooLeague.name || 'League',
+                  teams: standings.map((t) => ({
+                    rank: t.rank,
+                    name: t.name,
+                    wins: t.wins,
+                    losses: t.losses,
+                    ties: t.ties,
+                    winPercentage: t.percentage || '.000',
+                    gamesBack: t.games_back ?? (t.rank === 1 ? '-' : undefined),
+                    waiverPriority: t.waiver_priority,
+                    moves: t.number_of_moves,
+                  })),
+                },
+              })
+              response.message = `Here are the current standings for **${yahooLeague.name}**:`
+              standingsHandled = true
+            }
+          }
+        } catch {
+          // Fall through to local DB
+        }
+      }
+
+      // ── Fallback: local DB standings ──
+      if (!standingsHandled) {
+        try {
+          let leagueIdToUse = context.leagueId
+          if (!leagueIdToUse) {
+            const allLeagues = leagueDB.getAll()
+            const baseballLeague = allLeagues.find((l) => l.sport === 'baseball')
+            if (baseballLeague) {
+              leagueIdToUse = baseballLeague.id
               context.leagueId = leagueIdToUse
-              context.league = setupResult.league
-            } catch {
-              response.message = "No league found. Please connect your Yahoo account and make sure you have an active Fantasy Baseball league."
+              context.league = baseballLeague
+            } else if (yahooAccessToken) {
+              try {
+                const setupResult = await setupBaseballLeague(yahooAccessToken)
+                leagueIdToUse = setupResult.league.id
+                context.leagueId = leagueIdToUse
+                context.league = setupResult.league
+              } catch {
+                response.message = "No league found. Please connect your Yahoo account and make sure you have an active Fantasy Baseball league."
+                return NextResponse.json(response)
+              }
+            } else {
+              response.message = "No league found. Please connect your Yahoo account to get started."
               return NextResponse.json(response)
             }
-          } else {
-            response.message = "No league found. Please connect your Yahoo account to get started."
-            return NextResponse.json(response)
           }
-        }
 
-        const allTeams = teamDB.getByLeague(leagueIdToUse)
-        if (allTeams.length > 0) {
-          const sortedTeams = [...allTeams].sort((a, b) => {
-            if (b.wins !== a.wins) return b.wins - a.wins
-            if (b.pointsFor !== a.pointsFor) return b.pointsFor - a.pointsFor
-            return a.losses - b.losses
-          })
+          const allTeams = teamDB.getByLeague(leagueIdToUse)
+          if (allTeams.length > 0) {
+            const sortedTeams = [...allTeams].sort((a, b) => {
+              if (b.wins !== a.wins) return b.wins - a.wins
+              if (b.pointsFor !== a.pointsFor) return b.pointsFor - a.pointsFor
+              return a.losses - b.losses
+            })
 
-          response.cards.push({
-            type: 'teams',
-            title: 'League Standings',
-            payload: {
-              leagueName: context.league?.name || 'League',
-              teams: sortedTeams.map((team, index) => ({
-                rank: index + 1,
-                name: team.name,
-                wins: team.wins,
-                losses: team.losses,
-                ties: team.ties,
-                pointsFor: team.pointsFor,
-                pointsAgainst: team.pointsAgainst,
-                winPercentage: team.wins + team.losses + team.ties > 0 
-                  ? ((team.wins + team.ties * 0.5) / (team.wins + team.losses + team.ties)).toFixed(3)
-                  : '0.000',
-              })),
-            },
-          })
-          response.message = `Here are all ${allTeams.length} teams in your league:`
-        } else {
-          response.message = "No teams found in this league."
+            response.cards.push({
+              type: 'teams',
+              title: 'League Standings',
+              payload: {
+                leagueName: context.league?.name || 'League',
+                teams: sortedTeams.map((team, index) => ({
+                  rank: index + 1,
+                  name: team.name,
+                  wins: team.wins,
+                  losses: team.losses,
+                  ties: team.ties,
+                  winPercentage: team.wins + team.losses + team.ties > 0 
+                    ? ((team.wins + team.ties * 0.5) / (team.wins + team.losses + team.ties)).toFixed(3)
+                    : '.000',
+                  gamesBack: undefined,
+                  waiverPriority: undefined,
+                  moves: undefined,
+                })),
+              },
+            })
+            response.message = `Here are all ${allTeams.length} teams in your league:`
+          } else {
+            response.message = "No teams found in this league."
+          }
+        } catch {
+          // silently skip
         }
-      } catch {
-        // silently skip
       }
     }
 
@@ -970,37 +1018,72 @@ async function buildCardsForIntent(
     }
 
     if (intent.isViewTeams) {
-      let leagueIdToUse = context.leagueId
-      if (!leagueIdToUse) {
-        const allLeagues = leagueDB.getAll()
-        const baseballLeague = allLeagues.find((l: any) => l.sport === 'baseball')
-        if (baseballLeague) { leagueIdToUse = baseballLeague.id }
-        else if (yahooAccessToken) {
-          try {
-            const setupResult = await setupBaseballLeague(yahooAccessToken)
-            leagueIdToUse = setupResult.league.id
-          } catch { /* skip */ }
-        }
+      let standingsDone = false
+      // Prefer Yahoo live standings
+      if (yahooAccessToken) {
+        try {
+          const api2 = new YahooFantasyAPI()
+          api2.setAccessToken(yahooAccessToken)
+          const { leagues: ls } = await api2.getLeagues('mlb')
+          const yl = ls.find((l: any) => l.is_finished !== '1') || ls[0]
+          if (yl?.league_key) {
+            const { standings: st } = await api2.getStandings(yl.league_key)
+            if (st.length > 0) {
+              cards.push({
+                type: 'teams',
+                title: 'League Standings',
+                payload: {
+                  leagueName: yl.name || 'League',
+                  teams: st.map((t) => ({
+                    rank: t.rank, name: t.name,
+                    wins: t.wins, losses: t.losses, ties: t.ties,
+                    winPercentage: t.percentage || '.000',
+                    gamesBack: t.games_back ?? (t.rank === 1 ? '-' : undefined),
+                    waiverPriority: t.waiver_priority,
+                    moves: t.number_of_moves,
+                  })),
+                },
+              })
+              standingsDone = true
+            }
+          }
+        } catch { /* fall through */ }
       }
-      if (leagueIdToUse) {
-        const allTeams = teamDB.getByLeague(leagueIdToUse)
-        if (allTeams.length > 0) {
-          const sorted = [...allTeams].sort((a, b) =>
-            b.wins !== a.wins ? b.wins - a.wins : b.pointsFor - a.pointsFor
-          )
-          cards.push({
-            type: 'teams',
-            title: 'League Standings',
-            payload: {
-              leagueName: context.league?.name || 'League',
-              teams: sorted.map((t, i) => ({
-                rank: i + 1, name: t.name, wins: t.wins, losses: t.losses,
-                ties: t.ties, pointsFor: t.pointsFor, pointsAgainst: t.pointsAgainst,
-                winPercentage: t.wins + t.losses + t.ties > 0
-                  ? ((t.wins + t.ties * 0.5) / (t.wins + t.losses + t.ties)).toFixed(3) : '0.000',
-              })),
-            },
-          })
+      // Fallback: local DB
+      if (!standingsDone) {
+        let leagueIdToUse = context.leagueId
+        if (!leagueIdToUse) {
+          const allLeagues = leagueDB.getAll()
+          const baseballLeague = allLeagues.find((l: any) => l.sport === 'baseball')
+          if (baseballLeague) { leagueIdToUse = baseballLeague.id }
+          else if (yahooAccessToken) {
+            try {
+              const setupResult = await setupBaseballLeague(yahooAccessToken)
+              leagueIdToUse = setupResult.league.id
+            } catch { /* skip */ }
+          }
+        }
+        if (leagueIdToUse) {
+          const allTeams = teamDB.getByLeague(leagueIdToUse)
+          if (allTeams.length > 0) {
+            const sorted = [...allTeams].sort((a, b) =>
+              b.wins !== a.wins ? b.wins - a.wins : b.pointsFor - a.pointsFor
+            )
+            cards.push({
+              type: 'teams',
+              title: 'League Standings',
+              payload: {
+                leagueName: context.league?.name || 'League',
+                teams: sorted.map((t, i) => ({
+                  rank: i + 1, name: t.name, wins: t.wins, losses: t.losses,
+                  ties: t.ties,
+                  winPercentage: t.wins + t.losses + t.ties > 0
+                    ? ((t.wins + t.ties * 0.5) / (t.wins + t.losses + t.ties)).toFixed(3) : '.000',
+                  gamesBack: undefined, waiverPriority: undefined, moves: undefined,
+                })),
+              },
+            })
+          }
         }
       }
     }

@@ -333,9 +333,13 @@ export interface ParsedStandingsTeam {
   losses: number
   ties: number
   percentage: string
+  games_back?: string
   points_for?: number
   points_against?: number
   points_change?: number
+  waiver_priority?: number
+  number_of_moves?: number
+  number_of_trades?: number
   outcome_totals?: {
     wins: number
     losses: number
@@ -416,6 +420,9 @@ export function parseStandingsXML(xml: string): ParsedStandingsTeam[] {
         }
       }
 
+      const gb = extractValue('games_back', standingsBlock)
+      if (gb != null) team.games_back = gb
+
       const streakBlock = standingsBlock.match(/<streak>([\s\S]*?)<\/streak>/)?.[1]
       if (streakBlock) {
         team.streak = {
@@ -424,6 +431,14 @@ export function parseStandingsXML(xml: string): ParsedStandingsTeam[] {
         }
       }
     }
+
+    // Extract team-level roster/transaction fields
+    const wp = extractValue('waiver_priority')
+    if (wp) team.waiver_priority = parseInt(wp, 10)
+    const nm = extractValue('number_of_moves')
+    if (nm) team.number_of_moves = parseInt(nm, 10)
+    const nt = extractValue('number_of_trades')
+    if (nt) team.number_of_trades = parseInt(nt, 10)
 
     // Extract team_points if available
     const pointsBlock = teamBlock.match(/<team_points>([\s\S]*?)<\/team_points>/)?.[1]

@@ -323,35 +323,44 @@ export function EnhancedCards({ card, onAction, sport }: EnhancedCardsProps) {
 
     case 'teams': {
       const p = card.payload
+      const teams: any[] = p.teams || []
       return (
         <CardShell title={card.title}>
-          <div className="text-xs text-slate-400 mb-4">
-            {p.leagueName} • {p.teams?.length || 0} teams
+          <div className="text-xs text-slate-400 mb-3">
+            {p.leagueName} • {teams.length} teams
           </div>
-          <div className="space-y-2">
-            {p.teams?.map((team: any) => (
-              <div key={team.rank} className="flex items-center gap-3 py-2 border-b border-slate-700/50 last:border-0">
-                <div className="w-8 text-sm font-bold text-slate-400">
-                  #{team.rank}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="font-medium truncate">{team.name}</div>
-                  <div className="text-xs text-slate-400 mt-1 break-words">
-                    {team.wins}-{team.losses}{team.ties > 0 ? `-${team.ties}` : ''} · 
-                    Win%: {team.winPercentage} · 
-                    PF: {team.pointsFor?.toFixed(1) || '0.0'} · 
-                    PA: {team.pointsAgainst?.toFixed(1) || '0.0'}
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  {team.rank <= 3 && (
-                    <span className="px-2 py-0.5 text-xs rounded-full bg-yellow-600/20 text-yellow-400 border border-yellow-600/30">
-                      Top 3
-                    </span>
-                  )}
-                </div>
-              </div>
-            ))}
+          <div className="overflow-x-auto -mx-4 px-4">
+            <table className="w-full text-xs sm:text-sm">
+              <thead>
+                <tr className="border-b border-slate-700 text-slate-400 text-left">
+                  <th className="py-2 pr-2 font-semibold w-8 text-center">#</th>
+                  <th className="py-2 pr-3 font-semibold">Team</th>
+                  <th className="py-2 px-2 font-semibold text-center whitespace-nowrap">W-L-T</th>
+                  <th className="py-2 px-2 font-semibold text-center">Pct</th>
+                  <th className="py-2 px-2 font-semibold text-center">GB</th>
+                  <th className="py-2 px-2 font-semibold text-center">Waiver</th>
+                  <th className="py-2 pl-2 font-semibold text-center">Moves</th>
+                </tr>
+              </thead>
+              <tbody>
+                {teams.map((team: any) => (
+                  <tr
+                    key={team.rank}
+                    className="border-b border-slate-700/40 last:border-0 hover:bg-slate-700/20 transition-colors"
+                  >
+                    <td className="py-2 pr-2 text-center text-slate-400 font-bold">{team.rank}</td>
+                    <td className="py-2 pr-3 font-medium truncate max-w-[140px] sm:max-w-[200px]">{team.name}</td>
+                    <td className="py-2 px-2 text-center text-slate-300 whitespace-nowrap tabular-nums">
+                      {team.wins}-{team.losses}-{team.ties ?? 0}
+                    </td>
+                    <td className="py-2 px-2 text-center text-slate-300 tabular-nums">{team.winPercentage}</td>
+                    <td className="py-2 px-2 text-center text-slate-400 tabular-nums">{team.gamesBack ?? '-'}</td>
+                    <td className="py-2 px-2 text-center text-slate-400 tabular-nums">{team.waiverPriority ?? '-'}</td>
+                    <td className="py-2 pl-2 text-center text-slate-400 tabular-nums">{team.moves ?? '-'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </CardShell>
       )
