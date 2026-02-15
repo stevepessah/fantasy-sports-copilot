@@ -48,14 +48,21 @@ interface QuickAction {
 
 const BASE_QUICK_ACTIONS: QuickAction[] = [
   { label: '📋 Set optimal lineup', command: 'set my optimal lineup', context: 'authenticated' },
-  { label: '⚔️ Show matchup', command: 'show matchup', context: 'authenticated' },
-  { label: '🏆 View all teams', command: 'show all teams' },
-  { label: '🏏 Show all batters', command: 'show all batters', context: 'authenticated' },
-  { label: '⚾ Show all pitchers', command: 'show all pitchers', context: 'authenticated' },
+  // "Show matchup" and "View all teams" moved to top tab nav
+  // "Show all batters" and "Show all pitchers" moved to Players tab
   { label: '🔍 Waiver targets', command: 'who should I pick up on waivers?' },
   { label: '🔄 Trade idea', command: 'suggest a trade' },
   { label: '📝 Draft advice', command: 'draft advice' },
 ]
+
+// ── Top tab navigation ──
+type TopTab = 'league' | 'roster' | 'matchups' | 'players'
+
+interface TabDef {
+  id: TopTab
+  label: string
+  icon: string
+}
 
 const SUGGESTION_PILLS = [
   { label: 'Set my best lineup', cmd: 'set my best lineup' },
@@ -85,6 +92,8 @@ export default function EnhancedChatInterface({ leagueId, userId, initialMessage
   const [conversationId, setConversationId] = useState<string | null>(null)
   const [conversations, setConversations] = useState<Conversation[]>([])
   const [showHistory, setShowHistory] = useState(false)
+  const [activeTab, setActiveTab] = useState<TopTab | null>(null)
+  const [showPlayersPrompt, setShowPlayersPrompt] = useState(false)
 
   const { isAuthenticated: isYahooConnected } = useYahooAuth()
   const { theme, toggleTheme } = useTheme()
@@ -491,6 +500,79 @@ export default function EnhancedChatInterface({ leagueId, userId, initialMessage
           )}
         </div>
       </header>
+
+      {/* ── Top Tab Navigation ── */}
+      {mounted && (
+        <nav className="bg-slate-800/60 backdrop-blur-md border-b border-slate-700/50 shrink-0 z-30">
+          <div className="flex items-center">
+            {([
+              { id: 'league' as TopTab, label: 'League', icon: '🏆' },
+              { id: 'roster' as TopTab, label: 'Roster', icon: '📋' },
+              { id: 'matchups' as TopTab, label: 'Matchups', icon: '⚔️' },
+              { id: 'players' as TopTab, label: 'Players', icon: '👥' },
+            ]).map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => {
+                  if (tab.id === 'players') {
+                    // Toggle the sub-prompt for batters/pitchers
+                    if (activeTab === 'players') {
+                      setActiveTab(null)
+                      setShowPlayersPrompt(false)
+                    } else {
+                      setActiveTab('players')
+                      setShowPlayersPrompt(true)
+                    }
+                  } else {
+                    setShowPlayersPrompt(false)
+                    setActiveTab(tab.id)
+                    // Fire the appropriate command
+                    if (tab.id === 'league') runCommand('show all teams')
+                    if (tab.id === 'roster') runCommand('show my roster')
+                    if (tab.id === 'matchups') runCommand('show matchup')
+                  }
+                }}
+                className={`flex-1 flex items-center justify-center gap-1.5 px-2 py-2.5 text-xs sm:text-sm font-medium transition-colors relative ${
+                  activeTab === tab.id
+                    ? 'text-primary-400'
+                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-700/30'
+                }`}
+              >
+                <span>{tab.icon}</span>
+                <span className={isTiny ? 'sr-only' : ''}>{tab.label}</span>
+                {/* Active indicator line */}
+                {activeTab === tab.id && (
+                  <span className="absolute bottom-0 left-2 right-2 h-0.5 bg-primary-500 rounded-full" />
+                )}
+              </button>
+            ))}
+          </div>
+          {/* Players sub-prompt: Batters or Pitchers */}
+          {showPlayersPrompt && (
+            <div className="flex items-center justify-center gap-3 px-4 py-2.5 border-t border-slate-700/40 bg-slate-800/40">
+              <span className="text-xs text-slate-400">View:</span>
+              <button
+                onClick={() => {
+                  setShowPlayersPrompt(false)
+                  runCommand('show all batters')
+                }}
+                className="px-4 py-1.5 rounded-lg bg-slate-700 hover:bg-slate-600 active:bg-slate-500 text-sm font-medium text-white transition-colors"
+              >
+                🏏 Batters
+              </button>
+              <button
+                onClick={() => {
+                  setShowPlayersPrompt(false)
+                  runCommand('show all pitchers')
+                }}
+                className="px-4 py-1.5 rounded-lg bg-slate-700 hover:bg-slate-600 active:bg-slate-500 text-sm font-medium text-white transition-colors"
+              >
+                ⚾ Pitchers
+              </button>
+            </div>
+          )}
+        </nav>
+      )}
 
       {/* Mobile drawer overlay */}
       {mounted && isNarrow && drawerOpen && (
