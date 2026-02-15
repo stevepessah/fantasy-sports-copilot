@@ -19,9 +19,7 @@ export default function YahooAuth() {
 
   const handleDisconnect = async () => {
     try {
-      // Clear cookies (in production, call API to revoke token)
-      document.cookie = 'yahoo_access_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT'
-      document.cookie = 'yahoo_refresh_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT'
+      await fetch('/api/yahoo/disconnect', { method: 'POST' })
       setSelectedLeague(null)
       mutate() // Revalidate auth state via SWR
     } catch (error) {
