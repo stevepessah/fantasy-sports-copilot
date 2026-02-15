@@ -43,6 +43,8 @@ const BOUNCE_DELAY_400 = { animationDelay: '0.4s' } as const
 interface QuickAction {
   label: string
   command: string
+  /** When true, clicking this action prefills the input instead of sending the message */
+  prefill?: boolean
   context?: 'authenticated' | 'unauthenticated' | 'always'
 }
 
@@ -124,7 +126,7 @@ export default function EnhancedChatInterface({ leagueId, userId, initialMessage
     if (lastCardType === 'player') {
       const playerName = cards?.[0]?.payload?.player?.name
       if (playerName) {
-        contextual.push({ label: `📊 Compare ${playerName}`, command: `compare ${playerName} with` })
+        contextual.push({ label: `📊 Compare ${playerName}`, command: `compare ${playerName} with `, prefill: true })
         contextual.push({ label: `🔄 Trade ${playerName}`, command: `suggest a trade involving ${playerName}` })
       }
     }
@@ -378,11 +380,19 @@ export default function EnhancedChatInterface({ leagueId, userId, initialMessage
     handleSubmitRef.current(undefined, command)
   }, [])
 
-  const handleQuickAction = useCallback((command: string) => {
+  const handleQuickAction = useCallback((action: QuickAction) => {
     hapticTap()
-    runCommand(command)
-    setShowQuickActions(false)
-    setDrawerOpen(false)
+    if (action.prefill) {
+      // Just populate the input and focus — let the user finish typing
+      setInput(action.command)
+      setShowQuickActions(false)
+      setDrawerOpen(false)
+      setTimeout(() => inputRef.current?.focus(), 0)
+    } else {
+      runCommand(action.command)
+      setShowQuickActions(false)
+      setDrawerOpen(false)
+    }
   }, [runCommand])
 
   // ── Action confirmation with undo ──
@@ -661,7 +671,7 @@ export default function EnhancedChatInterface({ leagueId, userId, initialMessage
                   {quickActions.map((action) => (
                     <button
                       key={action.label}
-                      onClick={() => handleQuickAction(action.command)}
+                      onClick={() => handleQuickAction(action)}
                       className="w-full text-left px-3 py-3 rounded-lg border border-slate-700 bg-slate-800/50 hover:bg-slate-700 active:bg-slate-600 transition-colors text-sm"
                     >
                       {action.label}
@@ -749,7 +759,7 @@ export default function EnhancedChatInterface({ leagueId, userId, initialMessage
                   {quickActions.map((action) => (
                     <button
                       key={action.label}
-                      onClick={() => handleQuickAction(action.command)}
+                      onClick={() => handleQuickAction(action)}
                       className="w-full text-left px-3 py-2.5 rounded-lg border border-slate-700 bg-slate-800/50 hover:bg-slate-700 active:bg-slate-600 transition-colors text-sm"
                     >
                       {action.label}
@@ -923,7 +933,7 @@ export default function EnhancedChatInterface({ leagueId, userId, initialMessage
                       <button
                         key={action.label}
                         type="button"
-                        onClick={() => handleQuickAction(action.command)}
+                        onClick={() => handleQuickAction(action)}
                         className="px-3 py-2 rounded-lg border border-slate-700 bg-slate-800/50 hover:bg-slate-700 active:bg-slate-600 transition-colors text-xs text-slate-200"
                       >
                         {action.label}
