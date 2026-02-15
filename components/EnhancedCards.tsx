@@ -177,7 +177,7 @@ export function EnhancedCards({ card, onAction, sport }: EnhancedCardsProps) {
                   </span>
                   <button
                     onClick={() => runCommand(`add ${target.name}`)}
-                    className="px-3 py-1 text-xs rounded-lg border border-slate-700 bg-slate-800 hover:bg-slate-700 text-white font-semibold"
+                    className="px-3 py-2 text-xs rounded-lg border border-slate-700 bg-slate-800 hover:bg-slate-700 active:bg-slate-600 text-white font-semibold transition-colors"
                   >
                     Add
                   </button>
@@ -285,7 +285,7 @@ export function EnhancedCards({ card, onAction, sport }: EnhancedCardsProps) {
                 </div>
                 <button
                   onClick={() => runCommand(`draft ${rec.name}`)}
-                  className="px-3 py-1 text-xs rounded-lg border border-slate-700 bg-slate-800 hover:bg-slate-700 text-white font-semibold"
+                  className="px-3 py-2 text-xs rounded-lg border border-slate-700 bg-slate-800 hover:bg-slate-700 active:bg-slate-600 text-white font-semibold transition-colors"
                 >
                   Draft
                 </button>
@@ -568,7 +568,7 @@ function RosterListCard({ card, onAction }: { card: Card; onAction?: (cmd: strin
   }
 
   // The "+" button column width in px — used for sticky left offsets
-  const ADD_COL_W = 22 // w-[22px]
+  const ADD_COL_W = 32 // w-8
 
   return (
     <CardShell title={card.title}>
@@ -649,8 +649,8 @@ function RosterListCard({ card, onAction }: { card: Card; onAction?: (cmd: strin
             <table className="w-full text-[9px] sm:text-[11px]">
               <thead>
                 <tr className="border-b border-slate-700/60">
-                  {/* "+" column header — tiny on mobile */}
-                  <th className="w-[22px] sm:w-8 px-0.5 sm:px-1 py-1 sticky left-0 bg-slate-800/90 z-10" />
+                  {/* "+" column header */}
+                  <th className="w-8 px-0.5 sm:px-1 py-1 sticky left-0 bg-slate-800/90 z-10" />
                   <th
                     className="text-left px-0.5 sm:px-1.5 py-1 text-slate-500 uppercase tracking-wide font-semibold cursor-pointer hover:text-slate-300 sticky bg-slate-800/90 z-10 min-w-[90px] sm:min-w-[130px]"
                     style={{ left: ADD_COL_W }}
@@ -682,11 +682,11 @@ function RosterListCard({ card, onAction }: { card: Card; onAction?: (cmd: strin
                     key={pl.playerKey || idx}
                     className="hover:bg-slate-700/20 transition-colors"
                   >
-                    {/* "+" button — smaller on mobile */}
-                    <td className="px-0.5 sm:px-1 py-0.5 sm:py-1 sticky left-0 bg-slate-800/90 z-10 w-[22px] sm:w-8">
+                    {/* "+" button */}
+                    <td className="px-0.5 sm:px-1 py-0.5 sm:py-1 sticky left-0 bg-slate-800/90 z-10 w-8">
                       <button
                         onClick={(e) => { e.stopPropagation(); onAction && onAction(`add ${pl.name}`) }}
-                        className="w-[18px] h-[18px] sm:w-6 sm:h-6 flex items-center justify-center rounded bg-green-600/20 text-green-400 hover:bg-green-600/40 active:bg-green-600/60 border border-green-600/30 text-[10px] sm:text-sm font-bold leading-none transition-colors"
+                        className="w-7 h-7 sm:w-6 sm:h-6 flex items-center justify-center rounded bg-green-600/20 text-green-400 hover:bg-green-600/40 active:bg-green-600/60 border border-green-600/30 text-sm font-bold leading-none transition-colors"
                         title={`Add ${pl.name}`}
                       >
                         +

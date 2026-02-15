@@ -150,7 +150,7 @@ export default function NotificationBell({ onAction }: NotificationBellProps) {
       </button>
 
       {open && (
-        <div className="absolute top-full right-0 mt-1 w-80 bg-slate-800 border border-slate-700 rounded-xl shadow-xl overflow-hidden z-50">
+        <div className="absolute top-full right-0 mt-1 w-80 max-w-[calc(100vw-2rem)] bg-slate-800 border border-slate-700 rounded-xl shadow-xl overflow-hidden z-50">
           <div className="flex items-center justify-between px-4 py-2.5 border-b border-slate-700">
             <h3 className="text-sm font-bold text-white">Alerts</h3>
             {unreadCount > 0 && (

@@ -92,7 +92,15 @@ export default function EnhancedChatInterface({ leagueId, userId, initialMessage
   const { isOnboardingComplete, markComplete: markOnboardingComplete } = useOnboarding()
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
-  const inputRef = useRef<HTMLInputElement>(null)
+  const inputRef = useRef<HTMLTextAreaElement>(null)
+
+  // ── Auto-resize textarea ──
+  const resizeTextarea = useCallback(() => {
+    const el = inputRef.current
+    if (!el) return
+    el.style.height = 'auto'
+    el.style.height = `${Math.min(el.scrollHeight, 120)}px`
+  }, [])
 
   // ── Contextual quick actions ──
   const quickActions = useMemo(() => {
@@ -282,6 +290,8 @@ export default function EnhancedChatInterface({ leagueId, userId, initialMessage
     setInput('')
     setIsLoading(true)
     setStreamingText('')
+    // Reset textarea height after clearing
+    if (inputRef.current) inputRef.current.style.height = 'auto'
 
     try {
       const response = await fetch('/api/chat', {
@@ -534,10 +544,10 @@ export default function EnhancedChatInterface({ leagueId, userId, initialMessage
                         </button>
                         <button
                           onClick={() => handleDeleteConversation(conv.id)}
-                          className="p-1 rounded hover:bg-slate-700/50 text-slate-600 hover:text-slate-400"
+                          className="p-2.5 -mr-1 rounded-lg hover:bg-slate-700/50 text-slate-600 hover:text-slate-400"
                           aria-label="Delete conversation"
                         >
-                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                           </svg>
                         </button>
@@ -633,10 +643,10 @@ export default function EnhancedChatInterface({ leagueId, userId, initialMessage
                         </button>
                         <button
                           onClick={() => handleDeleteConversation(conv.id)}
-                          className="p-1 rounded opacity-0 group-hover:opacity-100 hover:bg-slate-700/50 text-slate-600 hover:text-slate-400 transition-opacity"
+                          className="p-2 -mr-1 rounded-lg opacity-0 group-hover:opacity-100 hover:bg-slate-700/50 text-slate-600 hover:text-slate-400 transition-opacity"
                           aria-label="Delete conversation"
                         >
-                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                           </svg>
                         </button>
@@ -841,14 +851,18 @@ export default function EnhancedChatInterface({ leagueId, userId, initialMessage
                 )}
               </div>
             )}
-            <form onSubmit={handleSubmit} className="max-w-4xl mx-auto flex gap-2">
-              <input
+            <form onSubmit={handleSubmit} className="max-w-4xl mx-auto flex gap-2 items-end">
+              <textarea
                 ref={inputRef}
-                type="text"
+                rows={1}
                 value={input}
-                onChange={(e) => setInput(e.target.value)}
+                onChange={(e) => {
+                  setInput(e.target.value)
+                  resizeTextarea()
+                }}
                 placeholder={isTiny ? 'Ask anything...' : 'Try: "set my optimal lineup" · Press / to focus'}
-                className="flex-1 min-w-0 bg-slate-800 border border-slate-700/60 text-white rounded-xl px-3 sm:px-4 py-2.5 sm:py-3 focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm placeholder:text-slate-500"
+                className="flex-1 min-w-0 bg-slate-800 border border-slate-700/60 text-white rounded-xl px-3 sm:px-4 py-2.5 sm:py-3 focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm placeholder:text-slate-500 resize-none overflow-y-auto leading-relaxed"
+                style={{ maxHeight: 120 }}
                 disabled={isLoading}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && !e.shiftKey) {

@@ -48,7 +48,7 @@ export default function LeagueSwitcher({ selectedLeagueKey, onLeagueChange }: Le
       </button>
 
       {open && (
-        <div className="absolute top-full right-0 mt-1 w-56 bg-slate-800 border border-slate-700 rounded-xl shadow-xl overflow-hidden z-50">
+        <div className="absolute top-full right-0 mt-1 w-56 max-w-[calc(100vw-2rem)] bg-slate-800 border border-slate-700 rounded-xl shadow-xl overflow-hidden z-50">
           {leagues.map((league) => (
             <button
               key={league.league_key}
