@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next'
 import { Inter } from 'next/font/google'
+import Script from 'next/script'
 import { YahooAuthProvider } from '@/contexts/YahooAuthContext'
 import { ThemeProvider } from '@/contexts/ThemeContext'
 import { ToastProvider } from '@/components/Toast'
@@ -64,6 +65,20 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className="theme-dark bg-slate-900">
+      <head>
+        <Script
+          src="https://www.googletagmanager.com/gtag/js?id=G-X7CWYR78HV"
+          strategy="afterInteractive"
+        />
+        <Script id="gtag-init" strategy="afterInteractive">
+          {`
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            gtag('js', new Date());
+            gtag('config', 'G-X7CWYR78HV');
+          `}
+        </Script>
+      </head>
       <body className={`${inter.className} bg-slate-900`}>
         <YahooAuthProvider>
           <ThemeProvider>
