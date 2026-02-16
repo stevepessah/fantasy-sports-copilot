@@ -69,6 +69,10 @@ export interface ParsedRosterPlayer {
   position?: string
   // Stats (present when fetched with ;out=stats)
   player_stats?: Record<string, string | number>  // stat_id → value
+  // Ownership (present when fetched with ;out=ownership)
+  ownership_type?: string      // 'team' | 'freeagents' | 'waivers'
+  owner_team_key?: string
+  owner_team_name?: string
 }
 
 /**
@@ -285,6 +289,14 @@ export function parseRosterXML(xml: string): ParsedRosterPlayer[] {
     player.uniform_number = extractValue('uniform_number')
     player.is_undroppable = extractValue('is_undroppable')
     player.image_url = extractValue('image_url')
+
+    // Extract ownership (present when fetched with ;out=ownership)
+    const ownershipBlock = playerBlock.match(/<ownership>([\s\S]*?)<\/ownership>/)?.[1]
+    if (ownershipBlock) {
+      player.ownership_type = extractValue('ownership_type', ownershipBlock)
+      player.owner_team_key = extractValue('owner_team_key', ownershipBlock)
+      player.owner_team_name = extractValue('owner_team_name', ownershipBlock)
+    }
 
     // Extract player_stats (present when fetched with ;out=stats)
     const playerStatsBlock = playerBlock.match(/<player_stats>([\s\S]*?)<\/player_stats>/)?.[1]

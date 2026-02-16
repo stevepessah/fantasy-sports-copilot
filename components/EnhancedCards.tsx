@@ -850,33 +850,55 @@ function RosterListCard({ card, onAction }: { card: Card; onAction?: (cmd: strin
                     </td>
                   </tr>
                 )}
-                {pageItems.map((pl: any, idx: number) => (
+                {pageItems.map((pl: any, idx: number) => {
+                  const isTaken = pl.ownershipType === 'team'
+                  return (
                   <tr
                     key={pl.playerKey || idx}
                     className="hover:bg-slate-700/20 transition-colors"
                   >
                     <td className="px-0.5 sm:px-1 py-0.5 sm:py-1 sticky left-0 bg-slate-800/90 z-10 w-8">
-                      <button
-                        onClick={(e) => { e.stopPropagation(); onAction && onAction(`add ${pl.name}`) }}
-                        className="w-7 h-7 sm:w-6 sm:h-6 flex items-center justify-center rounded bg-green-600/20 text-green-400 hover:bg-green-600/40 active:bg-green-600/60 border border-green-600/30 text-sm font-bold leading-none transition-colors"
-                        title={`Add ${pl.name}`}
-                      >
-                        +
-                      </button>
+                      {isTaken ? (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); onAction && onAction(`propose trade for ${pl.name}`) }}
+                          className="w-7 h-7 sm:w-6 sm:h-6 flex items-center justify-center rounded bg-blue-600/20 text-blue-400 hover:bg-blue-600/40 active:bg-blue-600/60 border border-blue-600/30 text-sm font-bold leading-none transition-colors"
+                          title={`Propose trade for ${pl.name}`}
+                        >
+                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 21L3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5" />
+                          </svg>
+                        </button>
+                      ) : (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); onAction && onAction(`add ${pl.name}`) }}
+                          className="w-7 h-7 sm:w-6 sm:h-6 flex items-center justify-center rounded bg-green-600/20 text-green-400 hover:bg-green-600/40 active:bg-green-600/60 border border-green-600/30 text-sm font-bold leading-none transition-colors"
+                          title={`Add ${pl.name}`}
+                        >
+                          +
+                        </button>
+                      )}
                     </td>
                     <td
                       className="px-0.5 sm:px-1.5 py-0.5 sm:py-1 sticky bg-slate-800/90 z-10 min-w-[90px] sm:min-w-[130px] cursor-pointer"
                       style={{ left: ADD_COL_W }}
                       onClick={() => onAction && onAction(`tell me about ${pl.name}${pl.playerKey ? ` [pk:${pl.playerKey}]` : ''}`)}
                     >
+                      {/* Mobile: single line */}
                       <div className="sm:hidden">
                         <span className="font-medium text-white truncate text-[14px]">{abbreviateName(pl.name)}</span>
                         <span className="text-slate-500 ml-1">{pl.team}·{compactPositions(pl)}</span>
+                        {isTaken && pl.ownerTeamName && (
+                          <div className="text-[9px] text-blue-400/70 truncate">{pl.ownerTeamName}</div>
+                        )}
                       </div>
+                      {/* Desktop: two-line + owner */}
                       <div className="hidden sm:block">
                         <div className="font-medium text-white truncate max-w-[200px] text-[14px]">{pl.name}</div>
                         <div className="text-[10px] text-slate-500 truncate">
                           {pl.team} · {compactPositions(pl)}
+                          {isTaken && pl.ownerTeamName && (
+                            <span className="text-blue-400/70 ml-1">· {pl.ownerTeamName}</span>
+                          )}
                         </div>
                       </div>
                     </td>
@@ -888,7 +910,8 @@ function RosterListCard({ card, onAction }: { card: Card; onAction?: (cmd: strin
                       </td>
                     ))}
                   </tr>
-                ))}
+                  )
+                })}
               </tbody>
             </table>
           </div>

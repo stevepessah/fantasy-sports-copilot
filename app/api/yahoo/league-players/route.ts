@@ -12,6 +12,9 @@ export interface LeaguePlayerEntry {
   displayPosition: string
   status?: string
   stats: Record<string, number | string>
+  ownershipType?: string      // 'team' | 'freeagents' | 'waivers'
+  ownerTeamKey?: string
+  ownerTeamName?: string
 }
 
 const PAGE_SIZE = 25
@@ -98,7 +101,7 @@ export async function GET(request: NextRequest) {
         position: positionType || undefined,
         status,
         sort: 'AR',
-        out: 'stats',
+        out: 'stats,ownership',
       }).catch(() => ({ players: [], raw: undefined }))
 
     const firstPage = await fetchPage(0)
@@ -176,6 +179,9 @@ export async function GET(request: NextRequest) {
         displayPosition: p.display_position || p.eligible_positions?.[0] || '',
         status: p.injury_status || p.status,
         stats: remapped,
+        ownershipType: p.ownership_type,
+        ownerTeamKey: p.owner_team_key,
+        ownerTeamName: p.owner_team_name,
       }
     })
 
