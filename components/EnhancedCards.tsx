@@ -484,9 +484,32 @@ function compactPositions(pl: any): string {
   return pl.displayPosition || '-'
 }
 
+// ── MLB Teams list ──
+const MLB_TEAMS = [
+  'ARI', 'ATL', 'BAL', 'BOS', 'CHC', 'CWS', 'CIN', 'CLE', 'COL', 'DET',
+  'HOU', 'KC', 'LAA', 'LAD', 'MIA', 'MIL', 'MIN', 'NYM', 'NYY', 'OAK',
+  'PHI', 'PIT', 'SD', 'SF', 'SEA', 'STL', 'TB', 'TEX', 'TOR', 'WSH',
+]
+
+// ── Player status options ──
+const PLAYER_STATUS_OPTIONS = [
+  { value: 'A', label: 'All Players' },
+  { value: 'FA', label: 'Free Agents' },
+  { value: 'W', label: 'Waivers' },
+  { value: 'T', label: 'Taken' },
+] as const
+
+// ── Batter positions ──
+const BATTER_POSITIONS = ['C', '1B', '2B', '3B', 'SS', 'OF', 'Util'] as const
+// ── Pitcher positions ──
+const PITCHER_POSITIONS = ['SP', 'RP'] as const
+
 function RosterListCard({ card, onAction }: { card: Card; onAction?: (cmd: string) => void }) {
   const p = card.payload
-  const isPitcher = p.positionType === 'P'
+
+  // ── Player type toggle: Batters vs Pitchers ──
+  const [positionType, setPositionType] = useState<'B' | 'P'>(p.positionType === 'P' ? 'P' : 'B')
+  const isPitcher = positionType === 'P'
   const cols = isPitcher ? PITCHER_COLS : BATTER_COLS
 
   const PAGE_SIZE = 25
@@ -495,16 +518,32 @@ function RosterListCard({ card, onAction }: { card: Card; onAction?: (cmd: strin
   const [sortAsc, setSortAsc] = useState(false)
   const [filterText, setFilterText] = useState('')
 
+  // ── Filter states ──
+  const [positionFilter, setPositionFilter] = useState<string>('All')
+  const [teamFilter, setTeamFilter] = useState<string>('All')
+  const [statusFilter, setStatusFilter] = useState<string>('A')
+
   // Season toggle state
   const [selectedSeason, setSelectedSeason] = useState(0) // 0 = current
-  const [seasonPlayers, setSeasonPlayers] = useState<Record<number, any[]>>({ 0: p.players || [] })
-  const [seasonTotals, setSeasonTotals] = useState<Record<number, number>>({ 0: p.total || 0 })
+
+  // Cache key includes positionType + status so switching re-fetches properly
+  const cacheKey = (pt: string, status: string, season: number) => `${pt}_${status}_${season}`
+
+  const [playerCache, setPlayerCache] = useState<Record<string, any[]>>({
+    [cacheKey(p.positionType || 'B', 'A', 0)]: p.players || [],
+  })
+  const [totalCache, setTotalCache] = useState<Record<string, number>>({
+    [cacheKey(p.positionType || 'B', 'A', 0)]: p.total || 0,
+  })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  // Fetch players for a given season
-  const fetchSeasonPlayers = useCallback(async (season: number) => {
-    if (seasonPlayers[season]) return // already cached
+  const currentCacheKey = cacheKey(positionType, statusFilter, selectedSeason)
+
+  // Fetch players for a given config
+  const fetchPlayers = useCallback(async (pt: string, status: string, season: number) => {
+    const key = cacheKey(pt, status, season)
+    if (playerCache[key]) return // already cached
     if (!p.leagueKey) return
 
     setLoading(true)
@@ -512,44 +551,64 @@ function RosterListCard({ card, onAction }: { card: Card; onAction?: (cmd: strin
     try {
       const url = new URL('/api/yahoo/league-players', window.location.origin)
       url.searchParams.set('leagueKey', p.leagueKey)
-      if (p.positionType) url.searchParams.set('positionType', p.positionType)
+      url.searchParams.set('positionType', pt)
+      url.searchParams.set('status', status)
       if (season > 0) url.searchParams.set('season', season.toString())
 
       const res = await fetch(url.toString())
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const data = await res.json()
 
-      setSeasonPlayers(prev => ({ ...prev, [season]: data.players || [] }))
-      setSeasonTotals(prev => ({ ...prev, [season]: data.total || 0 }))
+      setPlayerCache(prev => ({ ...prev, [key]: data.players || [] }))
+      setTotalCache(prev => ({ ...prev, [key]: data.total || 0 }))
     } catch (err: any) {
-      console.error(`Failed to fetch season ${season} players:`, err)
-      setError(`Failed to load ${season} data`)
+      console.error(`Failed to fetch players (${pt}/${status}/${season}):`, err)
+      setError(`Failed to load data`)
     } finally {
       setLoading(false)
     }
-  }, [p.leagueKey, p.positionType, seasonPlayers])
+  }, [p.leagueKey, playerCache])
 
-  // Fetch when season changes
+  // Fetch when config changes
   useEffect(() => {
-    if (selectedSeason !== 0 && !seasonPlayers[selectedSeason]) {
-      fetchSeasonPlayers(selectedSeason)
+    if (!playerCache[currentCacheKey]) {
+      fetchPlayers(positionType, statusFilter, selectedSeason)
     }
-  }, [selectedSeason, fetchSeasonPlayers, seasonPlayers])
+  }, [positionType, statusFilter, selectedSeason, currentCacheKey, fetchPlayers, playerCache])
 
-  const allPlayers: any[] = seasonPlayers[selectedSeason] || []
-  const totalCount = seasonTotals[selectedSeason] || 0
+  const allPlayers: any[] = playerCache[currentCacheKey] || []
+  const totalCount = totalCache[currentCacheKey] || 0
 
-  // Filter players
-  const filtered = filterText.trim()
-    ? allPlayers.filter((pl: any) => {
-        const q = filterText.toLowerCase()
-        const name = (pl.name || '').toLowerCase()
-        const team = (pl.team || '').toLowerCase()
-        const positions = (pl.positions || []).join(' ').toLowerCase()
-        const displayPos = (pl.displayPosition || '').toLowerCase()
-        return name.includes(q) || team.includes(q) || positions.includes(q) || displayPos.includes(q)
-      })
-    : allPlayers
+  // ── Client-side filters: position + team + text search ──
+  const filtered = allPlayers.filter((pl: any) => {
+    // Position filter
+    if (positionFilter !== 'All') {
+      const positions: string[] = pl.positions || []
+      const dp: string = pl.displayPosition || ''
+      if (!positions.some(pos => pos.toUpperCase() === positionFilter.toUpperCase()) &&
+          dp.toUpperCase() !== positionFilter.toUpperCase()) {
+        return false
+      }
+    }
+    // Team filter
+    if (teamFilter !== 'All') {
+      if ((pl.team || '').toUpperCase() !== teamFilter.toUpperCase()) {
+        return false
+      }
+    }
+    // Text search
+    if (filterText.trim()) {
+      const q = filterText.toLowerCase()
+      const name = (pl.name || '').toLowerCase()
+      const team = (pl.team || '').toLowerCase()
+      const positions = (pl.positions || []).join(' ').toLowerCase()
+      const displayPos = (pl.displayPosition || '').toLowerCase()
+      if (!name.includes(q) && !team.includes(q) && !positions.includes(q) && !displayPos.includes(q)) {
+        return false
+      }
+    }
+    return true
+  })
 
   // Sort players
   const sorted = [...filtered]
@@ -592,64 +651,155 @@ function RosterListCard({ card, onAction }: { card: Card; onAction?: (cmd: strin
     setSortAsc(false)
   }
 
+  const handlePositionTypeChange = (pt: 'B' | 'P') => {
+    setPositionType(pt)
+    setPositionFilter('All') // reset position filter when switching type
+    setPage(0)
+    setSortCol(null)
+    setSortAsc(false)
+  }
+
+  const handleStatusChange = (status: string) => {
+    setStatusFilter(status)
+    setPage(0)
+    setSortCol(null)
+    setSortAsc(false)
+  }
+
+  // Derive available teams from current loaded players (for dynamic team dropdown)
+  const availableTeams = Array.from(
+    new Set(allPlayers.map((pl: any) => (pl.team || '').toUpperCase()).filter(Boolean))
+  ).sort()
+
   // The "+" button column width in px — used for sticky left offsets
   const ADD_COL_W = 32 // w-8
 
+  const positionOptions = isPitcher ? PITCHER_POSITIONS : BATTER_POSITIONS
+
   return (
     <CardShell title={card.title}>
-      {/* ── Controls: season, count, filter, page — compact single row on mobile ── */}
-      <div className="flex items-center justify-between mb-1.5 gap-1 sm:gap-2 flex-wrap">
-        <div className="flex items-center gap-1 sm:gap-2">
-          <select
-            value={selectedSeason}
-            onChange={(e) => handleSeasonChange(parseInt(e.target.value, 10))}
-            className="text-[10px] sm:text-[11px] bg-slate-700 border border-slate-600 rounded px-1.5 py-0.5 sm:px-2 sm:py-1 text-white focus:outline-none focus:ring-1 focus:ring-primary-500"
+      {/* ── Row 1: Batters/Pitchers toggle ── */}
+      <div className="flex items-center gap-1 mb-2">
+        <button
+          onClick={() => handlePositionTypeChange('B')}
+          className={`flex-1 px-3 py-1.5 text-xs sm:text-sm font-semibold rounded-lg transition-colors ${
+            positionType === 'B'
+              ? 'bg-primary-600 text-white'
+              : 'bg-slate-700 text-slate-400 hover:bg-slate-600 hover:text-slate-200'
+          }`}
+        >
+          Batters
+        </button>
+        <button
+          onClick={() => handlePositionTypeChange('P')}
+          className={`flex-1 px-3 py-1.5 text-xs sm:text-sm font-semibold rounded-lg transition-colors ${
+            positionType === 'P'
+              ? 'bg-primary-600 text-white'
+              : 'bg-slate-700 text-slate-400 hover:bg-slate-600 hover:text-slate-200'
+          }`}
+        >
+          Pitchers
+        </button>
+      </div>
+
+      {/* ── Row 2: Position pills ── */}
+      <div className="flex items-center gap-1 mb-2 overflow-x-auto pb-0.5 -mx-1 px-1 scrollbar-none">
+        <button
+          onClick={() => { setPositionFilter('All'); setPage(0) }}
+          className={`shrink-0 px-2.5 py-1 text-[10px] sm:text-xs font-medium rounded-full transition-colors ${
+            positionFilter === 'All'
+              ? 'bg-primary-600 text-white'
+              : 'bg-slate-700 text-slate-400 hover:bg-slate-600 hover:text-slate-200'
+          }`}
+        >
+          All
+        </button>
+        {positionOptions.map((pos) => (
+          <button
+            key={pos}
+            onClick={() => { setPositionFilter(pos); setPage(0) }}
+            className={`shrink-0 px-2.5 py-1 text-[10px] sm:text-xs font-medium rounded-full transition-colors ${
+              positionFilter === pos
+                ? 'bg-primary-600 text-white'
+                : 'bg-slate-700 text-slate-400 hover:bg-slate-600 hover:text-slate-200'
+            }`}
           >
-            {SEASON_OPTIONS.map(opt => (
-              <option key={opt.value} value={opt.value}>{opt.label}</option>
-            ))}
-          </select>
-          <span className="text-[10px] sm:text-[11px] text-slate-400">
-            {filterText ? `${filtered.length}/` : ''}{totalCount}
-          </span>
-        </div>
-        <div className="flex items-center gap-1 sm:gap-2">
-          <div className="relative">
-            <svg className="absolute left-1.5 top-1/2 -translate-y-1/2 w-2.5 h-2.5 sm:w-3 sm:h-3 text-slate-500 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
-            <input
-              type="text"
-              value={filterText}
-              onChange={(e) => { setFilterText(e.target.value); setPage(0) }}
-              placeholder="Filter…"
-              className="w-24 sm:w-44 text-[10px] sm:text-[11px] bg-slate-700 border border-slate-600 rounded pl-5 sm:pl-6 pr-1.5 sm:pr-2 py-0.5 sm:py-1 text-white placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
-            />
-            {filterText && (
-              <button
-                onClick={() => { setFilterText(''); setPage(0) }}
-                className="absolute right-1 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
-                aria-label="Clear filter"
-              >
-                <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            )}
-          </div>
-          {totalPages > 1 && (
-            <span className="text-[10px] sm:text-[11px] text-slate-400 whitespace-nowrap">
-              {page + 1}/{totalPages}
-            </span>
+            {pos}
+          </button>
+        ))}
+      </div>
+
+      {/* ── Row 3: Filters — team, status, season, search, count ── */}
+      <div className="flex items-center gap-1 sm:gap-1.5 mb-1.5 flex-wrap">
+        {/* Team filter */}
+        <select
+          value={teamFilter}
+          onChange={(e) => { setTeamFilter(e.target.value); setPage(0) }}
+          className="text-[10px] sm:text-[11px] bg-slate-700 border border-slate-600 rounded px-1.5 py-0.5 sm:px-2 sm:py-1 text-white focus:outline-none focus:ring-1 focus:ring-primary-500"
+        >
+          <option value="All">All Teams</option>
+          {(availableTeams.length > 0 ? availableTeams : MLB_TEAMS).map((t) => (
+            <option key={t} value={t}>{t}</option>
+          ))}
+        </select>
+        {/* Status filter */}
+        <select
+          value={statusFilter}
+          onChange={(e) => handleStatusChange(e.target.value)}
+          className="text-[10px] sm:text-[11px] bg-slate-700 border border-slate-600 rounded px-1.5 py-0.5 sm:px-2 sm:py-1 text-white focus:outline-none focus:ring-1 focus:ring-primary-500"
+        >
+          {PLAYER_STATUS_OPTIONS.map(opt => (
+            <option key={opt.value} value={opt.value}>{opt.label}</option>
+          ))}
+        </select>
+        {/* Season */}
+        <select
+          value={selectedSeason}
+          onChange={(e) => handleSeasonChange(parseInt(e.target.value, 10))}
+          className="text-[10px] sm:text-[11px] bg-slate-700 border border-slate-600 rounded px-1.5 py-0.5 sm:px-2 sm:py-1 text-white focus:outline-none focus:ring-1 focus:ring-primary-500"
+        >
+          {SEASON_OPTIONS.map(opt => (
+            <option key={opt.value} value={opt.value}>{opt.label}</option>
+          ))}
+        </select>
+        {/* Spacer */}
+        <div className="flex-1" />
+        {/* Search */}
+        <div className="relative">
+          <svg className="absolute left-1.5 top-1/2 -translate-y-1/2 w-2.5 h-2.5 sm:w-3 sm:h-3 text-slate-500 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+          <input
+            type="text"
+            value={filterText}
+            onChange={(e) => { setFilterText(e.target.value); setPage(0) }}
+            placeholder="Search…"
+            className="w-24 sm:w-36 text-[10px] sm:text-[11px] bg-slate-700 border border-slate-600 rounded pl-5 sm:pl-6 pr-1.5 sm:pr-2 py-0.5 sm:py-1 text-white placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+          />
+          {filterText && (
+            <button
+              onClick={() => { setFilterText(''); setPage(0) }}
+              className="absolute right-1 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
+              aria-label="Clear filter"
+            >
+              <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
           )}
         </div>
+        {/* Count + Page */}
+        <span className="text-[10px] sm:text-[11px] text-slate-400 whitespace-nowrap">
+          {(filterText || positionFilter !== 'All' || teamFilter !== 'All') ? `${filtered.length}/` : ''}{totalCount}
+          {totalPages > 1 && <> · {page + 1}/{totalPages}</>}
+        </span>
       </div>
 
       {/* Loading state */}
       {loading && (
         <div className="flex items-center justify-center py-6">
           <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-primary-500 mr-2" />
-          <span className="text-[10px] text-slate-400">Loading {selectedSeason} stats…</span>
+          <span className="text-[10px] text-slate-400">Loading players…</span>
         </div>
       )}
 
@@ -658,7 +808,7 @@ function RosterListCard({ card, onAction }: { card: Card; onAction?: (cmd: strin
         <div className="text-center py-3">
           <p className="text-[10px] text-red-400">{error}</p>
           <button
-            onClick={() => { setError(null); fetchSeasonPlayers(selectedSeason) }}
+            onClick={() => { setError(null); fetchPlayers(positionType, statusFilter, selectedSeason) }}
             className="mt-1 text-[10px] text-primary-400 hover:underline"
           >
             Retry
@@ -670,11 +820,9 @@ function RosterListCard({ card, onAction }: { card: Card; onAction?: (cmd: strin
       {!loading && !error && (
         <>
           <div className="overflow-x-auto -mx-2.5 sm:-mx-3">
-            {/* Mobile: text-[9px], Desktop: text-[11px]. No min-width — let it scroll naturally */}
             <table className="w-full text-[9px] sm:text-[11px]">
               <thead>
                 <tr className="border-b border-slate-700/60">
-                  {/* "+" column header */}
                   <th className="w-8 px-0.5 sm:px-1 py-1 sticky left-0 bg-slate-800/90 z-10" />
                   <th
                     className="text-left px-0.5 sm:px-1.5 py-1 text-slate-500 uppercase tracking-wide font-semibold cursor-pointer hover:text-slate-300 sticky bg-slate-800/90 z-10 min-w-[90px] sm:min-w-[130px]"
@@ -707,7 +855,6 @@ function RosterListCard({ card, onAction }: { card: Card; onAction?: (cmd: strin
                     key={pl.playerKey || idx}
                     className="hover:bg-slate-700/20 transition-colors"
                   >
-                    {/* "+" button */}
                     <td className="px-0.5 sm:px-1 py-0.5 sm:py-1 sticky left-0 bg-slate-800/90 z-10 w-8">
                       <button
                         onClick={(e) => { e.stopPropagation(); onAction && onAction(`add ${pl.name}`) }}
@@ -717,18 +864,15 @@ function RosterListCard({ card, onAction }: { card: Card; onAction?: (cmd: strin
                         +
                       </button>
                     </td>
-                    {/* Player name — abbreviated on mobile, full on desktop */}
                     <td
                       className="px-0.5 sm:px-1.5 py-0.5 sm:py-1 sticky bg-slate-800/90 z-10 min-w-[90px] sm:min-w-[130px] cursor-pointer"
                       style={{ left: ADD_COL_W }}
                       onClick={() => onAction && onAction(`tell me about ${pl.name}${pl.playerKey ? ` [pk:${pl.playerKey}]` : ''}`)}
                     >
-                      {/* Mobile: single line — "J. Aranda  TB·1B,2B" */}
                       <div className="sm:hidden">
                         <span className="font-medium text-white truncate text-[14px]">{abbreviateName(pl.name)}</span>
                         <span className="text-slate-500 ml-1">{pl.team}·{compactPositions(pl)}</span>
                       </div>
-                      {/* Desktop: two-line */}
                       <div className="hidden sm:block">
                         <div className="font-medium text-white truncate max-w-[200px] text-[14px]">{pl.name}</div>
                         <div className="text-[10px] text-slate-500 truncate">
@@ -749,7 +893,7 @@ function RosterListCard({ card, onAction }: { card: Card; onAction?: (cmd: strin
             </table>
           </div>
 
-          {/* Pagination — compact on mobile */}
+          {/* Pagination */}
           {totalPages > 1 && (
             <div className="flex items-center justify-between mt-1.5 pt-1.5 border-t border-slate-700/50">
               <button

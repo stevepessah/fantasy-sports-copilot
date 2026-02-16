@@ -58,6 +58,7 @@ export async function GET(request: NextRequest) {
     const positionType = searchParams.get('positionType') // 'B' or 'P'
     const seasonParam = searchParams.get('season')
     const season = seasonParam ? parseInt(seasonParam, 10) : undefined
+    const status = searchParams.get('status') || 'A' // 'A' = all, 'FA' = free agents, 'W' = waivers, 'T' = taken
 
     if (!leagueKey) {
       return NextResponse.json({ error: 'leagueKey is required' }, { status: 400 })
@@ -95,7 +96,7 @@ export async function GET(request: NextRequest) {
         start,
         count: PAGE_SIZE,
         position: positionType || undefined,
-        status: 'A',
+        status,
         sort: 'AR',
         out: 'stats',
       }).catch(() => ({ players: [], raw: undefined }))

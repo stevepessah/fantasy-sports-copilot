@@ -95,7 +95,6 @@ export default function EnhancedChatInterface({ leagueId, userId, initialMessage
   const [conversations, setConversations] = useState<Conversation[]>([])
   const [showHistory, setShowHistory] = useState(false)
   const [activeTab, setActiveTab] = useState<TopTab | null>(null)
-  const [showPlayersPrompt, setShowPlayersPrompt] = useState(false)
 
   const { isAuthenticated: isYahooConnected } = useYahooAuth()
   const { theme, toggleTheme } = useTheme()
@@ -534,23 +533,16 @@ export default function EnhancedChatInterface({ leagueId, userId, initialMessage
               <button
                 key={tab.id}
                 onClick={() => {
-                  if (tab.id === 'players') {
-                    // Toggle the sub-prompt for batters/pitchers
-                    if (activeTab === 'players') {
-                      setActiveTab(null)
-                      setShowPlayersPrompt(false)
-                    } else {
-                      setActiveTab('players')
-                      setShowPlayersPrompt(true)
-                    }
-                  } else {
-                    setShowPlayersPrompt(false)
-                    setActiveTab(tab.id)
-                    // Fire the appropriate command
-                    if (tab.id === 'league') runCommand('show all teams')
-                    if (tab.id === 'roster') runCommand('show my roster')
-                    if (tab.id === 'matchups') runCommand('show matchup')
+                  if (tab.id === activeTab) {
+                    setActiveTab(null)
+                    return
                   }
+                  setActiveTab(tab.id)
+                  // Fire the appropriate command
+                  if (tab.id === 'league') runCommand('show all teams')
+                  if (tab.id === 'roster') runCommand('show my roster')
+                  if (tab.id === 'matchups') runCommand('show matchup')
+                  if (tab.id === 'players') runCommand('show all batters')
                 }}
                 className={`flex-1 flex items-center justify-center gap-1.5 px-2 py-2.5 text-xs sm:text-sm font-medium transition-colors relative ${
                   activeTab === tab.id
@@ -567,30 +559,6 @@ export default function EnhancedChatInterface({ leagueId, userId, initialMessage
               </button>
             ))}
           </div>
-          {/* Players sub-prompt: Batters or Pitchers */}
-          {showPlayersPrompt && (
-            <div className="flex items-center justify-center gap-3 px-4 py-2.5 border-t border-slate-700/40 bg-slate-800/40">
-              <span className="text-xs text-slate-400">View:</span>
-              <button
-                onClick={() => {
-                  setShowPlayersPrompt(false)
-                  runCommand('show all batters')
-                }}
-                className="px-4 py-1.5 rounded-lg bg-slate-700 hover:bg-slate-600 active:bg-slate-500 text-sm font-medium text-white transition-colors"
-              >
-                🏏 Batters
-              </button>
-              <button
-                onClick={() => {
-                  setShowPlayersPrompt(false)
-                  runCommand('show all pitchers')
-                }}
-                className="px-4 py-1.5 rounded-lg bg-slate-700 hover:bg-slate-600 active:bg-slate-500 text-sm font-medium text-white transition-colors"
-              >
-                ⚾ Pitchers
-              </button>
-            </div>
-          )}
         </nav>
       )}
 
