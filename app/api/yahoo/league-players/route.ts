@@ -61,7 +61,9 @@ export async function GET(request: NextRequest) {
     const positionType = searchParams.get('positionType') // 'B' or 'P'
     const seasonParam = searchParams.get('season')
     const season = seasonParam ? parseInt(seasonParam, 10) : undefined
-    const status = searchParams.get('status') || 'A' // 'A' = all, 'FA' = free agents, 'W' = waivers, 'T' = taken
+    // Yahoo status codes: 'A' = available (FA+W), 'FA' = free agents, 'W' = waivers, 'T' = taken
+    // Omit status entirely (empty string) to get ALL players regardless of ownership
+    const status = searchParams.get('status') || ''
 
     if (!leagueKey) {
       return NextResponse.json({ error: 'leagueKey is required' }, { status: 400 })

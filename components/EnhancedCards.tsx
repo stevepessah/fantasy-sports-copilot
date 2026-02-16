@@ -493,7 +493,8 @@ const MLB_TEAMS = [
 
 // ── Player status options ──
 const PLAYER_STATUS_OPTIONS = [
-  { value: 'A', label: 'All Players' },
+  { value: '', label: 'All Players' },
+  { value: 'A', label: 'Available' },
   { value: 'FA', label: 'Free Agents' },
   { value: 'W', label: 'Waivers' },
   { value: 'T', label: 'Taken' },
@@ -521,7 +522,7 @@ function RosterListCard({ card, onAction }: { card: Card; onAction?: (cmd: strin
   // ── Filter states ──
   const [positionFilter, setPositionFilter] = useState<string>('All')
   const [teamFilter, setTeamFilter] = useState<string>('All')
-  const [statusFilter, setStatusFilter] = useState<string>('A')
+  const [statusFilter, setStatusFilter] = useState<string>('')
 
   // Season toggle state
   const [selectedSeason, setSelectedSeason] = useState(0) // 0 = current
@@ -530,10 +531,10 @@ function RosterListCard({ card, onAction }: { card: Card; onAction?: (cmd: strin
   const cacheKey = (pt: string, status: string, season: number) => `${pt}_${status}_${season}`
 
   const [playerCache, setPlayerCache] = useState<Record<string, any[]>>({
-    [cacheKey(p.positionType || 'B', 'A', 0)]: p.players || [],
+    [cacheKey(p.positionType || 'B', '', 0)]: p.players || [],
   })
   const [totalCache, setTotalCache] = useState<Record<string, number>>({
-    [cacheKey(p.positionType || 'B', 'A', 0)]: p.total || 0,
+    [cacheKey(p.positionType || 'B', '', 0)]: p.total || 0,
   })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
