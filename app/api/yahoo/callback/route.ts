@@ -38,6 +38,12 @@ export async function GET(request: NextRequest) {
     
     // Exchange authorization code for access token
     const tokens = await oauth2.getAccessToken(code)
+
+    // Log who connected (visible in Vercel Function Logs)
+    console.log('[Yahoo Login]', {
+      guid: tokens.xoauth_yahoo_guid || 'unknown',
+      timestamp: new Date().toISOString(),
+    })
     
     // Store access token in cookie (in production, use secure session storage)
     const response = NextResponse.redirect(redirectUrl)
