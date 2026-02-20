@@ -40,10 +40,37 @@ export async function GET(request: NextRequest) {
     // Exchange authorization code for access token
     const tokens = await oauth2.getAccessToken(code)
 
+    // Fetch the authenticated user's GUID and nickname from the Fantasy API
+    let guid = 'unknown'
+    let nickname = 'unknown'
+    try {
+      const profile = await oauth2.makeRequest(
+        'GET',
+        '/users;use_login=1/games/teams',
+        tokens.access_token,
+      )
+      const xml: string = profile.raw ?? ''
+
+      // GUID lives in the top-level <user> block
+      const guidMatch = xml.match(/<guid>(.*?)<\/guid>/)
+      if (guidMatch) guid = guidMatch[1]
+
+      // Find the manager whose <is_current_login>1</is_current_login>
+      const managerRegex = /<manager>([\s\S]*?)<\/manager>/g
+      let m
+      while ((m = managerRegex.exec(xml)) !== null) {
+        if (m[1].includes('<is_current_login>1</is_current_login>')) {
+          const nick = m[1].match(/<nickname>(.*?)<\/nickname>/)
+          if (nick) { nickname = nick[1]; break }
+        }
+      }
+    } catch (e) {
+      console.warn('Could not fetch Yahoo user identity:', e)
+    }
+
     // Log who connected (visible in Vercel Function Logs + /api/admin/logins)
-    const guid = tokens.xoauth_yahoo_guid || 'unknown'
-    console.log('[Yahoo Login]', { guid, timestamp: new Date().toISOString() })
-    recordLogin(guid)
+    console.log('[Yahoo Login]', { guid, nickname, timestamp: new Date().toISOString() })
+    recordLogin(guid, nickname)
     
     // Store access token in cookie (in production, use secure session storage)
     const response = NextResponse.redirect(redirectUrl)
@@ -65,13 +92,21 @@ export async function GET(request: NextRequest) {
       })
     }
 
-    // Store Yahoo user GUID for identifying the connected user
-    if (tokens.xoauth_yahoo_guid) {
-      response.cookies.set('yahoo_user_guid', tokens.xoauth_yahoo_guid, {
+    // Store Yahoo user identity for tracking
+    if (guid !== 'unknown') {
+      response.cookies.set('yahoo_user_guid', guid, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'lax',
-        maxAge: 60 * 60 * 24 * 90, // 90 days
+        maxAge: 60 * 60 * 24 * 90,
+      })
+    }
+    if (nickname !== 'unknown') {
+      response.cookies.set('yahoo_user_nickname', nickname, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        maxAge: 60 * 60 * 24 * 90,
       })
     }
     

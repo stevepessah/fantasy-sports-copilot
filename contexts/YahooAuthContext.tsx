@@ -10,10 +10,17 @@ declare global {
   }
 }
 
+interface StatusResponse {
+  authenticated: boolean
+  userGuid: string | null
+  userNickname: string | null
+}
+
 interface YahooAuthState {
   isAuthenticated: boolean
   isLoading: boolean
   userGuid: string | null
+  userNickname: string | null
   /** Call to refetch auth status (e.g. after connect / disconnect). */
   mutate: () => void
 }
@@ -22,11 +29,12 @@ const YahooAuthContext = createContext<YahooAuthState>({
   isAuthenticated: false,
   isLoading: true,
   userGuid: null,
+  userNickname: null,
   mutate: () => {},
 })
 
 export function YahooAuthProvider({ children }: { children: ReactNode }) {
-  const { data, isLoading, mutate } = useSWR<{ authenticated: boolean; userGuid: string | null }>(
+  const { data, isLoading, mutate } = useSWR<StatusResponse>(
     '/api/yahoo/status',
     fetcher,
     {
@@ -50,6 +58,7 @@ export function YahooAuthProvider({ children }: { children: ReactNode }) {
     if (typeof window.gtag === 'function') {
       window.gtag('event', 'yahoo_login', {
         yahoo_guid: data.userGuid ?? 'unknown',
+        yahoo_nickname: data.userNickname ?? 'unknown',
       })
     }
 
@@ -67,6 +76,7 @@ export function YahooAuthProvider({ children }: { children: ReactNode }) {
         isAuthenticated: data?.authenticated ?? false,
         isLoading,
         userGuid: data?.userGuid ?? null,
+        userNickname: data?.userNickname ?? null,
         mutate,
       }}
     >

@@ -9,9 +9,14 @@ export async function GET(request: NextRequest) {
     const cookieStore = await cookies()
     const accessToken = cookieStore.get('yahoo_access_token')?.value
     const userGuid = cookieStore.get('yahoo_user_guid')?.value
+    const userNickname = cookieStore.get('yahoo_user_nickname')?.value
     
     return NextResponse.json(
-      { authenticated: !!accessToken, userGuid: userGuid || null },
+      {
+        authenticated: !!accessToken,
+        userGuid: userGuid || null,
+        userNickname: userNickname || null,
+      },
       { headers: { 'Cache-Control': 'private, no-store' } },
     )
   } catch (error) {

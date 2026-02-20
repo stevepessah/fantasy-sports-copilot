@@ -4,14 +4,16 @@
 
 export interface LoginEntry {
   guid: string
+  nickname: string
   timestamp: string
 }
 
 const logins: LoginEntry[] = []
 
-export function recordLogin(guid: string) {
+export function recordLogin(guid: string, nickname: string = 'unknown') {
   logins.push({
     guid,
+    nickname,
     timestamp: new Date().toISOString(),
   })
 }
