@@ -58,6 +58,16 @@ export async function GET(request: NextRequest) {
         maxAge: 60 * 60 * 24 * 90, // 90 days for refresh token
       })
     }
+
+    // Store Yahoo user GUID for identifying the connected user
+    if (tokens.xoauth_yahoo_guid) {
+      response.cookies.set('yahoo_user_guid', tokens.xoauth_yahoo_guid, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        maxAge: 60 * 60 * 24 * 90, // 90 days
+      })
+    }
     
     // Clear state cookie
     response.cookies.delete('yahoo_oauth_state')

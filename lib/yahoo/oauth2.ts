@@ -8,6 +8,7 @@ export interface YahooOAuth2Tokens {
   refresh_token?: string
   expires_in?: number
   token_type?: string
+  xoauth_yahoo_guid?: string
 }
 
 export class YahooOAuth2 {
@@ -81,6 +82,7 @@ export class YahooOAuth2 {
       refresh_token: data.refresh_token,
       expires_in: data.expires_in,
       token_type: data.token_type || 'Bearer',
+      xoauth_yahoo_guid: data.xoauth_yahoo_guid,
     }
   }
 
