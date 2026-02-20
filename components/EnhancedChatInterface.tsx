@@ -777,7 +777,7 @@ export default function EnhancedChatInterface({ leagueId, userId, initialMessage
                   <div className="mb-6 p-4 rounded-xl border border-purple-600/30 bg-purple-600/10">
                     <p className="text-sm text-slate-300 mb-3">Connect your Yahoo account to get started</p>
                     <button
-                      onClick={() => setDrawerOpen(true)}
+                      onClick={() => { window.location.href = '/api/yahoo/auth' }}
                       className="px-5 py-2.5 bg-purple-600 hover:bg-purple-700 active:bg-purple-800 text-white rounded-lg font-semibold transition-colors text-sm"
                     >
                       Connect Yahoo Fantasy
