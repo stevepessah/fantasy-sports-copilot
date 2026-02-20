@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { YahooOAuth2 } from '@/lib/yahoo/oauth2'
 import { cookies } from 'next/headers'
+import { recordLogin } from '@/lib/loginLog'
 
 export const dynamic = 'force-dynamic'
 
@@ -39,11 +40,10 @@ export async function GET(request: NextRequest) {
     // Exchange authorization code for access token
     const tokens = await oauth2.getAccessToken(code)
 
-    // Log who connected (visible in Vercel Function Logs)
-    console.log('[Yahoo Login]', {
-      guid: tokens.xoauth_yahoo_guid || 'unknown',
-      timestamp: new Date().toISOString(),
-    })
+    // Log who connected (visible in Vercel Function Logs + /api/admin/logins)
+    const guid = tokens.xoauth_yahoo_guid || 'unknown'
+    console.log('[Yahoo Login]', { guid, timestamp: new Date().toISOString() })
+    recordLogin(guid)
     
     // Store access token in cookie (in production, use secure session storage)
     const response = NextResponse.redirect(redirectUrl)
