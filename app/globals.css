@@ -150,6 +150,37 @@ html {
   -webkit-overflow-scrolling: touch;
 }
 
+/* ── Reduced motion ─────────────────────────────── */
+/* Respects OS-level "Reduce motion" preference for accessibility */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  .animate-slide-in {
+    animation: none !important;
+  }
+}
+
+/* ── Focus-visible ──────────────────────────────── */
+/* Hide focus ring on mouse/touch, show it for keyboard navigation */
+*:focus {
+  outline: none;
+}
+*:focus-visible {
+  outline: 2px solid rgb(99, 102, 241); /* primary-500 */
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+/* Don't double-ring elements that already handle their own ring */
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: none;
+}
+
 /* Landscape-aware compact header/footer on small-height devices */
 @media (max-height: 500px) and (orientation: landscape) {
   .landscape-compact-header {

@@ -103,6 +103,8 @@ export default function EnhancedChatInterface({ leagueId, userId, initialMessage
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
+  const drawerRef = useRef<HTMLElement>(null)
+  const touchRef = useRef<{ startX: number; currentX: number; swiping: boolean }>({ startX: 0, currentX: 0, swiping: false })
 
   // ── Auto-resize textarea ──
   const resizeTextarea = useCallback(() => {
@@ -110,6 +112,43 @@ export default function EnhancedChatInterface({ leagueId, userId, initialMessage
     if (!el) return
     el.style.height = 'auto'
     el.style.height = `${Math.min(el.scrollHeight, 120)}px`
+  }, [])
+
+  // ── Swipe-to-close drawer ──
+  const SWIPE_THRESHOLD = 80 // px – minimum swipe distance to trigger close
+
+  const handleDrawerTouchStart = useCallback((e: React.TouchEvent) => {
+    touchRef.current = { startX: e.touches[0].clientX, currentX: e.touches[0].clientX, swiping: true }
+  }, [])
+
+  const handleDrawerTouchMove = useCallback((e: React.TouchEvent) => {
+    if (!touchRef.current.swiping) return
+    const x = e.touches[0].clientX
+    touchRef.current.currentX = x
+    const dx = x - touchRef.current.startX
+    // Only allow swiping left (negative direction) to close
+    if (dx < 0 && drawerRef.current) {
+      drawerRef.current.style.transform = `translateX(${dx}px)`
+      drawerRef.current.style.transition = 'none'
+    }
+  }, [])
+
+  const handleDrawerTouchEnd = useCallback(() => {
+    if (!touchRef.current.swiping) return
+    const dx = touchRef.current.currentX - touchRef.current.startX
+    touchRef.current.swiping = false
+    if (drawerRef.current) {
+      if (dx < -SWIPE_THRESHOLD) {
+        // Animate off-screen then close
+        drawerRef.current.style.transition = 'transform 0.2s ease-out'
+        drawerRef.current.style.transform = 'translateX(-100%)'
+        setTimeout(() => setDrawerOpen(false), 200)
+      } else {
+        // Snap back
+        drawerRef.current.style.transition = 'transform 0.2s ease-out'
+        drawerRef.current.style.transform = 'translateX(0)'
+      }
+    }
   }, [])
 
   // ── Contextual quick actions ──
@@ -209,10 +248,15 @@ export default function EnhancedChatInterface({ leagueId, userId, initialMessage
     }
   }, [isNarrow])
 
-  // Lock body scroll when drawer is open
+  // Lock body scroll when drawer is open & reset transform
   useEffect(() => {
     if (drawerOpen) {
       document.body.style.overflow = 'hidden'
+      // Reset transform so drawer slides in fresh
+      if (drawerRef.current) {
+        drawerRef.current.style.transform = ''
+        drawerRef.current.style.transition = ''
+      }
     } else {
       document.body.style.overflow = ''
     }
@@ -569,7 +613,14 @@ export default function EnhancedChatInterface({ leagueId, userId, initialMessage
             className="absolute inset-0 bg-black/60 backdrop-blur-sm"
             onClick={() => setDrawerOpen(false)}
           />
-          <nav className="relative w-[85vw] max-w-[340px] h-full bg-slate-800 border-r border-slate-700 overflow-auto animate-slide-in flex flex-col" aria-label="Main menu">
+          <nav
+            ref={drawerRef}
+            onTouchStart={handleDrawerTouchStart}
+            onTouchMove={handleDrawerTouchMove}
+            onTouchEnd={handleDrawerTouchEnd}
+            className="relative w-[85vw] max-w-[340px] h-full bg-slate-800 border-r border-slate-700 overflow-auto animate-slide-in flex flex-col"
+            aria-label="Main menu"
+          >
             <div className="flex items-center justify-between px-4 py-3 border-b border-slate-700">
               <h2 className="text-sm font-bold text-white">Menu</h2>
               <button
