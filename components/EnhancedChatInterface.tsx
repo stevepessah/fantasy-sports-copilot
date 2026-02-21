@@ -356,6 +356,7 @@ export default function EnhancedChatInterface({ leagueId, userId, initialMessage
           leagueId,
           userId,
           sport: currentSport,
+          yahooLeagueKey: selectedLeagueKey || undefined,
           conversationHistory: messages.slice(-10).map((m) => ({
             role: m.role,
             content: m.content,

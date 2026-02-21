@@ -181,7 +181,7 @@ function createLeague(data: any, currentSport: Sport, userId: string): League {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { message, leagueId, userId, sport, conversationHistory, stream: wantStream } = body
+    const { message, leagueId, userId, sport, conversationHistory, stream: wantStream, yahooLeagueKey: requestedYahooLeagueKey } = body
 
     if (!message || typeof message !== 'string') {
       return NextResponse.json(
@@ -248,10 +248,15 @@ export async function POST(request: NextRequest) {
         api.setAccessToken(yahooAccessToken)
 
         const { leagues } = await api.getLeagues('mlb')
-        const yahooLeague = leagues.find(l => l.is_finished !== '1') || leagues[0]
+        // Use the league the user selected in the UI, or fall back to first active league
+        const yahooLeague = (requestedYahooLeagueKey
+          ? leagues.find(l => l.league_key === requestedYahooLeagueKey)
+          : undefined
+        ) || leagues.find(l => l.is_finished !== '1') || leagues[0]
 
         if (yahooLeague?.league_key) {
           context.yahooLeagueKey = yahooLeague.league_key
+          context.yahooLeagueName = yahooLeague.name
 
           // ── Fetch league settings (stat categories, roster positions) ──
           const settingsCacheKey = yahooLeague.league_key
@@ -476,15 +481,13 @@ export async function POST(request: NextRequest) {
       let standingsHandled = false
 
       // ── Prefer Yahoo standings (live data with GB, waiver, moves) ──
-      if (yahooAccessToken) {
+      if (yahooAccessToken && context.yahooLeagueKey) {
         try {
           const api = new YahooFantasyAPI()
           api.setAccessToken(yahooAccessToken)
-          const { leagues } = await api.getLeagues('mlb')
-          const yahooLeague = leagues.find(l => l.is_finished !== '1') || leagues[0]
 
-          if (yahooLeague?.league_key) {
-            const { standings } = await api.getStandings(yahooLeague.league_key)
+          if (context.yahooLeagueKey) {
+            const { standings } = await api.getStandings(context.yahooLeagueKey)
             if (standings.length > 0) {
               // Compute games back relative to 1st-place team
               const leader = standings[0]
@@ -494,7 +497,7 @@ export async function POST(request: NextRequest) {
                 type: 'teams',
                 title: 'League Standings',
                 payload: {
-                  leagueName: yahooLeague.name || 'League',
+                  leagueName: context.yahooLeagueName || 'League',
                   teams: standings.map((t) => ({
                     rank: t.rank,
                     name: t.name,
@@ -508,7 +511,7 @@ export async function POST(request: NextRequest) {
                   })),
                 },
               })
-              response.message = `Here are the current standings for **${yahooLeague.name}**:`
+              response.message = `Here are the current standings for **${context.yahooLeagueName || 'your league'}**:`
               standingsHandled = true
             }
           }
@@ -594,35 +597,31 @@ export async function POST(request: NextRequest) {
 
     // Show all batters or pitchers — direct call via fetchLeaguePlayers
     if (intent.isShowBatters || intent.isShowPitchers) {
-      if (yahooAccessToken) {
+      if (yahooAccessToken && context.yahooLeagueKey) {
         try {
           const api = new YahooFantasyAPI()
           api.setAccessToken(yahooAccessToken)
-          const { leagues } = await api.getLeagues('mlb')
-          const yahooLeague = leagues.find(l => l.is_finished !== '1') || leagues[0]
 
-          if (yahooLeague?.league_key) {
-            const positionType = intent.isShowBatters ? 'B' : 'P'
-            const label = intent.isShowBatters ? 'Batters' : 'Pitchers'
+          const positionType = intent.isShowBatters ? 'B' : 'P'
+          const label = intent.isShowBatters ? 'Batters' : 'Pitchers'
 
-            const data = await fetchLeaguePlayers(api, {
-              leagueKey: yahooLeague.league_key,
+          const data = await fetchLeaguePlayers(api, {
+            leagueKey: context.yahooLeagueKey,
+            positionType,
+          })
+
+          response.cards.push({
+            type: 'roster_list',
+            title: `All ${label} in Your League`,
+            payload: {
+              players: data.players,
+              total: data.total,
               positionType,
-            })
-
-            response.cards.push({
-              type: 'roster_list',
-              title: `All ${label} in Your League`,
-              payload: {
-                players: data.players,
-                total: data.total,
-                positionType,
-                label,
-                leagueKey: yahooLeague.league_key,
-              },
-            })
-            response.message = `Here are all ${data.total} ${label.toLowerCase()} across every team in your league:`
-          }
+              label,
+              leagueKey: context.yahooLeagueKey,
+            },
+          })
+          response.message = `Here are all ${data.total} ${label.toLowerCase()} across every team in your league:`
         } catch {
           response.message = "Sorry, I couldn't fetch the player list. Please make sure you're connected to Yahoo Fantasy."
         }
@@ -633,118 +632,104 @@ export async function POST(request: NextRequest) {
 
     // ─── Player comparison ──────────────────────────────────────────────────
     if (intent.isCompare && intent.comparePlayerA && intent.comparePlayerB) {
-      if (yahooAccessToken) {
+      if (yahooAccessToken && context.yahooLeagueKey) {
         try {
           const api = new YahooFantasyAPI()
           api.setAccessToken(yahooAccessToken)
-          const { leagues } = await api.getLeagues('mlb')
-          const yahooLeague = leagues.find(l => l.is_finished !== '1') || leagues[0]
 
-          if (yahooLeague?.league_key) {
-            // Look up both players in a SINGLE pass through rosters + free agents
-            // (avoids doubling Yahoo API calls and triggering rate limits)
-            const [ownershipA, ownershipB] = await getPlayerOwnershipPair(
-              api, yahooLeague.league_key, intent.comparePlayerA, intent.comparePlayerB,
-            )
+          const [ownershipA, ownershipB] = await getPlayerOwnershipPair(
+            api, context.yahooLeagueKey, intent.comparePlayerA, intent.comparePlayerB,
+          )
 
-            if (ownershipA && ownershipB) {
-              const playerKeyA = ownershipA.player.player_key
-              const playerKeyB = ownershipB.player.player_key
+          if (ownershipA && ownershipB) {
+            const playerKeyA = ownershipA.player.player_key
+            const playerKeyB = ownershipB.player.player_key
 
-              // Fetch stats for both players in parallel
-              const [statsA, statsB] = await Promise.all([
-                api.getPlayerStats(playerKeyA, yahooLeague.league_key).catch(() => ({ stats: null })),
-                api.getPlayerStats(playerKeyB, yahooLeague.league_key).catch(() => ({ stats: null })),
-              ])
+            const [statsA, statsB] = await Promise.all([
+              api.getPlayerStats(playerKeyA, context.yahooLeagueKey).catch(() => ({ stats: null })),
+              api.getPlayerStats(playerKeyB, context.yahooLeagueKey).catch(() => ({ stats: null })),
+            ])
 
-              // Remap stats from numeric IDs to display names
-              const gameKey = playerKeyA.split('.')[0]
-              const categories = await getStatCategoriesForCompare(api, gameKey)
+            const gameKey = playerKeyA.split('.')[0]
+            const categories = await getStatCategoriesForCompare(api, gameKey)
 
-              const remappedA = remapStatsForCompare(statsA.stats, categories)
-              const remappedB = remapStatsForCompare(statsB.stats, categories)
+            const remappedA = remapStatsForCompare(statsA.stats, categories)
+            const remappedB = remapStatsForCompare(statsB.stats, categories)
 
-              const posTypeA = ownershipA.player.position_type || (isPitcherPosition(ownershipA.player.eligible_positions) ? 'P' : 'B')
-              const posTypeB = ownershipB.player.position_type || (isPitcherPosition(ownershipB.player.eligible_positions) ? 'P' : 'B')
+            const posTypeA = ownershipA.player.position_type || (isPitcherPosition(ownershipA.player.eligible_positions) ? 'P' : 'B')
+            const posTypeB = ownershipB.player.position_type || (isPitcherPosition(ownershipB.player.eligible_positions) ? 'P' : 'B')
 
-              const isMixed = posTypeA !== posTypeB
-              const bothPitchers = posTypeA === 'P' && posTypeB === 'P'
+            const isMixed = posTypeA !== posTypeB
+            const bothPitchers = posTypeA === 'P' && posTypeB === 'P'
 
-              // Choose stat keys based on position types
-              let statKeys: string[]
-              if (isMixed) {
-                // Option B: Fantasy-oriented universal metrics for mixed types
-                statKeys = ['GP', 'K']
-                // Add batter-specific stats they might share
-                const universalStats = ['GP', 'K', 'BB']
-                statKeys = universalStats.filter(k => 
-                  (remappedA[k] !== undefined || remappedB[k] !== undefined)
-                )
-                // If very few shared stats, just show all available stats from both
-                const allKeysA = Object.keys(remappedA)
-                const allKeysB = Object.keys(remappedB)
-                if (statKeys.length < 3) {
-                  statKeys = [...new Set([...allKeysA, ...allKeysB])].filter(k => k !== 'H' && k !== 'AB')
-                }
-              } else if (bothPitchers) {
-                statKeys = ['GP', 'IP', 'W', 'L', 'SV', 'HLD', 'K', 'ERA', 'WHIP', 'QS'].filter(k =>
-                  remappedA[k] !== undefined || remappedB[k] !== undefined
-                )
-              } else {
-                // Both batters
-                statKeys = ['GP', 'AVG', 'OBP', 'OPS', 'R', 'HR', 'RBI', 'SB', 'BB', 'K'].filter(k =>
-                  remappedA[k] !== undefined || remappedB[k] !== undefined
-                )
+            let statKeys: string[]
+            if (isMixed) {
+              statKeys = ['GP', 'K']
+              const universalStats = ['GP', 'K', 'BB']
+              statKeys = universalStats.filter(k => 
+                (remappedA[k] !== undefined || remappedB[k] !== undefined)
+              )
+              const allKeysA = Object.keys(remappedA)
+              const allKeysB = Object.keys(remappedB)
+              if (statKeys.length < 3) {
+                statKeys = [...new Set([...allKeysA, ...allKeysB])].filter(k => k !== 'H' && k !== 'AB')
               }
-
-              // Ensure we have at least some stat keys
-              if (statKeys.length === 0) {
-                const allKeys = [...new Set([...Object.keys(remappedA), ...Object.keys(remappedB)])]
-                statKeys = allKeys.filter(k => k !== 'H' && k !== 'AB').slice(0, 10)
-              }
-
-              const nameA = ownershipA.player.name.full
-              const nameB = ownershipB.player.name.full
-
-              response.cards.push({
-                type: 'compare',
-                title: `⚖️ ${nameA} vs ${nameB}`,
-                payload: {
-                  playerA: {
-                    name: nameA,
-                    team: ownershipA.player.editorial_team_abbr || 'FA',
-                    position: ownershipA.player.display_position || ownershipA.player.eligible_positions?.[0] || 'UTIL',
-                    stats: remappedA,
-                    positionType: posTypeA,
-                  },
-                  playerB: {
-                    name: nameB,
-                    team: ownershipB.player.editorial_team_abbr || 'FA',
-                    position: ownershipB.player.display_position || ownershipB.player.eligible_positions?.[0] || 'UTIL',
-                    stats: remappedB,
-                    positionType: posTypeB,
-                  },
-                  statKeys,
-                  isMixed,
-                  leagueKey: yahooLeague.league_key,
-                  playerKeyA,
-                  playerKeyB,
-                },
-              })
-
-              if (!response.message || response.message.includes('can ask me to')) {
-                if (isMixed) {
-                  response.message = `Here's the comparison between ${nameA} (${posTypeA === 'P' ? 'Pitcher' : 'Batter'}) and ${nameB} (${posTypeB === 'P' ? 'Pitcher' : 'Batter'}). Since they play different positions, I'm showing all available stats for a broader view.`
-                } else {
-                  response.message = `Here's the head-to-head comparison between ${nameA} and ${nameB}:`
-                }
-              }
+            } else if (bothPitchers) {
+              statKeys = ['GP', 'IP', 'W', 'L', 'SV', 'HLD', 'K', 'ERA', 'WHIP', 'QS'].filter(k =>
+                remappedA[k] !== undefined || remappedB[k] !== undefined
+              )
             } else {
-              const notFound = []
-              if (!ownershipA) notFound.push(intent.comparePlayerA)
-              if (!ownershipB) notFound.push(intent.comparePlayerB)
-              response.message = `Sorry, I couldn't find ${notFound.join(' or ')} in your league. Make sure the names are correct.`
+              statKeys = ['GP', 'AVG', 'OBP', 'OPS', 'R', 'HR', 'RBI', 'SB', 'BB', 'K'].filter(k =>
+                remappedA[k] !== undefined || remappedB[k] !== undefined
+              )
             }
+
+            if (statKeys.length === 0) {
+              const allKeys = [...new Set([...Object.keys(remappedA), ...Object.keys(remappedB)])]
+              statKeys = allKeys.filter(k => k !== 'H' && k !== 'AB').slice(0, 10)
+            }
+
+            const nameA = ownershipA.player.name.full
+            const nameB = ownershipB.player.name.full
+
+            response.cards.push({
+              type: 'compare',
+              title: `⚖️ ${nameA} vs ${nameB}`,
+              payload: {
+                playerA: {
+                  name: nameA,
+                  team: ownershipA.player.editorial_team_abbr || 'FA',
+                  position: ownershipA.player.display_position || ownershipA.player.eligible_positions?.[0] || 'UTIL',
+                  stats: remappedA,
+                  positionType: posTypeA,
+                },
+                playerB: {
+                  name: nameB,
+                  team: ownershipB.player.editorial_team_abbr || 'FA',
+                  position: ownershipB.player.display_position || ownershipB.player.eligible_positions?.[0] || 'UTIL',
+                  stats: remappedB,
+                  positionType: posTypeB,
+                },
+                statKeys,
+                isMixed,
+                leagueKey: context.yahooLeagueKey,
+                playerKeyA,
+                playerKeyB,
+              },
+            })
+
+            if (!response.message || response.message.includes('can ask me to')) {
+              if (isMixed) {
+                response.message = `Here's the comparison between ${nameA} (${posTypeA === 'P' ? 'Pitcher' : 'Batter'}) and ${nameB} (${posTypeB === 'P' ? 'Pitcher' : 'Batter'}). Since they play different positions, I'm showing all available stats for a broader view.`
+              } else {
+                response.message = `Here's the head-to-head comparison between ${nameA} and ${nameB}:`
+              }
+            }
+          } else {
+            const notFound = []
+            if (!ownershipA) notFound.push(intent.comparePlayerA)
+            if (!ownershipB) notFound.push(intent.comparePlayerB)
+            response.message = `Sorry, I couldn't find ${notFound.join(' or ')} in your league. Make sure the names are correct.`
           }
         } catch (e) {
           console.error('Compare handler error:', e)
@@ -764,88 +749,77 @@ export async function POST(request: NextRequest) {
       let ownershipStatus: 'free_agent' | 'taken' | 'unknown' = 'unknown'
       let owningTeamName: string | undefined = undefined
       
-      if (yahooAccessToken) {
+      if (yahooAccessToken && context.yahooLeagueKey) {
         try {
           const api = new YahooFantasyAPI()
           api.setAccessToken(yahooAccessToken)
           
-          const { leagues } = await api.getLeagues('mlb')
-          const yahooLeague = leagues.find(l => l.is_finished !== '1') || leagues[0]
-          
-          if (yahooLeague && yahooLeague.league_key) {
-            yahooLeagueKey = yahooLeague.league_key
+          yahooLeagueKey = context.yahooLeagueKey
 
-            // If we have an embedded player key, fetch the player directly by key
-            // This is MUCH faster than searching through all rosters
-            if (embeddedPlayerKey) {
-              try {
-                const { stats, raw } = await api.getPlayerStats(embeddedPlayerKey, yahooLeague.league_key)
-                if (stats) {
-                  yahooPlayerKey = stats.player_key || embeddedPlayerKey
-                  const playerName = stats.name?.full || playerQuery
+          if (embeddedPlayerKey) {
+            try {
+              const { stats } = await api.getPlayerStats(embeddedPlayerKey, context.yahooLeagueKey)
+              if (stats) {
+                yahooPlayerKey = stats.player_key || embeddedPlayerKey
+                const playerName = stats.name?.full || playerQuery
 
-                  // Also try to find ownership info
-                  const ownership = await getPlayerOwnership(api, yahooLeague.league_key, playerName)
-                  if (ownership) {
-                    eligiblePositions = ownership.player.eligible_positions || []
-                    ownershipStatus = ownership.ownershipStatus
-                    owningTeamName = ownership.owningTeam?.name
-                    
-                    player = {
-                      id: ownership.player.player_id || stats.player_id,
-                      name: ownership.player.name.full,
-                      sport: 'baseball' as const,
-                      position: (ownership.player.display_position || ownership.player.selected_position?.position || ownership.player.eligible_positions[0] || 'UTIL') as any,
-                      team: ownership.player.editorial_team_abbr || 'FA',
-                      injuryStatus: ownership.player.injury_status === 'DTD' ? 'questionable' : 
-                                   ownership.player.injury_status === 'O' ? 'out' :
-                                   ownership.player.injury_status === 'IL' ? 'IL' : 'healthy',
-                      yahooPlayerKey: yahooPlayerKey,
-                    }
-                  } else {
-                    // Ownership search failed — use position data from the stats response
-                    const statsPosition = stats.display_position || stats.eligible_positions?.[0] || 'UTIL'
-                    if (stats.eligible_positions && stats.eligible_positions.length > 0) {
-                      eligiblePositions = stats.eligible_positions
-                    }
-                    player = {
-                      id: stats.player_id || embeddedPlayerKey,
-                      name: playerName,
-                      sport: 'baseball' as const,
-                      position: statsPosition as any,
-                      team: stats.editorial_team_abbr || 'Unknown',
-                      yahooPlayerKey: yahooPlayerKey,
-                    }
+                const ownership = await getPlayerOwnership(api, context.yahooLeagueKey, playerName)
+                if (ownership) {
+                  eligiblePositions = ownership.player.eligible_positions || []
+                  ownershipStatus = ownership.ownershipStatus
+                  owningTeamName = ownership.owningTeam?.name
+                  
+                  player = {
+                    id: ownership.player.player_id || stats.player_id,
+                    name: ownership.player.name.full,
+                    sport: 'baseball' as const,
+                    position: (ownership.player.display_position || ownership.player.selected_position?.position || ownership.player.eligible_positions[0] || 'UTIL') as any,
+                    team: ownership.player.editorial_team_abbr || 'FA',
+                    injuryStatus: ownership.player.injury_status === 'DTD' ? 'questionable' : 
+                                 ownership.player.injury_status === 'O' ? 'out' :
+                                 ownership.player.injury_status === 'IL' ? 'IL' : 'healthy',
+                    yahooPlayerKey: yahooPlayerKey,
+                  }
+                } else {
+                  const statsPosition = stats.display_position || stats.eligible_positions?.[0] || 'UTIL'
+                  if (stats.eligible_positions && stats.eligible_positions.length > 0) {
+                    eligiblePositions = stats.eligible_positions
+                  }
+                  player = {
+                    id: stats.player_id || embeddedPlayerKey,
+                    name: playerName,
+                    sport: 'baseball' as const,
+                    position: statsPosition as any,
+                    team: stats.editorial_team_abbr || 'Unknown',
+                    yahooPlayerKey: yahooPlayerKey,
                   }
                 }
-              } catch {
-                // Fall through to name-based search
               }
+            } catch {
+              // Fall through to name-based search
             }
+          }
+          
+          if (!player) {
+            const ownership = await getPlayerOwnership(api, context.yahooLeagueKey, playerQuery)
             
-            // If we still don't have a player (no embedded key or direct lookup failed),
-            // fall back to the name-based search
-            if (!player) {
-              const ownership = await getPlayerOwnership(api, yahooLeague.league_key, playerQuery)
+            if (ownership) {
+              const yahooPlayer = ownership.player
+              yahooPlayerKey = yahooPlayer.player_key
+              eligiblePositions = yahooPlayer.eligible_positions || []
+              ownershipStatus = ownership.ownershipStatus
+              owningTeamName = ownership.owningTeam?.name
               
-              if (ownership) {
-                const yahooPlayer = ownership.player
-                yahooPlayerKey = yahooPlayer.player_key
-                eligiblePositions = yahooPlayer.eligible_positions || []
-                ownershipStatus = ownership.ownershipStatus
-                owningTeamName = ownership.owningTeam?.name
-                
-                player = {
-                  id: yahooPlayer.player_id,
-                  name: yahooPlayer.name.full,
-                  sport: 'baseball' as const,
-                  position: (yahooPlayer.display_position || yahooPlayer.selected_position?.position || yahooPlayer.eligible_positions[0] || 'UTIL') as any,
-                  team: yahooPlayer.editorial_team_abbr || 'FA',
-                  injuryStatus: yahooPlayer.injury_status === 'DTD' ? 'questionable' : 
-                               yahooPlayer.injury_status === 'O' ? 'out' :
-                               yahooPlayer.injury_status === 'IL' ? 'IL' : 'healthy',
-                  yahooPlayerKey: yahooPlayer.player_key,
-                }
+              player = {
+                id: yahooPlayer.player_id,
+                name: yahooPlayer.name.full,
+                sport: 'baseball' as const,
+                position: (yahooPlayer.display_position || yahooPlayer.selected_position?.position || yahooPlayer.eligible_positions[0] || 'UTIL') as any,
+                team: yahooPlayer.editorial_team_abbr || 'FA',
+                injuryStatus: yahooPlayer.injury_status === 'DTD' ? 'questionable' : 
+                             yahooPlayer.injury_status === 'O' ? 'out' :
+                             yahooPlayer.injury_status === 'IL' ? 'IL' : 'healthy',
+                yahooPlayerKey: yahooPlayer.player_key,
               }
             }
           }
