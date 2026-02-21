@@ -26,6 +26,7 @@ export interface ParsedIntent {
   isViewTeams: boolean
   isShowBatters: boolean
   isShowPitchers: boolean
+  isLeagueSettings: boolean
   playerName?: string
   comparePlayerA?: string
   comparePlayerB?: string
@@ -114,6 +115,22 @@ const BATTER_PHRASES = ['position players', 'position player']
 /** Pitcher subjects */
 const PITCHER_TOKENS = ['pitchers', 'pitcher', 'arms']
 const PITCHER_PHRASES = ['pitching staff']
+
+/** League settings / stats categories subjects */
+const SETTINGS_TOKENS = ['settings', 'categories', 'scoring']
+const SETTINGS_PHRASES = [
+  'what stats', 'which stats', 'what categories', 'which categories',
+  'stat categories', 'scoring categories', 'league settings', 'league rules',
+  'league scoring', 'league categories', 'league stats',
+  'what does this league', 'what does my league',
+  'how is scoring', 'how does scoring', 'how is this league scored',
+  'what counts', 'stats count', 'stats matter', 'stats are tracked',
+  'stats are scored', 'what are the categories', 'what are the stats',
+  'roster positions', 'roster slots', 'what positions',
+  'league format', 'league setup', 'league config', 'league configuration',
+  'how many roster', 'how many bench', 'how many il',
+  'trade deadline', 'waiver rules', 'playoff format',
+]
 
 /** Comparison subjects */
 const COMPARE_TOKENS = ['compare', 'comparison']
@@ -288,6 +305,11 @@ export function parseIntent(input: string): ParsedIntent {
     (mentionsPitchers && (wantsToView || m.word('all', 'every', 'list', 'my'))) ||
     s === 'pitchers'
 
+  // League settings / stat categories
+  const isLeagueSettings =
+    m.any(SETTINGS_TOKENS, SETTINGS_PHRASES) ||
+    (m.word('stats') && (m.word('count', 'matter', 'tracked', 'scored') || m.phrase('this league', 'my league')))
+
   // ── Compare (must be checked BEFORE player lookup to avoid false-positive) ──
   const compareNames = extractCompareNames(input)
   const isCompare = Boolean(compareNames) && (
@@ -300,7 +322,7 @@ export function parseIntent(input: string): ParsedIntent {
 
   // ── Player lookup (most permissive — fallback intent) ──
   const playerName = isCompare ? undefined : extractPlayerName(input)
-  const isPlayerLookup = !isCompare && shouldHandlePlayerLookup(s, words, {
+  const isPlayerLookup = !isCompare && !isLeagueSettings && shouldHandlePlayerLookup(s, words, {
     isHelp, isSetLineup, isShowLineup, isMatchup, isWaivers,
     isAddDrop, isTrade, isDraft, isViewTeams, isShowBatters, isShowPitchers,
   }, playerName)
@@ -317,6 +339,7 @@ export function parseIntent(input: string): ParsedIntent {
     isViewTeams,
     isShowBatters,
     isShowPitchers,
+    isLeagueSettings,
     isCompare,
     isPlayerLookup,
     playerName,
@@ -333,7 +356,7 @@ function emptyIntent(): ParsedIntent {
     isHelp: false, isSetLineup: false, isShowLineup: false,
     isMatchup: false, isWaivers: false, isAddDrop: false,
     isTrade: false, isDraft: false, isPlayerLookup: false,
-    isCompare: false,
+    isCompare: false, isLeagueSettings: false,
     isViewTeams: false, isShowBatters: false, isShowPitchers: false,
   }
 }

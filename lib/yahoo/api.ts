@@ -3,7 +3,7 @@
 
 import { YahooOAuth2 } from './oauth2'
 import { MLB_SEASON_TO_GAME_KEY } from './config'
-import { parseLeaguesXML, parseTeamsXML, parseRosterXML, parsePlayerStatsXML, parseStandingsXML, parseScoreboardXML, ParsedLeague, ParsedTeam, ParsedRosterPlayer, ParsedStandingsTeam, ParsedScoreboard } from './xmlParser'
+import { parseLeaguesXML, parseTeamsXML, parseRosterXML, parsePlayerStatsXML, parseStandingsXML, parseScoreboardXML, parseLeagueSettingsXML, ParsedLeague, ParsedTeam, ParsedRosterPlayer, ParsedStandingsTeam, ParsedScoreboard, ParsedLeagueSettings } from './xmlParser'
 
 export interface YahooLeague {
   league_key: string
@@ -267,6 +267,31 @@ export class YahooFantasyAPI {
     }
 
     return { standings, raw: response.raw }
+  }
+
+  /**
+   * Get league settings (stat categories used for scoring, roster positions, etc.)
+   * @param leagueKey - Full league key in format: 469.l.LEAGUE_ID
+   */
+  async getLeagueSettings(leagueKey: string): Promise<{ settings: ParsedLeagueSettings; raw?: string }> {
+    if (!this.accessToken) {
+      throw new Error('Access token not set. Please authenticate first.')
+    }
+
+    const endpoint = `/league/${leagueKey}/settings`
+
+    const response = await this.oauth2.makeRequest(
+      'GET',
+      endpoint,
+      this.accessToken
+    )
+
+    let settings: ParsedLeagueSettings = { statCategories: [], rosterPositions: [] }
+    if (response.raw) {
+      settings = parseLeagueSettingsXML(response.raw)
+    }
+
+    return { settings, raw: response.raw }
   }
 
   /**

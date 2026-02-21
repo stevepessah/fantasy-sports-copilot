@@ -15,6 +15,10 @@ export interface AIContext {
   // Injected Yahoo data context — structured text for the LLM
   yahooRosterContext?: string
   yahooLeagueKey?: string
+  // League settings context — stat categories, roster positions, etc.
+  yahooLeagueSettingsContext?: string
+  // Whether the user has Yahoo connected (affects fallback messaging)
+  hasYahooConnection?: boolean
 }
 
 // ─── Deep Fantasy Baseball Knowledge ────────────────────────────────────────
@@ -196,6 +200,16 @@ win their leagues through natural conversation.
 - Understand user intent from natural language — be flexible, not rigid
 - Be conversational and confident, but acknowledge uncertainty when projecting
 
+## CRITICAL RESPONSE RULES
+- NEVER give a canned "I'm here to help! You can ask me to:" bullet-point menu. This is lazy and unhelpful.
+- ALWAYS attempt to answer the user's actual question, even if you need to make reasonable assumptions.
+- If you have league settings data below, USE IT to answer questions about stats, categories, scoring, etc.
+- If you have roster data below, USE IT to give personalized analysis rather than generic advice.
+- If you genuinely don't have the data to answer, say specifically what data is missing — don't redirect to a menu.
+- Be conversational. Respond naturally to conversational messages. If someone says "hey" or "what's up", respond warmly.
+- When the user asks about their league (stats, categories, format, settings), look at the League Settings section below for the actual answer.
+- You can and should answer general fantasy baseball knowledge questions directly, without needing league-specific data.
+
 ${FANTASY_BASEBALL_EXPERTISE}
 
 ## Current Context
@@ -214,6 +228,14 @@ ${FANTASY_BASEBALL_EXPERTISE}
 
     if (context.week) {
       prompt += `- Current week: ${context.week}\n`
+    }
+
+    // Inject league settings (stat categories, roster positions) if available
+    if (context.yahooLeagueSettingsContext) {
+      prompt += `\n## League Settings (from Yahoo Fantasy)\n`
+      prompt += `THIS IS THE USER'S ACTUAL LEAGUE CONFIGURATION. Use this to answer questions about league stats, scoring, roster positions, etc.\n\n`
+      prompt += context.yahooLeagueSettingsContext
+      prompt += `\n`
     }
 
     // Inject real Yahoo roster + stats context if available
@@ -240,9 +262,13 @@ ${FANTASY_BASEBALL_EXPERTISE}
 - Create league: "create a 12-team roto league"
 - General strategy: Answer any fantasy baseball strategy question with expert analysis
 
-IMPORTANT: Be flexible with user intent. Don't require exact phrases.
-When roster data is available, ALWAYS reference it in your analysis.
-For trade questions, evaluate using replacement level, positional scarcity, and category need.`
+IMPORTANT RULES:
+- Be flexible with user intent. Don't require exact phrases.
+- When roster data is available, ALWAYS reference it in your analysis.
+- For trade questions, evaluate using replacement level, positional scarcity, and category need.
+- NEVER respond with a generic capabilities menu. Always try to answer the actual question.
+- If the user asks about league stats/categories/settings, look at the League Settings section above.
+- Answer conversationally — you're a knowledgeable friend, not a robotic menu system.`
 
     return prompt
   }
@@ -467,6 +493,11 @@ For trade questions, evaluate using replacement level, positional scarcity, and 
       return this.handleLeagueCreation(userMessage, context)
     }
 
+    // League settings / stat categories
+    if (this.isLeagueSettingsQuestion(lowerMessage)) {
+      return this.handleLeagueSettings(userMessage, context)
+    }
+
     // Lineup management - more flexible
     if (
       lowerMessage.includes('lineup') || 
@@ -512,10 +543,68 @@ For trade questions, evaluate using replacement level, positional scarcity, and 
       }
     }
 
-    // Default response
-    return {
-      message: "I'm here to help with your fantasy team! You can ask me to:\n\n• Create a league\n• Set your lineup\n• View all teams\n• Help with drafting\n• Add or drop players\n• Evaluate trades\n\nWhat would you like to do?",
+    // Context-aware default response instead of canned menu
+    return this.buildContextAwareDefault(userMessage, context)
+  }
+
+  private isLeagueSettingsQuestion(msg: string): boolean {
+    const settingsPatterns = [
+      'what stats', 'which stats', 'what categories', 'which categories',
+      'stat categories', 'scoring categories', 'league settings', 'league rules',
+      'league scoring', 'league categories', 'league stats',
+      'what does this league', 'what does my league',
+      'how is scoring', 'how does scoring', 'how is this league scored',
+      'what counts', 'stats count', 'stats matter', 'stats are tracked',
+      'stats are scored', 'what are the categories', 'what are the stats',
+      'roster positions', 'roster slots', 'what positions',
+      'league format', 'league setup', 'league config',
+      'how many roster', 'how many bench', 'how many il',
+      'trade deadline', 'waiver rules', 'playoff format',
+      'settings', 'categories', 'scoring',
+    ]
+    return settingsPatterns.some(p => msg.includes(p))
+  }
+
+  private handleLeagueSettings(_message: string, context: AIContext): AIResponse {
+    if (context.yahooLeagueSettingsContext) {
+      return {
+        message: `Here are your league's settings and scoring categories:\n\n${context.yahooLeagueSettingsContext}`,
+      }
     }
+
+    if (context.league) {
+      return {
+        message: `Your league **${context.league.name}** uses **${context.league.scoringType}** scoring with ${context.league.numTeams} teams. Connect your Yahoo account for full scoring category details.`,
+      }
+    }
+
+    return {
+      message: "I'd love to show you your league settings, but I don't have your league data loaded yet. Make sure your Yahoo Fantasy account is connected so I can pull in your league's scoring categories and roster positions.",
+    }
+  }
+
+  private buildContextAwareDefault(userMessage: string, context: AIContext): AIResponse {
+    const parts: string[] = []
+
+    // Try to be helpful based on what we know
+    if (context.yahooRosterContext || context.yahooLeagueSettingsContext) {
+      parts.push(`I'm not sure I understood that. I have your league data loaded, so feel free to ask me things like:`)
+      parts.push('')
+      parts.push('- "What stats does my league count?"')
+      parts.push('- "Who should I start this week?"')
+      parts.push('- "Show my matchup"')
+      parts.push('- "Who should I pick up on waivers?"')
+      parts.push('- "Compare Player A vs Player B"')
+      parts.push('- Or ask about any specific player by name')
+    } else if (context.hasYahooConnection) {
+      parts.push("I'm having trouble loading your league data right now, but I'm still here to help with general fantasy baseball questions. Try asking again in a moment, or ask me about strategy, player analysis, or draft advice.")
+    } else {
+      parts.push("I'm your fantasy baseball assistant! Connect your Yahoo Fantasy account to get personalized advice about your team, league settings, and roster moves.")
+      parts.push('')
+      parts.push("In the meantime, I can help with general fantasy baseball strategy, player evaluations, and draft advice. What would you like to know?")
+    }
+
+    return { message: parts.join('\n') }
   }
 
   private handleLeagueCreation(message: string, context: AIContext): AIResponse {
@@ -558,14 +647,39 @@ For trade questions, evaluate using replacement level, positional scarcity, and 
   }
 
   private handleLineupManagement(message: string, context: AIContext): AIResponse {
+    // If we have Yahoo roster context, we can work with that even without local DB
+    if (context.yahooRosterContext) {
+      return {
+        message: "I'll analyze your roster and help optimize your lineup based on matchups, projections, and recent performance. Give me a moment...",
+        action: {
+          type: 'show_lineup',
+          data: {
+            teamId: context.teamId,
+          },
+        },
+      }
+    }
+
+    if (!context.roster && !context.hasYahooConnection) {
+      return {
+        message: "I don't see your roster yet. Connect your Yahoo Fantasy account so I can pull in your team and help you set the best lineup.",
+      }
+    }
+
     if (!context.roster) {
       return {
-        message: "I don't see your roster yet. Make sure you're in a league and have drafted your team.",
+        message: "I'm having trouble loading your roster right now. Let me try to pull it up — give me a moment...",
+        action: {
+          type: 'show_lineup',
+          data: {
+            teamId: context.teamId,
+          },
+        },
       }
     }
 
     return {
-      message: "I'll analyze your roster and set your optimal lineup based on matchups, projections, and bye weeks. Give me a moment...",
+      message: "I'll analyze your roster and set your optimal lineup based on matchups, projections, and recent performance. Give me a moment...",
       action: {
         type: 'set_lineup',
         data: {

@@ -634,6 +634,118 @@ export function parseScoreboardXML(xml: string): ParsedScoreboard {
   }
 }
 
+// ── League Settings ──
+
+export interface ParsedStatCategory {
+  statId: string
+  name: string
+  displayName: string
+  positionType: string  // 'B' for batter, 'P' for pitcher
+  sortOrder: string     // '1' = higher is better, '0' = lower is better
+  isOnlyDisplayStat?: boolean
+}
+
+export interface ParsedRosterPosition {
+  position: string
+  positionType?: string
+  count: number
+}
+
+export interface ParsedLeagueSettings {
+  statCategories: ParsedStatCategory[]
+  rosterPositions: ParsedRosterPosition[]
+  maxTeams?: number
+  maxInnings?: number
+  maxGamesPlayed?: number
+  tradeEndDate?: string
+  draftType?: string
+  scoringType?: string
+  usesPlayoffReseeding?: boolean
+  playoffStartWeek?: number
+  numPlayoffTeams?: number
+  waiverType?: string
+  waiverRule?: string
+}
+
+/**
+ * Parse league settings XML from Yahoo API /league/{key}/settings
+ * Extracts stat categories used for scoring, roster positions, and misc settings.
+ */
+export function parseLeagueSettingsXML(xml: string): ParsedLeagueSettings {
+  const extractValue = (tag: string, block: string): string | undefined => {
+    const regex = new RegExp(`<${tag}>([\\s\\S]*?)<\\/${tag}>`)
+    const m = block.match(regex)
+    return m ? m[1].trim() : undefined
+  }
+
+  const settings: ParsedLeagueSettings = {
+    statCategories: [],
+    rosterPositions: [],
+  }
+
+  // Extract settings block
+  const settingsBlock = xml.match(/<settings>([\s\S]*?)<\/settings>/)?.[1] ?? xml
+
+  // Extract stat categories
+  const statCatsBlock = settingsBlock.match(/<stat_categories>([\s\S]*?)<\/stat_categories>/)?.[1]
+  if (statCatsBlock) {
+    const statRegex = /<stat>([\s\S]*?)<\/stat>/g
+    let sm
+    while ((sm = statRegex.exec(statCatsBlock)) !== null) {
+      const sBlock = sm[1]
+      const statId = extractValue('stat_id', sBlock)
+      const name = extractValue('name', sBlock)
+      const displayName = extractValue('display_name', sBlock) || extractValue('abbr', sBlock) || name
+      const positionType = extractValue('position_type', sBlock) || 'unknown'
+      const sortOrder = extractValue('sort_order', sBlock) || '1'
+      const isOnlyDisplayStat = extractValue('is_only_display_stat', sBlock) === '1'
+
+      if (statId && name) {
+        settings.statCategories.push({
+          statId,
+          name,
+          displayName: displayName || name,
+          positionType,
+          sortOrder,
+          isOnlyDisplayStat,
+        })
+      }
+    }
+  }
+
+  // Extract roster positions
+  const rosterPosBlock = settingsBlock.match(/<roster_positions>([\s\S]*?)<\/roster_positions>/)?.[1]
+  if (rosterPosBlock) {
+    const posRegex = /<roster_position>([\s\S]*?)<\/roster_position>/g
+    let pm
+    while ((pm = posRegex.exec(rosterPosBlock)) !== null) {
+      const pBlock = pm[1]
+      const position = extractValue('position', pBlock)
+      const positionType = extractValue('position_type', pBlock)
+      const count = parseInt(extractValue('count', pBlock) || '1', 10)
+
+      if (position) {
+        settings.rosterPositions.push({ position, positionType, count })
+      }
+    }
+  }
+
+  // Extract miscellaneous settings
+  settings.scoringType = extractValue('scoring_type', settingsBlock)
+  settings.draftType = extractValue('draft_type', settingsBlock)
+  settings.tradeEndDate = extractValue('trade_end_date', settingsBlock)
+  const maxTeams = extractValue('max_teams', settingsBlock)
+  if (maxTeams) settings.maxTeams = parseInt(maxTeams, 10)
+  const playoffStart = extractValue('playoff_start_week', settingsBlock)
+  if (playoffStart) settings.playoffStartWeek = parseInt(playoffStart, 10)
+  const numPlayoff = extractValue('num_playoff_teams', settingsBlock)
+  if (numPlayoff) settings.numPlayoffTeams = parseInt(numPlayoff, 10)
+  settings.waiverType = extractValue('waiver_type', settingsBlock)
+  settings.waiverRule = extractValue('waiver_rule', settingsBlock)
+
+  return settings
+}
+
 /**
  * Player statistics interface
  */
