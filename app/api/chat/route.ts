@@ -6,7 +6,7 @@ import { parseIntent, findPlayerByNameApprox } from '@/lib/commandParser'
 import { setupBaseballLeague } from '@/lib/setupBaseballLeague'
 import { YahooFantasyAPI } from '@/lib/yahoo/api'
 import { searchPlayerInLeague, searchPlayerInFreeAgents, getPlayerOwnership, getPlayerOwnershipPair } from '@/lib/yahoo/playerSearch'
-import { buildRosterContext, buildRosterSummary } from '@/lib/rosterContext'
+import { buildRosterContext, buildRosterSummary, buildLeagueSettingsContext } from '@/lib/rosterContext'
 import { fetchLeaguePlayers } from '@/lib/yahoo/leaguePlayers'
 import { getDefaultScoringType } from '@/lib/sports'
 import { cookies } from 'next/headers'
@@ -15,6 +15,10 @@ import { League, Sport } from '@/types'
 // Simple in-memory cache for roster context to avoid re-fetching on every message
 const rosterContextCache: Record<string, { context: string; timestamp: number }> = {}
 const ROSTER_CACHE_TTL = 5 * 60 * 1000 // 5 minutes
+
+// Cache for league settings (changes infrequently)
+const leagueSettingsCache: Record<string, { context: string; timestamp: number }> = {}
+const LEAGUE_SETTINGS_CACHE_TTL = 30 * 60 * 1000 // 30 minutes
 
 // ── Stat ID → abbreviation fallback map (same as rosterContext.ts) ──
 const STAT_ID_TO_ABBR: Record<string, string> = {
@@ -233,11 +237,12 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // ─── Inject Yahoo Roster + Stats Context ────────────────────────────────
+    // ─── Inject Yahoo Roster + Stats + League Settings Context ──────────────
     const cookieStore = await cookies()
     const yahooAccessToken = cookieStore.get('yahoo_access_token')?.value ?? undefined
 
     if (yahooAccessToken) {
+      context.hasYahooConnection = true
       try {
         const api = new YahooFantasyAPI()
         api.setAccessToken(yahooAccessToken)
@@ -248,6 +253,31 @@ export async function POST(request: NextRequest) {
         if (yahooLeague?.league_key) {
           context.yahooLeagueKey = yahooLeague.league_key
 
+          // ── Fetch league settings (stat categories, roster positions) ──
+          const settingsCacheKey = yahooLeague.league_key
+          const cachedSettings = leagueSettingsCache[settingsCacheKey]
+
+          if (cachedSettings && Date.now() - cachedSettings.timestamp < LEAGUE_SETTINGS_CACHE_TTL) {
+            context.yahooLeagueSettingsContext = cachedSettings.context
+          } else {
+            try {
+              const { settings } = await api.getLeagueSettings(yahooLeague.league_key)
+              const settingsContext = buildLeagueSettingsContext(
+                settings,
+                yahooLeague.name,
+                yahooLeague.num_teams,
+              )
+              context.yahooLeagueSettingsContext = settingsContext
+              leagueSettingsCache[settingsCacheKey] = {
+                context: settingsContext,
+                timestamp: Date.now(),
+              }
+            } catch {
+              // Non-critical — league settings are nice-to-have
+            }
+          }
+
+          // ── Fetch roster context ──
           const { teams: yahooTeams } = await api.getLeagueTeams(yahooLeague.league_key)
           const userTeam = yahooTeams.find(t =>
             t.managers?.some(m => m.is_current_login === '1')
@@ -283,7 +313,7 @@ export async function POST(request: NextRequest) {
           }
         }
       } catch {
-        // Don't fail the whole chat if roster context fails — just skip it
+        // Don't fail the whole chat if context fetch fails — just skip it
       }
     }
 
@@ -548,6 +578,16 @@ export async function POST(request: NextRequest) {
           }
         } catch {
           // silently skip
+        }
+      }
+    }
+
+    // League settings / stat categories
+    if (intent.isLeagueSettings && yahooAccessToken && context.yahooLeagueKey) {
+      if (context.yahooLeagueSettingsContext) {
+        // If the LLM didn't already give a good answer, provide the settings directly
+        if (response.message.includes("can ask me to") || response.message.includes("What would you like")) {
+          response.message = `Here are your league's scoring categories and settings:\n\n${context.yahooLeagueSettingsContext}`
         }
       }
     }

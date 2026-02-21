@@ -3,7 +3,7 @@
 // into a concise text block that gets injected into the system prompt.
 
 import { YahooFantasyAPI } from '@/lib/yahoo/api'
-import { ParsedRosterPlayer } from '@/lib/yahoo/xmlParser'
+import { ParsedRosterPlayer, ParsedLeagueSettings } from '@/lib/yahoo/xmlParser'
 
 // ─── Stat ID → Display Name Mapping ─────────────────────────────────────────
 // These are the standard Yahoo stat IDs for MLB. We maintain a fallback map
@@ -236,6 +236,89 @@ function formatStatValue(value: number | string, statName: string): string {
 
   // Counting stats: whole numbers
   return Math.round(num).toString().padStart(5)
+}
+
+/**
+ * Build a structured league settings context string for LLM injection.
+ * Includes stat categories (what stats count), roster positions, and league config.
+ */
+export function buildLeagueSettingsContext(
+  settings: ParsedLeagueSettings,
+  leagueName?: string,
+  numTeams?: number,
+): string {
+  let context = ''
+
+  if (leagueName) {
+    context += `League: ${leagueName}\n`
+  }
+  if (numTeams) {
+    context += `Teams: ${numTeams}\n`
+  }
+  if (settings.scoringType) {
+    context += `Scoring Type: ${settings.scoringType}\n`
+  }
+  if (settings.draftType) {
+    context += `Draft Type: ${settings.draftType}\n`
+  }
+
+  // Stat categories — this is what the user's league actually scores
+  const scoringCats = settings.statCategories.filter(c => !c.isOnlyDisplayStat)
+  const displayOnlyCats = settings.statCategories.filter(c => c.isOnlyDisplayStat)
+
+  if (scoringCats.length > 0) {
+    const batterCats = scoringCats.filter(c => c.positionType === 'B')
+    const pitcherCats = scoringCats.filter(c => c.positionType === 'P')
+
+    context += `\n### Scoring Categories (THESE STATS COUNT for standings/scoring)\n`
+
+    if (batterCats.length > 0) {
+      context += `**Batting:** ${batterCats.map(c => c.displayName).join(', ')}\n`
+    }
+    if (pitcherCats.length > 0) {
+      context += `**Pitching:** ${pitcherCats.map(c => c.displayName).join(', ')}\n`
+    }
+  }
+
+  if (displayOnlyCats.length > 0) {
+    context += `\n### Display-Only Stats (tracked but NOT scored)\n`
+    context += displayOnlyCats.map(c => c.displayName).join(', ') + '\n'
+  }
+
+  // Roster positions
+  if (settings.rosterPositions.length > 0) {
+    context += `\n### Roster Positions\n`
+    const activePositions = settings.rosterPositions.filter(p =>
+      p.position !== 'BN' && p.position !== 'IL' && p.position !== 'IL+' && p.position !== 'NA' && p.position !== 'DL'
+    )
+    const benchPositions = settings.rosterPositions.filter(p =>
+      p.position === 'BN' || p.position === 'IL' || p.position === 'IL+' || p.position === 'NA' || p.position === 'DL'
+    )
+
+    if (activePositions.length > 0) {
+      context += `Active: ${activePositions.map(p => `${p.position}${p.count > 1 ? ` x${p.count}` : ''}`).join(', ')}\n`
+    }
+    if (benchPositions.length > 0) {
+      context += `Bench/IL: ${benchPositions.map(p => `${p.position}${p.count > 1 ? ` x${p.count}` : ''}`).join(', ')}\n`
+    }
+  }
+
+  // Misc settings
+  if (settings.playoffStartWeek) {
+    context += `\nPlayoffs start: Week ${settings.playoffStartWeek}`
+    if (settings.numPlayoffTeams) {
+      context += ` (${settings.numPlayoffTeams} teams)`
+    }
+    context += '\n'
+  }
+  if (settings.tradeEndDate) {
+    context += `Trade deadline: ${settings.tradeEndDate}\n`
+  }
+  if (settings.waiverType) {
+    context += `Waiver type: ${settings.waiverType}\n`
+  }
+
+  return context
 }
 
 /**
