@@ -53,15 +53,19 @@ export async function GET(request: NextRequest) {
 
       // GUID lives in the top-level <user> block
       const guidMatch = xml.match(/<guid>(.*?)<\/guid>/)
-      if (guidMatch) guid = guidMatch[1]
+      if (guidMatch) guid = guidMatch[1].trim()
 
-      // Find the manager whose <is_current_login>1</is_current_login>
-      const managerRegex = /<manager>([\s\S]*?)<\/manager>/g
-      let m
-      while ((m = managerRegex.exec(xml)) !== null) {
-        if (m[1].includes('<is_current_login>1</is_current_login>')) {
-          const nick = m[1].match(/<nickname>(.*?)<\/nickname>/)
-          if (nick) { nickname = nick[1]; break }
+      // Find the manager whose <guid> matches the user's GUID.
+      // (Yahoo sometimes uses self-closing <is_current_login/> instead of
+      //  <is_current_login>1</is_current_login>, so matching by GUID is safer.)
+      if (guid !== 'unknown') {
+        const managerRegex = /<manager>([\s\S]*?)<\/manager>/g
+        let m
+        while ((m = managerRegex.exec(xml)) !== null) {
+          if (m[1].includes(`<guid>${guid}</guid>`)) {
+            const nick = m[1].match(/<nickname>(.*?)<\/nickname>/)
+            if (nick) { nickname = nick[1].trim(); break }
+          }
         }
       }
     } catch (e) {
