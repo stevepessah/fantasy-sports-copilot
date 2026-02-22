@@ -329,6 +329,7 @@ export function EnhancedCards({ card, onAction, sport }: EnhancedCardsProps) {
           <div className="text-xs text-slate-400 mb-3">
             {p.leagueName} • {teams.length} teams
           </div>
+          <div className="table-scroll-hint">
           <div className="overflow-x-auto -mx-4 px-4">
             <table className="w-full text-xs sm:text-sm">
               <thead>
@@ -361,6 +362,7 @@ export function EnhancedCards({ card, onAction, sport }: EnhancedCardsProps) {
                 ))}
               </tbody>
             </table>
+          </div>
           </div>
         </CardShell>
       )
@@ -820,6 +822,7 @@ function RosterListCard({ card, onAction }: { card: Card; onAction?: (cmd: strin
       {/* ── Table ── */}
       {!loading && !error && (
         <>
+          <div className="table-scroll-hint">
           <div className="overflow-x-auto -mx-2.5 sm:-mx-3">
             <table className="w-full text-[9px] sm:text-[11px]">
               <thead>
@@ -915,6 +918,7 @@ function RosterListCard({ card, onAction }: { card: Card; onAction?: (cmd: strin
                 })}
               </tbody>
             </table>
+          </div>
           </div>
 
           {/* Pagination */}
@@ -1083,6 +1087,7 @@ function MatchupCardInner({ card, runCommand }: { card: { title: string; payload
               <span className="text-yellow-400">{catResults.ties}T</span>
             </>}
           </div>
+          <div className="table-scroll-hint">
           <div className="overflow-x-auto -mx-1.5 sm:-mx-3">
             <table className="w-full text-[10px] sm:text-xs">
               <thead>
@@ -1106,6 +1111,7 @@ function MatchupCardInner({ card, runCommand }: { card: { title: string; payload
                 ))}
               </tbody>
             </table>
+          </div>
           </div>
         </div>
       )}

@@ -868,11 +868,25 @@ export default function EnhancedChatInterface({ leagueId, userId, initialMessage
               </div>
             ) : null}
 
-            {messages.map((message) => {
+            {messages.map((message, msgIdx) => {
               const hasCards = message.metadata?.cards && message.metadata.cards.length > 0
+              const prevMessage = msgIdx > 0 ? messages[msgIdx - 1] : null
+              const showDateSep = message.timestamp && (
+                !prevMessage?.timestamp || isDifferentDay(prevMessage.timestamp, message.timestamp)
+              )
               return (
+              <div key={message.id}>
+              {/* Date separator */}
+              {showDateSep && (
+                <div className="flex items-center gap-3 max-w-4xl mx-auto my-2">
+                  <div className="flex-1 h-px bg-slate-700/50" />
+                  <span className="text-[10px] sm:text-xs text-slate-500 font-medium shrink-0">
+                    {formatDateSeparator(message.timestamp)}
+                  </span>
+                  <div className="flex-1 h-px bg-slate-700/50" />
+                </div>
+              )}
               <div
-                key={message.id}
                 className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'} max-w-4xl mx-auto ${
                   hasCards ? 'w-full' : ''
                 }`}
@@ -910,6 +924,7 @@ export default function EnhancedChatInterface({ leagueId, userId, initialMessage
                     </div>
                   )}
                 </div>
+              </div>
               </div>
               )
             })}
@@ -1013,6 +1028,30 @@ export default function EnhancedChatInterface({ leagueId, userId, initialMessage
       </div>
     </div>
   )
+}
+
+/** Format a date for the chat separator */
+function formatDateSeparator(dateStr: string): string {
+  const date = new Date(dateStr)
+  const now = new Date()
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  const msgDay = new Date(date.getFullYear(), date.getMonth(), date.getDate())
+  const diffMs = today.getTime() - msgDay.getTime()
+  const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24))
+
+  if (diffDays === 0) return 'Today'
+  if (diffDays === 1) return 'Yesterday'
+  if (diffDays < 7) return date.toLocaleDateString('en-US', { weekday: 'long' })
+  return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
+}
+
+/** Check if two timestamps fall on different calendar days */
+function isDifferentDay(a: string, b: string): boolean {
+  const da = new Date(a)
+  const db = new Date(b)
+  return da.getFullYear() !== db.getFullYear() ||
+    da.getMonth() !== db.getMonth() ||
+    da.getDate() !== db.getDate()
 }
 
 /** Small status badge for the header on mobile */
