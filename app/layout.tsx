@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next'
 import { Inter } from 'next/font/google'
 import Script from 'next/script'
 import { YahooAuthProvider } from '@/contexts/YahooAuthContext'
+import { LeagueProvider } from '@/contexts/LeagueContext'
 import { ThemeProvider } from '@/contexts/ThemeContext'
 import { ToastProvider } from '@/components/Toast'
 import './globals.css'
@@ -81,11 +82,13 @@ export default function RootLayout({
       </head>
       <body className={`${inter.className} bg-slate-900`}>
         <YahooAuthProvider>
-          <ThemeProvider>
-            <ToastProvider>
-              {children}
-            </ToastProvider>
-          </ThemeProvider>
+          <LeagueProvider>
+            <ThemeProvider>
+              <ToastProvider>
+                {children}
+              </ToastProvider>
+            </ThemeProvider>
+          </LeagueProvider>
         </YahooAuthProvider>
       </body>
     </html>

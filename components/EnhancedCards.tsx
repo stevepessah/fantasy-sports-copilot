@@ -529,8 +529,7 @@ function RosterListCard({ card, onAction }: { card: Card; onAction?: (cmd: strin
   // Season toggle state
   const [selectedSeason, setSelectedSeason] = useState(0) // 0 = current
 
-  // Cache key includes positionType + status so switching re-fetches properly
-  const cacheKey = (pt: string, status: string, season: number) => `${pt}_${status}_${season}`
+  const cacheKey = (pt: string, status: string, season: number) => `${p.leagueKey || ''}_${pt}_${status}_${season}`
 
   const [playerCache, setPlayerCache] = useState<Record<string, any[]>>({
     [cacheKey(p.positionType || 'B', '', 0)]: p.players || [],

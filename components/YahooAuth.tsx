@@ -1,40 +1,25 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { useYahooLeagues } from '@/hooks/useYahooLeagues'
 import { useYahooAuth } from '@/contexts/YahooAuthContext'
+import { useLeague } from '@/contexts/LeagueContext'
 import YahooTeams from './YahooTeams'
 
 export default function YahooAuth() {
   const { isAuthenticated, isLoading, mutate } = useYahooAuth()
-  const [selectedLeague, setSelectedLeague] = useState<string | null>(null)
-
-  // Fetch leagues when authenticated
-  const { leagues, isLoading: leaguesLoading } = useYahooLeagues('mlb')
+  const { leagues, isLoading: leaguesLoading, selectedLeagueKey, setSelectedLeagueKey } = useLeague()
 
   const handleConnect = () => {
-    // Redirect to Yahoo OAuth
     window.location.href = '/api/yahoo/auth'
   }
 
   const handleDisconnect = async () => {
     try {
       await fetch('/api/yahoo/disconnect', { method: 'POST' })
-      setSelectedLeague(null)
-      mutate() // Revalidate auth state via SWR
+      mutate()
     } catch (error) {
       console.error('Error disconnecting:', error)
     }
   }
-
-  // Auto-select first league if available
-  useEffect(() => {
-    if (isAuthenticated && leagues.length > 0 && !selectedLeague) {
-      // Prefer active leagues (not finished)
-      const activeLeague = leagues.find(l => l.is_finished !== '1')
-      setSelectedLeague(activeLeague?.league_key || leagues[0].league_key)
-    }
-  }, [isAuthenticated, leagues, selectedLeague])
 
   if (isLoading) {
     return (
@@ -67,8 +52,8 @@ export default function YahooAuth() {
             <div className="space-y-2">
               <label className="text-xs text-slate-400 block">Select League:</label>
               <select
-                value={selectedLeague || ''}
-                onChange={(e) => setSelectedLeague(e.target.value)}
+                value={selectedLeagueKey || ''}
+                onChange={(e) => setSelectedLeagueKey(e.target.value)}
                 className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
               >
                 {leagues.map((league) => (
@@ -78,9 +63,9 @@ export default function YahooAuth() {
                   </option>
                 ))}
               </select>
-              {selectedLeague && (
+              {selectedLeagueKey && (
                 <div className="text-xs text-slate-400 mt-1">
-                  {leagues.find(l => l.league_key === selectedLeague)?.num_teams} teams
+                  {leagues.find(l => l.league_key === selectedLeagueKey)?.num_teams} teams
                 </div>
               )}
             </div>
@@ -88,10 +73,9 @@ export default function YahooAuth() {
             <div className="text-xs text-slate-400">No leagues found</div>
           )}
           
-          {/* Show teams and rosters when a league is selected */}
-          {selectedLeague && (
+          {selectedLeagueKey && (
             <div className="border-t border-slate-700 pt-3 mt-3">
-              <YahooTeams leagueKey={selectedLeague} />
+              <YahooTeams leagueKey={selectedLeagueKey} />
             </div>
           )}
         </>

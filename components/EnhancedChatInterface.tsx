@@ -5,6 +5,7 @@ import dynamic from 'next/dynamic'
 import { ChatMessage, Sport } from '@/types'
 import YahooAuth from './YahooAuth'
 import { useYahooAuth } from '@/contexts/YahooAuthContext'
+import { useLeague } from '@/contexts/LeagueContext'
 import { useTheme } from '@/contexts/ThemeContext'
 import { useToast } from './Toast'
 import { hapticTap, hapticSuccess } from '@/lib/haptics'
@@ -96,13 +97,13 @@ export default function EnhancedChatInterface({ leagueId, userId, initialMessage
   const [isTiny, setIsTiny] = useState(false)
   const [showQuickActions, setShowQuickActions] = useState(false)
   const [drawerOpen, setDrawerOpen] = useState(false)
-  const [selectedLeagueKey, setSelectedLeagueKey] = useState<string | null>(null)
   const [conversationId, setConversationId] = useState<string | null>(null)
   const [conversations, setConversations] = useState<Conversation[]>([])
   const [showHistory, setShowHistory] = useState(false)
   const [activeTab, setActiveTab] = useState<TopTab | null>(null)
 
   const { isAuthenticated: isYahooConnected } = useYahooAuth()
+  const { selectedLeagueKey } = useLeague()
   const { theme, toggleTheme } = useTheme()
   const { addToast } = useToast()
   const { isOnboardingComplete, markComplete: markOnboardingComplete } = useOnboarding()
@@ -535,12 +536,7 @@ export default function EnhancedChatInterface({ leagueId, userId, initialMessage
 
         <div className="flex items-center gap-1.5">
           {/* League switcher (desktop) */}
-          {mounted && !isNarrow && (
-            <LeagueSwitcher
-              selectedLeagueKey={selectedLeagueKey}
-              onLeagueChange={setSelectedLeagueKey}
-            />
-          )}
+          {mounted && !isNarrow && <LeagueSwitcher />}
 
           {/* Notification bell */}
           {mounted && <NotificationBell onAction={runCommand} />}
@@ -691,10 +687,7 @@ export default function EnhancedChatInterface({ leagueId, userId, initialMessage
               {/* League switcher (mobile) */}
               <section>
                 <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">League</h3>
-                <LeagueSwitcher
-                  selectedLeagueKey={selectedLeagueKey}
-                  onLeagueChange={(key) => { setSelectedLeagueKey(key); setDrawerOpen(false) }}
-                />
+                <LeagueSwitcher />
               </section>
 
               {/* Yahoo Auth */}
