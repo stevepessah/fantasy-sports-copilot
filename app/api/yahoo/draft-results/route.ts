@@ -45,7 +45,9 @@ export async function GET(request: NextRequest) {
       team_id: teamMap[p.team_key]?.team_id,
     }))
 
-    // If draft hasn't happened yet, fetch rosters to find keepers
+    // If draft hasn't happened yet, fetch owned players (keepers) via the
+    // league players endpoint with status=T (taken) + ownership sub-resource.
+    // This is the same data source the Players tab uses successfully.
     let keepers: Array<{
       team_key: string
       team_name: string
@@ -59,22 +61,39 @@ export async function GET(request: NextRequest) {
     }> = []
 
     if (picks.length === 0 && teamsResponse.teams.length > 0) {
-      const rosterPromises = teamsResponse.teams.map((t) =>
-        api.getTeamRoster(t.team_key).catch(() => ({ players: [] }))
-      )
-      const rosters = await Promise.all(rosterPromises)
+      const PAGE_SIZE = 25
+      const MAX_PAGES = 10
 
-      for (let i = 0; i < teamsResponse.teams.length; i++) {
-        const team = teamsResponse.teams[i]
-        const roster = rosters[i]
-        for (const player of roster.players) {
+      const fetchPage = (start: number) =>
+        api.getPlayers(leagueKey, {
+          start,
+          count: PAGE_SIZE,
+          status: 'T',
+          sort: 'AR',
+          out: 'ownership',
+        }).catch(() => ({ players: [] }))
+
+      const firstPage = await fetchPage(0)
+      const allPlayers = [...firstPage.players]
+
+      // Fetch remaining pages if needed
+      if (firstPage.players.length >= PAGE_SIZE) {
+        for (let page = 1; page < MAX_PAGES; page++) {
+          const result = await fetchPage(page * PAGE_SIZE)
+          allPlayers.push(...result.players)
+          if (result.players.length < PAGE_SIZE) break
+        }
+      }
+
+      for (const player of allPlayers) {
+        if (player.owner_team_key) {
           keepers.push({
-            team_key: team.team_key,
-            team_name: teamMap[team.team_key]?.name || team.team_key,
-            team_logo: teamMap[team.team_key]?.logo_url,
-            team_id: teamMap[team.team_key]?.team_id || team.team_id,
+            team_key: player.owner_team_key,
+            team_name: teamMap[player.owner_team_key]?.name || player.owner_team_name || player.owner_team_key,
+            team_logo: teamMap[player.owner_team_key]?.logo_url,
+            team_id: teamMap[player.owner_team_key]?.team_id || '',
             player_key: player.player_key,
-            player_name: player.name?.full || `${player.name?.first} ${player.name?.last}`,
+            player_name: player.name?.full || `${player.name?.first || ''} ${player.name?.last || ''}`.trim(),
             display_position: player.display_position || player.eligible_positions?.[0],
             editorial_team_abbr: player.editorial_team_abbr,
             headshot_url: player.headshot?.url || player.image_url,
