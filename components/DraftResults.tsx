@@ -22,6 +22,18 @@ interface DraftPick {
   team_id: string
 }
 
+interface KeeperPlayer {
+  team_key: string
+  team_name: string
+  team_logo?: string
+  team_id: string
+  player_key: string
+  player_name: string
+  display_position?: string
+  editorial_team_abbr?: string
+  headshot_url?: string
+}
+
 interface TeamInfo {
   team_key: string
   team_id: string
@@ -37,7 +49,9 @@ type ViewMode = 'by-round' | 'by-team'
 
 export default function DraftResults({ leagueKey }: DraftResultsProps) {
   const [picks, setPicks] = useState<DraftPick[]>([])
+  const [keepers, setKeepers] = useState<KeeperPlayer[]>([])
   const [teams, setTeams] = useState<TeamInfo[]>([])
+  const [draftComplete, setDraftComplete] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [viewMode, setViewMode] = useState<ViewMode>('by-round')
@@ -60,7 +74,9 @@ export default function DraftResults({ leagueKey }: DraftResultsProps) {
       .then((data) => {
         if (cancelled) return
         setPicks(data.picks ?? [])
+        setKeepers(data.keepers ?? [])
         setTeams(data.teams ?? [])
+        setDraftComplete(data.draftComplete ?? false)
       })
       .catch((err) => {
         if (cancelled) return
@@ -96,6 +112,16 @@ export default function DraftResults({ leagueKey }: DraftResultsProps) {
     return grid
   }, [picks, teams])
 
+  const keepersByTeam = useMemo(() => {
+    const map = new Map<string, KeeperPlayer[]>()
+    for (const k of keepers) {
+      const arr = map.get(k.team_key) ?? []
+      arr.push(k)
+      map.set(k.team_key, arr)
+    }
+    return map
+  }, [keepers])
+
   if (!effectiveLeagueKey) {
     return (
       <div className="flex items-center justify-center py-16 text-slate-400 text-sm">
@@ -129,7 +155,31 @@ export default function DraftResults({ leagueKey }: DraftResultsProps) {
     )
   }
 
-  if (picks.length === 0) {
+  // Pre-draft: show keepers if available
+  if (!draftComplete && keepers.length > 0) {
+    return (
+      <div className="flex flex-col h-full">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-slate-700/50 shrink-0">
+          <div>
+            <h2 className="text-sm font-bold text-white">Draft Day Keepers</h2>
+            <p className="text-[10px] text-slate-500 mt-0.5">
+              {keepers.length} keeper{keepers.length !== 1 ? 's' : ''} across {teams.length} teams · Draft pending
+            </p>
+          </div>
+          <span className="px-2.5 py-1 rounded-full text-[10px] font-semibold bg-amber-500/15 text-amber-400 border border-amber-500/30">
+            Pre-Draft
+          </span>
+        </div>
+
+        <div className="flex-1 overflow-auto p-3 sm:p-4">
+          <KeepersView teams={teams} keepersByTeam={keepersByTeam} />
+        </div>
+      </div>
+    )
+  }
+
+  // No data at all
+  if (picks.length === 0 && keepers.length === 0) {
     return (
       <div className="flex items-center justify-center py-16 text-slate-400 text-sm">
         No draft results available yet
@@ -137,9 +187,9 @@ export default function DraftResults({ leagueKey }: DraftResultsProps) {
     )
   }
 
+  // Full draft results
   return (
     <div className="flex flex-col h-full">
-      {/* Header with view toggle */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-slate-700/50 shrink-0">
         <div>
           <h2 className="text-sm font-bold text-white">Draft Results</h2>
@@ -169,21 +219,85 @@ export default function DraftResults({ leagueKey }: DraftResultsProps) {
         </div>
       </div>
 
-      {/* Content */}
       <div className="flex-1 overflow-auto p-3 sm:p-4">
         {viewMode === 'by-round' ? (
-          <ByRoundView
-            teams={teams}
-            pickGrid={pickGrid}
-            maxRound={maxRound}
-          />
+          <ByRoundView teams={teams} pickGrid={pickGrid} maxRound={maxRound} />
         ) : (
-          <ByTeamView
-            teams={teams}
-            picksByTeam={picksByTeam}
-          />
+          <ByTeamView teams={teams} picksByTeam={picksByTeam} />
         )}
       </div>
+    </div>
+  )
+}
+
+/* ────────────────────────────────────────── */
+/*  Keepers View (pre-draft)                  */
+/* ────────────────────────────────────────── */
+
+function KeepersView({
+  teams,
+  keepersByTeam,
+}: {
+  teams: TeamInfo[]
+  keepersByTeam: Map<string, KeeperPlayer[]>
+}) {
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      {teams.map((team) => {
+        const teamKeepers = keepersByTeam.get(team.team_key) ?? []
+
+        return (
+          <div
+            key={team.team_key}
+            className="bg-slate-800/60 border border-slate-700/50 rounded-xl overflow-hidden"
+          >
+            {/* Team header */}
+            <div className="flex items-center justify-between px-3 py-2.5 bg-slate-800 border-b border-slate-700/50">
+              <div className="flex items-center gap-2 min-w-0">
+                {team.logo_url && (
+                  <img src={team.logo_url} alt="" className="w-6 h-6 rounded-sm shrink-0" />
+                )}
+                <span className="font-bold text-sm text-white truncate">{team.name}</span>
+              </div>
+              <span className="text-[10px] text-primary-400 shrink-0">
+                {teamKeepers.length} keeper{teamKeepers.length !== 1 ? 's' : ''}
+              </span>
+            </div>
+
+            {/* Keeper list */}
+            <div className="divide-y divide-slate-700/20">
+              {teamKeepers.map((keeper, idx) => (
+                <div
+                  key={keeper.player_key}
+                  className="flex items-center gap-2.5 px-3 py-2 bg-primary-600/5"
+                >
+                  <span className="text-slate-500 tabular-nums w-4 text-right text-xs shrink-0">
+                    {idx + 1}
+                  </span>
+                  {keeper.headshot_url && (
+                    <img src={keeper.headshot_url} alt="" className="w-7 h-7 rounded-full shrink-0 bg-slate-700" />
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <span className="text-primary-400 font-medium text-xs truncate block">
+                      {keeper.player_name}
+                    </span>
+                    <span className="text-slate-500 text-[10px]">
+                      {keeper.display_position || ''}
+                      {keeper.editorial_team_abbr ? ` · ${keeper.editorial_team_abbr}` : ''}
+                    </span>
+                  </div>
+                  <span className="shrink-0 px-1 py-0.5 rounded text-[9px] font-bold bg-primary-600/20 text-primary-400 border border-primary-500/30">
+                    K
+                  </span>
+                </div>
+              ))}
+              {teamKeepers.length === 0 && (
+                <div className="px-3 py-3 text-xs text-slate-500 italic">No keepers set</div>
+              )}
+            </div>
+          </div>
+        )
+      })}
     </div>
   )
 }
