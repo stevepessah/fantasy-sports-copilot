@@ -35,6 +35,12 @@ const SeasonHistory = dynamic(() => import('./SeasonHistory'), {
   loading: () => <div className="text-xs text-slate-400 py-2">Loading…</div>,
   ssr: false,
 })
+
+// Lazy-load Draft Results (only when Draft tab is active)
+const DraftResults = dynamic(() => import('./DraftResults'), {
+  loading: () => <div className="text-xs text-slate-400 py-2">Loading…</div>,
+  ssr: false,
+})
 // ── Static constants ──
 
 const BOUNCE_DELAY_200 = { animationDelay: '0.2s' } as const
@@ -58,7 +64,7 @@ const BASE_QUICK_ACTIONS: QuickAction[] = [
 ]
 
 // ── Top tab navigation ──
-type TopTab = 'league' | 'roster' | 'matchups' | 'players'
+type TopTab = 'league' | 'roster' | 'matchups' | 'players' | 'draft'
 
 interface TabDef {
   id: TopTab
@@ -574,6 +580,7 @@ export default function EnhancedChatInterface({ leagueId, userId, initialMessage
               { id: 'roster' as TopTab, label: 'Roster', icon: '📋' },
               { id: 'matchups' as TopTab, label: 'Matchups', icon: '⚔️' },
               { id: 'players' as TopTab, label: 'Players', icon: '👥' },
+              { id: 'draft' as TopTab, label: 'Draft', icon: '📝' },
             ]).map((tab) => (
               <button
                 key={tab.id}
@@ -583,6 +590,8 @@ export default function EnhancedChatInterface({ leagueId, userId, initialMessage
                     return
                   }
                   setActiveTab(tab.id)
+                  // Draft tab is a dedicated view — no chat command needed
+                  if (tab.id === 'draft') return
                   // Fire the appropriate command
                   if (tab.id === 'league') runCommand('show all teams')
                   if (tab.id === 'roster') runCommand('show my roster')
@@ -809,8 +818,11 @@ export default function EnhancedChatInterface({ leagueId, userId, initialMessage
           </aside>
         )}
 
-        {/* Chat Panel */}
+        {/* Chat Panel / Draft Results */}
         <main className="flex-1 flex flex-col min-w-0">
+          {activeTab === 'draft' ? (
+            <DraftResults leagueKey={selectedLeagueKey} />
+          ) : (
           <div className="flex-1 overflow-auto p-3 sm:p-4 space-y-3 sm:space-y-4 chat-scroll-fade">
             {/* Onboarding or Welcome screen */}
             {showOnboarding ? (
@@ -954,8 +966,10 @@ export default function EnhancedChatInterface({ leagueId, userId, initialMessage
 
             <div ref={messagesEndRef} />
           </div>
+          )}
 
-          {/* Input Bar */}
+          {/* Input Bar — hidden when draft tab is active */}
+          {activeTab !== 'draft' && (
           <div className="landscape-compact-footer bg-gradient-to-t from-slate-900 via-slate-800/95 to-slate-800/80 backdrop-blur-md border-t border-slate-700/40 px-2.5 sm:px-4 pt-2.5 sm:pt-3 pb-[calc(env(safe-area-inset-bottom,0px)+0.625rem)] shrink-0">
             {/* Mobile quick actions toggle */}
             {mounted && isNarrow && (
@@ -1024,6 +1038,7 @@ export default function EnhancedChatInterface({ leagueId, userId, initialMessage
               </button>
             </form>
           </div>
+          )}
         </main>
       </div>
     </div>

@@ -3,7 +3,7 @@
 
 import { YahooOAuth2 } from './oauth2'
 import { MLB_SEASON_TO_GAME_KEY } from './config'
-import { parseLeaguesXML, parseTeamsXML, parseRosterXML, parsePlayerStatsXML, parseStandingsXML, parseScoreboardXML, parseLeagueSettingsXML, ParsedLeague, ParsedTeam, ParsedRosterPlayer, ParsedStandingsTeam, ParsedScoreboard, ParsedLeagueSettings } from './xmlParser'
+import { parseLeaguesXML, parseTeamsXML, parseRosterXML, parsePlayerStatsXML, parseStandingsXML, parseScoreboardXML, parseLeagueSettingsXML, parseDraftResultsXML, ParsedLeague, ParsedTeam, ParsedRosterPlayer, ParsedStandingsTeam, ParsedScoreboard, ParsedLeagueSettings, ParsedDraftResults } from './xmlParser'
 
 export interface YahooLeague {
   league_key: string
@@ -487,6 +487,31 @@ export class YahooFantasyAPI {
       lastWeek: seasonStats.stats, // Week stats are in the stats object
       today: null // Yahoo doesn't provide same-day stats reliably
     }
+  }
+
+  /**
+   * Get draft results for a league (with player details)
+   * @param leagueKey - Full league key in format: 469.l.LEAGUE_ID
+   */
+  async getDraftResults(leagueKey: string): Promise<{ draftResults: ParsedDraftResults; raw?: string }> {
+    if (!this.accessToken) {
+      throw new Error('Access token not set. Please authenticate first.')
+    }
+
+    const endpoint = `/league/${leagueKey}/draftresults/players`
+
+    const response = await this.oauth2.makeRequest(
+      'GET',
+      endpoint,
+      this.accessToken
+    )
+
+    let draftResults: ParsedDraftResults = { picks: [] }
+    if (response.raw) {
+      draftResults = parseDraftResultsXML(response.raw)
+    }
+
+    return { draftResults, raw: response.raw }
   }
 
   // Helper methods to parse XML responses (simplified for MVP)

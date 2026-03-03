@@ -746,6 +746,82 @@ export function parseLeagueSettingsXML(xml: string): ParsedLeagueSettings {
   return settings
 }
 
+// ── Draft Results ──
+
+export interface ParsedDraftResult {
+  pick: number
+  round: number
+  team_key: string
+  player_key: string
+  is_keeper?: boolean
+  player?: {
+    player_key: string
+    player_id: string
+    name: { full: string; first: string; last: string }
+    editorial_team_abbr?: string
+    display_position?: string
+    headshot_url?: string
+  }
+}
+
+export interface ParsedDraftResults {
+  league_key?: string
+  picks: ParsedDraftResult[]
+}
+
+/**
+ * Parse draft results XML from Yahoo API /league/{key}/draftresults
+ */
+export function parseDraftResultsXML(xml: string): ParsedDraftResults {
+  const extractValue = (tag: string, block: string): string | undefined => {
+    const regex = new RegExp(`<${tag}>([\\s\\S]*?)<\\/${tag}>`)
+    const m = block.match(regex)
+    return m ? m[1].trim() : undefined
+  }
+
+  const leagueKey = extractValue('league_key', xml)
+  const picks: ParsedDraftResult[] = []
+
+  const draftResultRegex = /<draft_result>([\s\S]*?)<\/draft_result>/g
+  let dm
+  while ((dm = draftResultRegex.exec(xml)) !== null) {
+    const block = dm[1]
+
+    const pick: ParsedDraftResult = {
+      pick: parseInt(extractValue('pick', block) || '0', 10),
+      round: parseInt(extractValue('round', block) || '0', 10),
+      team_key: extractValue('team_key', block) || '',
+      player_key: extractValue('player_key', block) || '',
+      is_keeper: extractValue('is_keeper', block) === '1',
+    }
+
+    const playerBlock = block.match(/<player>([\s\S]*?)<\/player>/)?.[1]
+    if (playerBlock) {
+      const nameBlock = playerBlock.match(/<name>([\s\S]*?)<\/name>/)?.[1]
+      pick.player = {
+        player_key: extractValue('player_key', playerBlock) || pick.player_key,
+        player_id: extractValue('player_id', playerBlock) || '',
+        name: {
+          full: nameBlock ? (extractValue('full', nameBlock) || '') : '',
+          first: nameBlock ? (extractValue('first', nameBlock) || '') : '',
+          last: nameBlock ? (extractValue('last', nameBlock) || '') : '',
+        },
+        editorial_team_abbr: extractValue('editorial_team_abbr', playerBlock),
+        display_position: extractValue('display_position', playerBlock),
+        headshot_url: extractValue('url', playerBlock.match(/<headshot>([\s\S]*?)<\/headshot>/)?.[1] || ''),
+      }
+    }
+
+    if (pick.team_key) {
+      picks.push(pick)
+    }
+  }
+
+  picks.sort((a, b) => a.pick - b.pick)
+
+  return { league_key: leagueKey, picks }
+}
+
 /**
  * Player statistics interface
  */
