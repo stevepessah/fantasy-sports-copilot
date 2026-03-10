@@ -665,6 +665,23 @@ export interface ParsedLeagueSettings {
   numPlayoffTeams?: number
   waiverType?: string
   waiverRule?: string
+  maxAcquisitions?: number
+  maxAcquisitionsPerWeek?: number
+  maxTrades?: number
+  tradeRejectTime?: number
+  tradeReview?: string
+  playerUniverse?: string
+  postDraftPlayers?: string
+  waiverTime?: number
+  allowDraftPickTrades?: boolean
+  lockEliminatedTeams?: boolean
+  playoffReseeding?: boolean
+  minInningsPerWeek?: number
+  usesLockEliminatedTeams?: boolean
+  weeklyDeadline?: string
+  startScoringOn?: string
+  canTradeDraftPicks?: string
+  sendUnownedReminders?: boolean
 }
 
 /**
@@ -742,6 +759,28 @@ export function parseLeagueSettingsXML(xml: string): ParsedLeagueSettings {
   if (numPlayoff) settings.numPlayoffTeams = parseInt(numPlayoff, 10)
   settings.waiverType = extractValue('waiver_type', settingsBlock)
   settings.waiverRule = extractValue('waiver_rule', settingsBlock)
+
+  const maxAcq = extractValue('max_acquisitions', settingsBlock)
+  if (maxAcq) settings.maxAcquisitions = parseInt(maxAcq, 10)
+  const maxAcqWeek = extractValue('max_weekly_adds', settingsBlock)
+  if (maxAcqWeek) settings.maxAcquisitionsPerWeek = parseInt(maxAcqWeek, 10)
+  const maxTrades = extractValue('max_trades', settingsBlock)
+  if (maxTrades) settings.maxTrades = parseInt(maxTrades, 10)
+  const tradeRejectTime = extractValue('trade_reject_time', settingsBlock)
+  if (tradeRejectTime) settings.tradeRejectTime = parseInt(tradeRejectTime, 10)
+  settings.tradeReview = extractValue('trade_ratify_type', settingsBlock)
+  settings.playerUniverse = extractValue('player_pool', settingsBlock)
+  settings.postDraftPlayers = extractValue('post_draft_players', settingsBlock)
+  const waiverTime = extractValue('waiver_time', settingsBlock)
+  if (waiverTime) settings.waiverTime = parseInt(waiverTime, 10)
+  settings.canTradeDraftPicks = extractValue('can_trade_draft_picks', settingsBlock)
+  const minIP = extractValue('max_innings_pitched', settingsBlock)
+  if (minIP) settings.minInningsPerWeek = parseInt(minIP, 10)
+  settings.weeklyDeadline = extractValue('weekly_deadline', settingsBlock)
+  settings.startScoringOn = extractValue('start_week', settingsBlock)
+  settings.usesPlayoffReseeding = extractValue('uses_playoff_reseeding', settingsBlock) === '1'
+  settings.usesLockEliminatedTeams = extractValue('uses_lock_eliminated_teams', settingsBlock) === '1'
+  settings.sendUnownedReminders = extractValue('send_unowned_reminders', settingsBlock) === '1'
 
   return settings
 }
