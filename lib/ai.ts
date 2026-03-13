@@ -202,6 +202,7 @@ win their leagues through natural conversation.
 
 ## CRITICAL RESPONSE RULES
 - NEVER give a canned "I'm here to help! You can ask me to:" bullet-point menu. This is lazy and unhelpful.
+- NEVER say "Give me a moment..." or "Let me analyze..." and then stop. Actually DO the analysis inline.
 - ALWAYS attempt to answer the user's actual question, even if you need to make reasonable assumptions.
 - If you have league settings data below, USE IT to answer questions about stats, categories, scoring, etc.
 - If you have roster data below, USE IT to give personalized analysis rather than generic advice.
@@ -209,6 +210,19 @@ win their leagues through natural conversation.
 - Be conversational. Respond naturally to conversational messages. If someone says "hey" or "what's up", respond warmly.
 - When the user asks about their league (stats, categories, format, settings), look at the League Settings section below for the actual answer.
 - You can and should answer general fantasy baseball knowledge questions directly, without needing league-specific data.
+
+## LINEUP & ACTION REQUESTS — ALWAYS GIVE REAL ANALYSIS
+When the user asks to "set my lineup", "optimize lineup", "who should I start", "best lineup", etc.:
+- Look at the roster data in the "User's Actual Roster & Statistics" section below.
+- Identify SPECIFIC players who should start vs sit, WITH reasoning for each decision.
+- Reference matchups, recent performance, platoon splits, and stats to justify your choices.
+- If a player is injured or on the IL, flag it and suggest alternatives.
+- Give a concrete, actionable lineup — not a vague promise to "analyze" it.
+- If no roster data is available, say so clearly and suggest connecting Yahoo.
+
+When the user asks to view standings, matchups, or waivers:
+- If you have the relevant data, summarize key insights (who's hot, who's trending, matchup edges).
+- Provide actual analysis, not just "here are your standings" — tell them what matters.
 
 ${FANTASY_BASEBALL_EXPERTISE}
 
@@ -287,33 +301,10 @@ IMPORTANT RULES:
       { role: 'user' as const, content: userMessage },
     ]
 
-    // Define functions for structured actions
+    // Structured function calling only for actions that need extracted parameters.
+    // Simple actions (lineup, teams, matchup, waivers) are handled via extractAction
+    // so the model can respond naturally with real analysis instead of canned strings.
     const functions = [
-      {
-        name: 'view_teams',
-        description: 'Show all teams in the league with standings',
-        parameters: { type: 'object', properties: {} },
-      },
-      {
-        name: 'set_lineup',
-        description: 'Set or optimize the user\'s lineup',
-        parameters: { type: 'object', properties: {} },
-      },
-      {
-        name: 'show_lineup',
-        description: 'Show the user\'s current lineup',
-        parameters: { type: 'object', properties: {} },
-      },
-      {
-        name: 'show_matchup',
-        description: 'Show the user\'s current matchup/opponent',
-        parameters: { type: 'object', properties: {} },
-      },
-      {
-        name: 'show_waivers',
-        description: 'Show available players on waivers or free agents',
-        parameters: { type: 'object', properties: {} },
-      },
       {
         name: 'evaluate_trade',
         description: 'Evaluate a proposed trade between players. Use when the user asks about trading, whether a trade is fair, or wants trade advice. Analyze using replacement level, positional scarcity, category need, and underlying metrics.',
@@ -402,10 +393,8 @@ IMPORTANT RULES:
           }
         }
 
-        const naturalResponse = this.generateResponseForAction(functionName, context)
-        
         return {
-          message: naturalResponse || responseText,
+          message: responseText || 'Let me look into that for you.',
           action,
         }
       }
@@ -468,23 +457,6 @@ IMPORTANT RULES:
     }
   }
 
-  private generateResponseForAction(functionName: string, context: AIContext): string {
-    switch (functionName) {
-      case 'view_teams':
-        return "I'll show you all the teams in your league. Check the card below for the full standings!"
-      case 'set_lineup':
-        return "I'll analyze your roster and set your optimal lineup based on matchups, projections, and recent performance. Give me a moment..."
-      case 'show_lineup':
-        return "Here's your current lineup:"
-      case 'show_matchup':
-        return "Let me show you your matchup for this week:"
-      case 'show_waivers':
-        return "I'll help you find the best available players. Let me check the waiver wire..."
-      default:
-        return ''
-    }
-  }
-
   private processWithRules(userMessage: string, context: AIContext): AIResponse {
     const lowerMessage = userMessage.toLowerCase()
 
@@ -539,7 +511,10 @@ IMPORTANT RULES:
       (lowerMessage.includes('list') && lowerMessage.includes('teams'))
     ) {
       return {
-        message: "I'll show you all the teams in your league. Check the card below for the full standings!",
+        message: context.league
+          ? `Here are the current standings for **${context.league.name}**:`
+          : "Here are your league standings:",
+        action: { type: 'view_teams' },
       }
     }
 
@@ -647,15 +622,16 @@ IMPORTANT RULES:
   }
 
   private handleLineupManagement(message: string, context: AIContext): AIResponse {
-    // If we have Yahoo roster context, we can work with that even without local DB
+    const lowerMsg = message.toLowerCase()
+    const isSet = lowerMsg.includes('set') || lowerMsg.includes('optimize') || lowerMsg.includes('optimal') || lowerMsg.includes('best')
+    const actionType = isSet ? 'set_lineup' : 'show_lineup'
+
     if (context.yahooRosterContext) {
       return {
-        message: "I'll analyze your roster and help optimize your lineup based on matchups, projections, and recent performance. Give me a moment...",
+        message: `Here's your current roster. ${isSet ? 'I\'ve highlighted the optimal starters based on your league format.' : 'Take a look and let me know if you want lineup advice.'}`,
         action: {
-          type: 'show_lineup',
-          data: {
-            teamId: context.teamId,
-          },
+          type: actionType,
+          data: { teamId: context.teamId },
         },
       }
     }
@@ -668,23 +644,19 @@ IMPORTANT RULES:
 
     if (!context.roster) {
       return {
-        message: "I'm having trouble loading your roster right now. Let me try to pull it up — give me a moment...",
+        message: "I'm having trouble loading your roster right now. Let me try to pull it up.",
         action: {
           type: 'show_lineup',
-          data: {
-            teamId: context.teamId,
-          },
+          data: { teamId: context.teamId },
         },
       }
     }
 
     return {
-      message: "I'll analyze your roster and set your optimal lineup based on matchups, projections, and recent performance. Give me a moment...",
+      message: `Here's your lineup. ${isSet ? 'I\'ve set it to the optimal configuration based on matchups and projections.' : 'Let me know if you\'d like me to optimize it.'}`,
       action: {
-        type: 'set_lineup',
-        data: {
-          teamId: context.teamId,
-        },
+        type: actionType,
+        data: { teamId: context.teamId },
       },
     }
   }
@@ -906,6 +878,16 @@ IMPORTANT RULES:
         type: 'show_matchup',
         data: { teamId: context.teamId, leagueId: context.leagueId },
       }
+    }
+
+    // Waivers
+    if (
+      lowerMessage.includes('waiver') ||
+      lowerMessage.includes('free agent') ||
+      lowerMessage.includes('who should i pick up') ||
+      lowerMessage.includes('available players')
+    ) {
+      return { type: 'show_waivers' }
     }
 
     return undefined
