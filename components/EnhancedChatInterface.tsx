@@ -450,8 +450,8 @@ export default function EnhancedChatInterface({ leagueId, userId, initialMessage
 
   const handleQuickAction = useCallback((action: QuickAction) => {
     hapticTap()
+    setActiveTab(null)
     if (action.prefill) {
-      // Just populate the input and focus — let the user finish typing
       setInput(action.command)
       setShowQuickActions(false)
       setDrawerOpen(false)
@@ -459,7 +459,6 @@ export default function EnhancedChatInterface({ leagueId, userId, initialMessage
         const el = inputRef.current
         if (el) {
           el.focus()
-          // Move cursor to end of the prefilled text
           const len = action.command.length
           if ('setSelectionRange' in el) {
             el.setSelectionRange(len, len)
@@ -501,6 +500,7 @@ export default function EnhancedChatInterface({ leagueId, userId, initialMessage
     setConversationId(newConv.id)
     setActiveConversationId(newConv.id)
     setMessages([])
+    setActiveTab(null)
     setShowHistory(false)
     setDrawerOpen(false)
   }, [])
@@ -512,6 +512,7 @@ export default function EnhancedChatInterface({ leagueId, userId, initialMessage
       setActiveConversationId(conv.id)
       setMessages(conv.messages)
     }
+    setActiveTab(null)
     setShowHistory(false)
     setDrawerOpen(false)
   }, [])
