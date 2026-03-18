@@ -524,7 +524,8 @@ function RosterListCard({ card, onAction }: { card: Card; onAction?: (cmd: strin
   // ── Filter states ──
   const [positionFilter, setPositionFilter] = useState<string>('All')
   const [teamFilter, setTeamFilter] = useState<string>('All')
-  const [statusFilter, setStatusFilter] = useState<string>('')
+  const initialStatus = p.defaultStatus === 'A' ? 'A' : p.defaultStatus === 'W' ? 'W' : p.defaultStatus === 'FA' ? 'FA' : ''
+  const [statusFilter, setStatusFilter] = useState<string>(initialStatus)
 
   // Season toggle state
   const [selectedSeason, setSelectedSeason] = useState(0) // 0 = current
@@ -532,10 +533,10 @@ function RosterListCard({ card, onAction }: { card: Card; onAction?: (cmd: strin
   const cacheKey = (pt: string, status: string, season: number) => `${p.leagueKey || ''}_${pt}_${status}_${season}`
 
   const [playerCache, setPlayerCache] = useState<Record<string, any[]>>({
-    [cacheKey(p.positionType || 'B', '', 0)]: p.players || [],
+    [cacheKey(p.positionType || 'B', initialStatus, 0)]: p.players || [],
   })
   const [totalCache, setTotalCache] = useState<Record<string, number>>({
-    [cacheKey(p.positionType || 'B', '', 0)]: p.total || 0,
+    [cacheKey(p.positionType || 'B', initialStatus, 0)]: p.total || 0,
   })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)

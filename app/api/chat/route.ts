@@ -639,7 +639,7 @@ export async function POST(request: NextRequest) {
 
           const data = await fetchLeaguePlayers(api, {
             leagueKey: context.yahooLeagueKey,
-            status: 'FA',
+            status: 'A',
           })
 
           response.cards.push({
@@ -648,12 +648,12 @@ export async function POST(request: NextRequest) {
             payload: {
               players: data.players,
               total: data.total,
-              label: 'Free Agents',
+              label: 'Available',
               leagueKey: context.yahooLeagueKey,
-              defaultStatus: 'Waivers',
+              defaultStatus: 'A',
             },
           })
-          response.message = `There are ${data.total} free agents available on the waiver wire. Here are the top available players ranked by average draft position:`
+          response.message = `There are ${data.total} available players on the waiver wire. Here are the top available players ranked by average draft position:`
         } catch {
           response.message = "Sorry, I couldn't fetch the waiver wire. Please make sure you're connected to Yahoo Fantasy."
         }
@@ -1160,11 +1160,11 @@ async function buildCardsForIntent(
         const { leagues } = await api.getLeagues('mlb')
         const yahooLeague = leagues.find((l: any) => l.is_finished !== '1') || leagues[0]
         if (yahooLeague?.league_key) {
-          const data = await fetchLeaguePlayers(api, { leagueKey: yahooLeague.league_key, status: 'FA' })
+          const data = await fetchLeaguePlayers(api, { leagueKey: yahooLeague.league_key, status: 'A' })
           cards.push({
             type: 'roster_list',
             title: 'Waiver Wire — Available Players',
-            payload: { players: data.players, total: data.total, label: 'Free Agents', leagueKey: yahooLeague.league_key, defaultStatus: 'Waivers' },
+            payload: { players: data.players, total: data.total, label: 'Available', leagueKey: yahooLeague.league_key, defaultStatus: 'A' },
           })
         }
       } catch { /* skip */ }
