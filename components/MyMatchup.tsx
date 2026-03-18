@@ -49,6 +49,17 @@ export default function MyMatchup({ leagueKey }: MyMatchupProps) {
     fetchMatchup(requestedWeek)
   }, [fetchMatchup, requestedWeek])
 
+  // All hooks must be called before any conditional returns
+  const lowerBetterStats = useMemo(() => {
+    const set = new Set(['ERA', 'WHIP', 'BB(P)', 'L'])
+    if (data?.leagueCategories) {
+      for (const cat of data.leagueCategories) {
+        if (cat.sortOrder === '0') set.add(cat.displayName)
+      }
+    }
+    return set
+  }, [data?.leagueCategories])
+
   if (!effectiveLeagueKey) {
     return (
       <div className="flex items-center justify-center py-16 text-slate-400 text-sm">
@@ -88,17 +99,6 @@ export default function MyMatchup({ leagueKey }: MyMatchupProps) {
   const navigateWeek = (week: number) => {
     setRequestedWeek(week)
   }
-
-  // Determine lower-is-better stats from league categories
-  const lowerBetterStats = useMemo(() => {
-    const set = new Set(['ERA', 'WHIP', 'BB(P)', 'L'])
-    if (data.leagueCategories) {
-      for (const cat of data.leagueCategories) {
-        if (cat.sortOrder === '0') set.add(cat.displayName)
-      }
-    }
-    return set
-  }, [data.leagueCategories])
 
   return (
     <div className="flex-1 overflow-auto">
