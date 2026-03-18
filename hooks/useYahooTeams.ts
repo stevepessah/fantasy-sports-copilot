@@ -14,6 +14,7 @@ export interface YahooTeam {
     nickname?: string
     guid: string
     is_commissioner?: string
+    is_current_login?: string
   }>
 }
 
