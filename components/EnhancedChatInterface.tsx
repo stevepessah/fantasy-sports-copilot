@@ -47,6 +47,12 @@ const LeagueSettings = dynamic(() => import('./LeagueSettings'), {
   loading: () => <div className="text-xs text-slate-400 py-2">Loading…</div>,
   ssr: false,
 })
+
+// Lazy-load League Standings (only when League tab is active)
+const LeagueStandings = dynamic(() => import('./LeagueStandings'), {
+  loading: () => <div className="text-xs text-slate-400 py-2">Loading…</div>,
+  ssr: false,
+})
 // ── Static constants ──
 
 const BOUNCE_DELAY_200 = { animationDelay: '0.2s' } as const
@@ -593,9 +599,8 @@ export default function EnhancedChatInterface({ leagueId, userId, initialMessage
                   }
                   setActiveTab(tab.id)
                   // Dedicated view tabs — no chat command needed
-                  if (tab.id === 'draft' || tab.id === 'settings') return
+                  if (tab.id === 'draft' || tab.id === 'settings' || tab.id === 'league') return
                   // Fire the appropriate command
-                  if (tab.id === 'league') runCommand('show all teams')
                   if (tab.id === 'roster') runCommand('show my roster')
                   if (tab.id === 'matchups') runCommand('show matchup')
                   if (tab.id === 'players') runCommand('show all batters')
@@ -819,7 +824,9 @@ export default function EnhancedChatInterface({ leagueId, userId, initialMessage
 
         {/* Chat Panel / Draft Results */}
         <main className="flex-1 flex flex-col min-w-0">
-          {activeTab === 'draft' ? (
+          {activeTab === 'league' ? (
+            <LeagueStandings leagueKey={selectedLeagueKey} />
+          ) : activeTab === 'draft' ? (
             <DraftResults leagueKey={selectedLeagueKey} />
           ) : activeTab === 'settings' ? (
             <LeagueSettings leagueKey={selectedLeagueKey} />
@@ -969,8 +976,8 @@ export default function EnhancedChatInterface({ leagueId, userId, initialMessage
           </div>
           )}
 
-          {/* Input Bar — hidden when draft/settings tabs are active */}
-          {activeTab !== 'draft' && activeTab !== 'settings' && (
+          {/* Input Bar — hidden when dedicated view tabs are active */}
+          {activeTab !== 'league' && activeTab !== 'draft' && activeTab !== 'settings' && (
           <div className="landscape-compact-footer bg-gradient-to-t from-slate-900 via-slate-800/95 to-slate-800/80 backdrop-blur-md border-t border-slate-700/40 px-2.5 sm:px-4 pt-2.5 sm:pt-3 pb-[calc(env(safe-area-inset-bottom,0px)+0.625rem)] shrink-0">
             {/* Mobile quick actions toggle */}
             {mounted && isNarrow && (
