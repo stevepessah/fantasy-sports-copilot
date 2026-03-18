@@ -195,12 +195,15 @@ export class YahooFantasyAPI {
    * Get roster for a specific team
    * @param teamKey - Full team key in format: 469.l.45462.t.1
    */
-  async getTeamRoster(teamKey: string): Promise<{ players: ParsedRosterPlayer[]; raw?: string }> {
+  async getTeamRoster(teamKey: string, options?: { out?: string }): Promise<{ players: ParsedRosterPlayer[]; raw?: string }> {
     if (!this.accessToken) {
       throw new Error('Access token not set. Please authenticate first.')
     }
 
-    const endpoint = `/team/${teamKey}/roster`
+    let endpoint = `/team/${teamKey}/roster`
+    if (options?.out) {
+      endpoint += `/players;out=${options.out}`
+    }
     
     const response = await this.oauth2.makeRequest(
       'GET',
