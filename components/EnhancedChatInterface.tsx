@@ -59,6 +59,12 @@ const MyRoster = dynamic(() => import('./MyRoster'), {
   loading: () => <div className="text-xs text-slate-400 py-2">Loading…</div>,
   ssr: false,
 })
+
+// Lazy-load My Matchup (only when Matchups tab is active)
+const MyMatchup = dynamic(() => import('./MyMatchup'), {
+  loading: () => <div className="text-xs text-slate-400 py-2">Loading…</div>,
+  ssr: false,
+})
 // ── Static constants ──
 
 const BOUNCE_DELAY_200 = { animationDelay: '0.2s' } as const
@@ -606,9 +612,8 @@ export default function EnhancedChatInterface({ leagueId, userId, initialMessage
                   }
                   setActiveTab(tab.id)
                   // Dedicated view tabs — no chat command needed
-                  if (tab.id === 'league' || tab.id === 'roster' || tab.id === 'draft' || tab.id === 'settings') return
+                  if (tab.id === 'league' || tab.id === 'roster' || tab.id === 'matchups' || tab.id === 'draft' || tab.id === 'settings') return
                   // Fire the appropriate command
-                  if (tab.id === 'matchups') runCommand('show matchup')
                   if (tab.id === 'players') runCommand('show all batters')
                 }}
                 className={`flex-1 flex items-center justify-center gap-1.5 px-2 py-2.5 text-xs sm:text-sm font-medium transition-colors relative ${
@@ -834,6 +839,8 @@ export default function EnhancedChatInterface({ leagueId, userId, initialMessage
             <LeagueStandings leagueKey={selectedLeagueKey} />
           ) : activeTab === 'roster' ? (
             <MyRoster leagueKey={selectedLeagueKey} />
+          ) : activeTab === 'matchups' ? (
+            <MyMatchup leagueKey={selectedLeagueKey} />
           ) : activeTab === 'draft' ? (
             <DraftResults leagueKey={selectedLeagueKey} />
           ) : activeTab === 'settings' ? (
@@ -975,7 +982,7 @@ export default function EnhancedChatInterface({ leagueId, userId, initialMessage
           )}
 
           {/* Input Bar — hidden when dedicated view tabs are active */}
-          {activeTab !== 'league' && activeTab !== 'roster' && activeTab !== 'draft' && activeTab !== 'settings' && (
+          {activeTab !== 'league' && activeTab !== 'roster' && activeTab !== 'matchups' && activeTab !== 'draft' && activeTab !== 'settings' && (
           <div className="landscape-compact-footer bg-gradient-to-t from-slate-900 via-slate-800/95 to-slate-800/80 backdrop-blur-md border-t border-slate-700/40 px-2.5 sm:px-4 pt-2.5 sm:pt-3 pb-[calc(env(safe-area-inset-bottom,0px)+0.625rem)] shrink-0">
             {/* Mobile quick actions toggle */}
             {mounted && isNarrow && (
