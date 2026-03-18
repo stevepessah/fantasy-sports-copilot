@@ -345,7 +345,7 @@ function PlayerRow({
             <img
               src={player.imageUrl}
               alt=""
-              className="w-6 h-6 rounded-full shrink-0 bg-slate-700 hidden sm:block"
+              className="w-12 h-12 rounded-full shrink-0 bg-slate-700"
             />
           )}
           <div className="min-w-0">

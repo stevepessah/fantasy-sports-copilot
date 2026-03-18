@@ -485,7 +485,7 @@ function PlayerRow({
       <td className="py-1.5 px-1 sticky left-10 bg-slate-800/95 z-10 min-w-[120px] sm:min-w-[170px]">
         <div className="flex items-center gap-1.5">
           {player.imageUrl && (
-            <img src={player.imageUrl} alt="" className="w-6 h-6 rounded-full shrink-0 bg-slate-700 hidden sm:block" />
+            <img src={player.imageUrl} alt="" className="w-12 h-12 rounded-full shrink-0 bg-slate-700" />
           )}
           <div className="min-w-0">
             <div className="font-medium text-white truncate max-w-[100px] sm:max-w-[160px] text-[11px] sm:text-xs">
