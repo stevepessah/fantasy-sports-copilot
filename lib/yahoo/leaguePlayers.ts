@@ -50,6 +50,7 @@ async function getCachedStatCategories(
 export interface FetchLeaguePlayersOptions {
   leagueKey: string
   positionType?: string // 'B' | 'P'
+  status?: string       // 'A' = all, 'FA' = free agents, 'T' = taken, 'W' = waivers
   season?: number
 }
 
@@ -57,7 +58,7 @@ export async function fetchLeaguePlayers(
   api: YahooFantasyAPI,
   options: FetchLeaguePlayersOptions,
 ): Promise<{ players: LeaguePlayerEntry[]; total: number; totalAvailable: number }> {
-  const { leagueKey, positionType, season } = options
+  const { leagueKey, positionType, status, season } = options
 
   const currentGameKey = leagueKey.split('.')[0]
   const gameKey =
@@ -84,6 +85,7 @@ export async function fetchLeaguePlayers(
         start,
         count: PAGE_SIZE,
         position: positionType || undefined,
+        status: status || undefined,
         sort: 'AR',
         out: 'stats,ownership',
       })

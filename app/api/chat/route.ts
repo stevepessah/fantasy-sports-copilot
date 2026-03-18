@@ -630,6 +630,38 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // ─── Waivers / Free Agents ─────────────────────────────────────────────
+    if (intent.isWaivers) {
+      if (yahooAccessToken && context.yahooLeagueKey) {
+        try {
+          const api = new YahooFantasyAPI()
+          api.setAccessToken(yahooAccessToken)
+
+          const data = await fetchLeaguePlayers(api, {
+            leagueKey: context.yahooLeagueKey,
+            status: 'FA',
+          })
+
+          response.cards.push({
+            type: 'roster_list',
+            title: 'Waiver Wire — Available Players',
+            payload: {
+              players: data.players,
+              total: data.total,
+              label: 'Free Agents',
+              leagueKey: context.yahooLeagueKey,
+              defaultStatus: 'Waivers',
+            },
+          })
+          response.message = `There are ${data.total} free agents available on the waiver wire. Here are the top available players ranked by average draft position:`
+        } catch {
+          response.message = "Sorry, I couldn't fetch the waiver wire. Please make sure you're connected to Yahoo Fantasy."
+        }
+      } else {
+        response.message = 'Please connect your Yahoo Fantasy account first to view available players.'
+      }
+    }
+
     // ─── Player comparison ──────────────────────────────────────────────────
     if (intent.isCompare && intent.comparePlayerA && intent.comparePlayerB) {
       if (yahooAccessToken && context.yahooLeagueKey) {
@@ -966,7 +998,7 @@ export async function POST(request: NextRequest) {
           // silently skip
         }
       } else if (response.action.type === 'show_waivers') {
-        response.message += '\n\n💡 I can help you find the best available players. Let me check the waiver wire...'
+        // Waivers card is already generated via intent parsing above
       }
     }
 
@@ -1116,6 +1148,23 @@ async function buildCardsForIntent(
             type: 'roster_list',
             title: `All ${label} in Your League`,
             payload: { players: data.players, total: data.total, positionType, label, leagueKey: yahooLeague.league_key },
+          })
+        }
+      } catch { /* skip */ }
+    }
+
+    if (intent.isWaivers && yahooAccessToken) {
+      try {
+        const api = new YahooFantasyAPI()
+        api.setAccessToken(yahooAccessToken)
+        const { leagues } = await api.getLeagues('mlb')
+        const yahooLeague = leagues.find((l: any) => l.is_finished !== '1') || leagues[0]
+        if (yahooLeague?.league_key) {
+          const data = await fetchLeaguePlayers(api, { leagueKey: yahooLeague.league_key, status: 'FA' })
+          cards.push({
+            type: 'roster_list',
+            title: 'Waiver Wire — Available Players',
+            payload: { players: data.players, total: data.total, label: 'Free Agents', leagueKey: yahooLeague.league_key, defaultStatus: 'Waivers' },
           })
         }
       } catch { /* skip */ }
