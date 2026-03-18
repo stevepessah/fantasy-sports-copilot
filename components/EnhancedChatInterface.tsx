@@ -865,27 +865,17 @@ export default function EnhancedChatInterface({ leagueId, userId, initialMessage
                   </div>
                 )}
 
-                <p className="text-xs sm:text-sm">Try asking:</p>
-                {mounted && isNarrow ? (
-                  <div className="mt-4 flex flex-wrap gap-2 justify-center">
-                    {SUGGESTION_PILLS.map(s => (
-                      <button
-                        key={s.cmd}
-                        onClick={() => runCommand(s.cmd)}
-                        className="px-3 py-2 rounded-full border border-slate-700 bg-slate-800/50 hover:bg-slate-700 active:bg-slate-600 text-xs sm:text-sm text-slate-300 transition-colors"
-                      >
-                        {s.label}
-                      </button>
-                    ))}
-                  </div>
-                ) : (
-                  <ul className="mt-4 space-y-2 text-left max-w-md mx-auto">
-                    <li className="text-slate-300">• &quot;Create a 12-team roto league&quot;</li>
-                    <li className="text-slate-300">• &quot;Set my best lineup&quot;</li>
-                    <li className="text-slate-300">• &quot;Who should I draft?&quot;</li>
-                    <li className="text-slate-300">• &quot;Drop Player X for Player Y&quot;</li>
-                  </ul>
-                )}
+                <div className="mt-4 flex flex-wrap gap-2 justify-center">
+                  {SUGGESTION_PILLS.map(s => (
+                    <button
+                      key={s.cmd}
+                      onClick={() => runCommand(s.cmd)}
+                      className="px-3 py-2 rounded-full border border-slate-700 bg-slate-800/50 hover:bg-slate-700 active:bg-slate-600 text-xs sm:text-sm text-slate-300 transition-colors"
+                    >
+                      {s.label}
+                    </button>
+                  ))}
+                </div>
 
                 {/* Keyboard shortcut hint (desktop) */}
                 {mounted && !isNarrow && (
