@@ -3,98 +3,19 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useYahooLeagues } from '@/hooks/useYahooLeagues'
 import { useYahooTeams } from '@/hooks/useYahooTeams'
-import type { RosterPlayerEntry, LeagueStatCategory } from '@/app/api/yahoo/roster-stats/route'
+import type { RosterPlayerEntry } from '@/app/api/yahoo/roster-stats/route'
+import {
+  type ColDef,
+  type LeagueStatCategory,
+  buildColsFromCategories,
+  fmtStat,
+  buildHAB,
+  FALLBACK_BATTER_COLS,
+  FALLBACK_PITCHER_COLS,
+} from '@/lib/statFormatters'
 
 interface MyRosterProps {
   leagueKey: string | null
-}
-
-interface ColDef {
-  key: string
-  label: string
-  composite?: 'h_ab'
-  fmt?: 'rate3' | 'rate2' | 'ip' | 'int'
-}
-
-const RATE_STATS = new Set(['AVG', 'OBP', 'SLG', 'OPS', 'BABIP', 'ISO'])
-const RATE2_STATS = new Set(['ERA', 'WHIP', 'K/9', 'BB/9', 'K/BB', 'HR/9', 'FIP'])
-const IP_STATS = new Set(['IP'])
-
-function inferFormat(displayName: string): ColDef['fmt'] {
-  if (RATE_STATS.has(displayName)) return 'rate3'
-  if (RATE2_STATS.has(displayName)) return 'rate2'
-  if (IP_STATS.has(displayName)) return 'ip'
-  return 'int'
-}
-
-function buildColsFromCategories(
-  categories: LeagueStatCategory[],
-  positionType: 'B' | 'P',
-): ColDef[] {
-  const filtered = categories.filter((c) => c.positionType === positionType)
-  const cols: ColDef[] = []
-
-  if (positionType === 'B') {
-    cols.push({ key: 'H/AB', label: 'H/AB', composite: 'h_ab' })
-  }
-
-  for (const cat of filtered) {
-    if (cat.displayName === 'H' || cat.displayName === 'AB') continue
-    cols.push({
-      key: cat.displayName,
-      label: cat.displayName,
-      fmt: inferFormat(cat.displayName),
-    })
-  }
-
-  return cols
-}
-
-// Fallbacks for when league categories aren't available
-const FALLBACK_BATTER_COLS: ColDef[] = [
-  { key: 'H/AB', label: 'H/AB', composite: 'h_ab' },
-  { key: 'R', label: 'R', fmt: 'int' },
-  { key: 'HR', label: 'HR', fmt: 'int' },
-  { key: 'RBI', label: 'RBI', fmt: 'int' },
-  { key: 'SB', label: 'SB', fmt: 'int' },
-  { key: 'K', label: 'K', fmt: 'int' },
-  { key: 'AVG', label: 'AVG', fmt: 'rate3' },
-  { key: 'OPS', label: 'OPS', fmt: 'rate3' },
-]
-
-const FALLBACK_PITCHER_COLS: ColDef[] = [
-  { key: 'IP', label: 'IP', fmt: 'ip' },
-  { key: 'L', label: 'L', fmt: 'int' },
-  { key: 'SV', label: 'SV', fmt: 'int' },
-  { key: 'K', label: 'K', fmt: 'int' },
-  { key: 'HLD', label: 'HLD', fmt: 'int' },
-  { key: 'ERA', label: 'ERA', fmt: 'rate2' },
-  { key: 'WHIP', label: 'WHIP', fmt: 'rate2' },
-  { key: 'QS', label: 'QS', fmt: 'int' },
-]
-
-function fmtStat(value: number | string | undefined, col: ColDef): string {
-  if (value === undefined || value === '' || value === null) return '-'
-  const n = typeof value === 'string' ? parseFloat(value) : value
-  if (isNaN(n)) return String(value)
-  switch (col.fmt) {
-    case 'rate3': return n >= 0 && n < 2 ? n.toFixed(3).replace(/^0/, '') : n.toFixed(3)
-    case 'rate2': return n.toFixed(2)
-    case 'ip': return n.toFixed(1)
-    case 'int': return Math.round(n).toString()
-    default: return Number.isInteger(n) ? n.toString() : n.toFixed(1)
-  }
-}
-
-function buildHAB(stats: Record<string, number | string>): string {
-  const h = stats['H']
-  const ab = stats['AB']
-  if (h !== undefined && ab !== undefined) {
-    const hv = typeof h === 'number' ? Math.round(h) : h
-    const abv = typeof ab === 'number' ? Math.round(ab) : ab
-    return `${hv}/${abv}`
-  }
-  return '-'
 }
 
 export default function MyRoster({ leagueKey }: MyRosterProps) {

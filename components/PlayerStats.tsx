@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { PlayerStatsSkeleton } from './Skeleton'
+import { formatStatValue as sharedFormatStatValue } from '@/lib/statFormatters'
 
 interface PlayerStatsProps {
   playerKey: string | null
@@ -59,42 +60,8 @@ function isPitcher(positions: string[]): boolean {
   return positions.some(pos => pitcherPositions.includes(pos.toUpperCase()))
 }
 
-// Format stat value for display
 function formatStatValue(value: number | string, label: string): string {
-  if (typeof value === 'string') {
-    const num = parseFloat(value)
-    if (isNaN(num)) return value
-    return formatNumber(num, label)
-  }
-  return formatNumber(value, label)
-}
-
-function formatNumber(value: number, label: string): string {
-  const upper = label.toUpperCase()
-
-  // Rate stats: AVG/OBP/SLG/OPS/BAA → .XXX
-  if (['AVG', 'OBP', 'SLG', 'OPS', 'BAA'].includes(upper)) {
-    if (value >= 0 && value < 1) {
-      return value.toFixed(3).replace(/^0/, '')
-    }
-    return value.toFixed(3)
-  }
-
-  // ERA, WHIP → 2 decimal places
-  if (['ERA', 'WHIP'].includes(upper)) {
-    return value.toFixed(2)
-  }
-
-  // IP → 1 decimal place
-  if (upper === 'IP') {
-    return value.toFixed(1)
-  }
-
-  // All counting stats → whole numbers
-  if (Number.isInteger(value)) {
-    return value.toString()
-  }
-  return Math.round(value).toString()
+  return sharedFormatStatValue(value, label)
 }
 
 // Find a stat entry matching any of the given display names

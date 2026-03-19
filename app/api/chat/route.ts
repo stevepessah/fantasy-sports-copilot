@@ -20,14 +20,7 @@ const ROSTER_CACHE_TTL = 5 * 60 * 1000 // 5 minutes
 const leagueSettingsCache: Record<string, { context: string; timestamp: number }> = {}
 const LEAGUE_SETTINGS_CACHE_TTL = 30 * 60 * 1000 // 30 minutes
 
-// ── Stat ID → abbreviation fallback map (same as rosterContext.ts) ──
-const STAT_ID_TO_ABBR: Record<string, string> = {
-  '60': 'H/AB', '7': 'R', '8': 'H', '9': '2B', '10': '3B',
-  '12': 'HR', '13': 'RBI', '16': 'SB', '18': 'BB', '21': 'K',
-  '3': 'AVG', '4': 'OBP', '5': 'SLG', '55': 'OPS', '6': 'AB', '1': 'GP',
-  '28': 'W', '29': 'L', '32': 'SV', '42': 'HLD', '26': 'ERA',
-  '27': 'WHIP', '39': 'IP', '34': 'K(P)', '37': 'BB(P)', '48': 'QS', '25': 'GS',
-}
+import { STAT_ID_MAP as STAT_ID_TO_ABBR } from '@/lib/statFormatters'
 
 /** Build a rich matchup card payload from Yahoo scoreboard data. */
 async function buildMatchupCards(

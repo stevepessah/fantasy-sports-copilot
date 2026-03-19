@@ -2,12 +2,13 @@
 
 import { useState, useCallback } from 'react'
 import Sparkline from './Sparkline'
+import { formatStatValue, LOWER_IS_BETTER } from '@/lib/statFormatters'
 
 export interface PlayerCompare {
   name: string
   team: string
   position: string
-  positionType?: string // 'B' | 'P'
+  positionType?: string
   stats: Record<string, number | string>
   sparkData?: number[]
 }
@@ -19,26 +20,6 @@ interface CompareCardProps {
   title?: string
   isMixed?: boolean
   onAction?: (command: string) => void
-}
-
-/** Stats where lower is better */
-const LOWER_IS_BETTER = new Set(['ERA', 'WHIP', 'BB', 'L', 'ER', 'H (Pitching)', 'BB (Pitching)'])
-
-function formatStatValue(key: string, value: number | string | undefined): string {
-  if (value === undefined || value === null || value === '') return '–'
-  const n = typeof value === 'string' ? parseFloat(value) : value
-  if (isNaN(n)) return String(value)
-
-  const rateStats = ['AVG', 'OBP', 'SLG', 'OPS', 'WHIP']
-  const rate3Stats = ['AVG', 'OBP', 'SLG', 'OPS']
-
-  if (rate3Stats.includes(key)) {
-    return n >= 0 && n < 10 ? n.toFixed(3).replace(/^0/, '') : n.toFixed(3)
-  }
-  if (rateStats.includes(key)) return n.toFixed(2)
-  if (key === 'ERA') return n.toFixed(2)
-  if (key === 'IP') return n.toFixed(1)
-  return Number.isInteger(n) ? n.toString() : n.toFixed(1)
 }
 
 export default function CompareCard({
@@ -136,7 +117,7 @@ export default function CompareCard({
               <div className={`text-left font-mono tabular-nums ${
                 winner === 'a' ? 'text-green-400 font-bold' : valA === undefined ? 'text-slate-600' : 'text-slate-300'
               }`}>
-                {formatStatValue(key, valA)}
+                {formatStatValue(valA, key)}
               </div>
               <div className="text-center text-slate-500 uppercase text-[10px] font-bold self-center">
                 {key}
@@ -147,7 +128,7 @@ export default function CompareCard({
               <div className={`text-right font-mono tabular-nums ${
                 winner === 'b' ? 'text-green-400 font-bold' : valB === undefined ? 'text-slate-600' : 'text-slate-300'
               }`}>
-                {formatStatValue(key, valB)}
+                {formatStatValue(valB, key)}
               </div>
             </button>
           )

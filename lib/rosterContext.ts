@@ -4,46 +4,13 @@
 
 import { YahooFantasyAPI } from '@/lib/yahoo/api'
 import { ParsedRosterPlayer, ParsedLeagueSettings } from '@/lib/yahoo/xmlParser'
-
-// ─── Stat ID → Display Name Mapping ─────────────────────────────────────────
-// These are the standard Yahoo stat IDs for MLB. We maintain a fallback map
-// in case the dynamic stat_categories fetch fails.
-const BATTER_STAT_IDS: Record<string, string> = {
-  '60': 'H/AB',
-  '7': 'R',
-  '8': 'H',
-  '9': '2B',
-  '10': '3B',
-  '12': 'HR',
-  '13': 'RBI',
-  '16': 'SB',
-  '18': 'BB',
-  '21': 'K',
-  '3': 'AVG',
-  '4': 'OBP',
-  '5': 'SLG',
-  '55': 'OPS',
-  '6': 'AB',
-  '1': 'GP',
-}
-
-const PITCHER_STAT_IDS: Record<string, string> = {
-  '28': 'W',
-  '29': 'L',
-  '32': 'SV',
-  '42': 'HLD',
-  '26': 'ERA',
-  '27': 'WHIP',
-  '39': 'IP',
-  '34': 'K',
-  '37': 'BB',
-  '48': 'QS',
-  '25': 'GP',
-}
-
-// Key stats to include in the LLM context (keeps token count manageable)
-const BATTER_DISPLAY_STATS = ['GP', 'AVG', 'OBP', 'OPS', 'HR', 'R', 'RBI', 'SB', 'H', 'AB', 'BB', 'K']
-const PITCHER_DISPLAY_STATS = ['GP', 'IP', 'ERA', 'WHIP', 'W', 'L', 'SV', 'HLD', 'K', 'BB', 'QS']
+import {
+  BATTER_STAT_IDS,
+  PITCHER_STAT_IDS,
+  BATTER_DISPLAY_STATS,
+  PITCHER_DISPLAY_STATS,
+  formatStatValue as baseFormatStatValue,
+} from '@/lib/statFormatters'
 
 interface RosterContextResult {
   contextString: string
@@ -205,37 +172,10 @@ function formatPlayerRow(
   return `${name} ${pos} ${team} ${slot}  ${statValues.join(' ')}${injury}\n`
 }
 
-/**
- * Format a stat value for display in the context string
- */
 function formatStatValue(value: number | string, statName: string): string {
   if (value === undefined || value === null || value === '') return '  -  '
-  
-  const num = typeof value === 'string' ? parseFloat(value) : value
-  if (isNaN(num)) return String(value).padStart(5)
-
-  const upper = statName.toUpperCase()
-  
-  // Rate stats: 3 decimal places
-  if (['AVG', 'OBP', 'SLG', 'OPS', 'BAA'].includes(upper)) {
-    if (num >= 0 && num < 1) {
-      return num.toFixed(3).replace(/^0/, '').padStart(5)
-    }
-    return num.toFixed(3).padStart(5)
-  }
-
-  // ERA, WHIP: 2 decimal places
-  if (['ERA', 'WHIP'].includes(upper)) {
-    return num.toFixed(2).padStart(5)
-  }
-
-  // IP: 1 decimal place
-  if (upper === 'IP') {
-    return num.toFixed(1).padStart(5)
-  }
-
-  // Counting stats: whole numbers
-  return Math.round(num).toString().padStart(5)
+  const formatted = baseFormatStatValue(value, statName)
+  return formatted === '-' ? '  -  ' : formatted.padStart(5)
 }
 
 /**
