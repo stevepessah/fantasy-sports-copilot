@@ -1,26 +1,29 @@
 // Persistent database layer with in-memory fallback.
-// Uses Upstash Redis when UPSTASH_REDIS_REST_URL is configured;
-// falls back to in-memory Maps for local dev without Redis.
+// Uses Redis (via REDIS_URL) when configured; falls back to
+// in-memory Maps for local dev without Redis.
 
 import { League, Team, Player, Roster, DraftPick, Trade, Matchup } from '@/types'
-import { Redis } from '@upstash/redis'
+import Redis from 'ioredis'
 import { loadMLBPlayersFromCSV } from './loadPlayersFromCSV'
 
 // ── Redis client (lazy, singleton) ──────────────────────────────────────────
 
 let _redis: Redis | null = null
+let _redisReady = false
 
 function getRedis(): Redis | null {
-  if (_redis) return _redis
-  const url = process.env.UPSTASH_REDIS_REST_URL
-  const token = process.env.UPSTASH_REDIS_REST_TOKEN
-  if (!url || !token) return null
-  _redis = new Redis({ url, token })
-  return _redis
-}
-
-function useRedis(): boolean {
-  return !!getRedis()
+  if (_redis) return _redisReady ? _redis : null
+  const url = process.env.REDIS_URL
+  if (!url) return null
+  _redis = new Redis(url, {
+    maxRetriesPerRequest: 2,
+    connectTimeout: 5000,
+    lazyConnect: true,
+  })
+  _redis.on('ready', () => { _redisReady = true })
+  _redis.on('error', (err) => { console.warn('[redis] connection error:', err.message) })
+  _redis.connect().catch(() => {})
+  return null // not ready yet on first call; next call will return it
 }
 
 // ── In-memory fallback stores ───────────────────────────────────────────────
@@ -39,32 +42,46 @@ const memMatchups: Map<string, Matchup> = new Map()
 async function kvGet<T>(collection: string, id: string, fallback: Map<string, T>): Promise<T | undefined> {
   const redis = getRedis()
   if (!redis) return fallback.get(id)
-  const val = await redis.hget<T>(`db:${collection}`, id)
-  return val ?? undefined
+  try {
+    const raw = await redis.hget(`db:${collection}`, id)
+    if (raw == null) return fallback.get(id)
+    return JSON.parse(raw) as T
+  } catch {
+    return fallback.get(id)
+  }
 }
 
 async function kvSet<T>(collection: string, id: string, value: T, fallback: Map<string, T>): Promise<void> {
   fallback.set(id, value)
   const redis = getRedis()
-  if (redis) await redis.hset(`db:${collection}`, { [id]: value })
+  if (!redis) return
+  try {
+    await redis.hset(`db:${collection}`, id, JSON.stringify(value))
+  } catch { /* write-through: memory is already updated */ }
 }
 
 async function kvDel(collection: string, id: string, fallback: Map<string, unknown>): Promise<boolean> {
   const had = fallback.delete(id)
   const redis = getRedis()
-  if (redis) {
+  if (!redis) return had
+  try {
     const removed = await redis.hdel(`db:${collection}`, id)
     return removed > 0 || had
+  } catch {
+    return had
   }
-  return had
 }
 
 async function kvGetAll<T>(collection: string, fallback: Map<string, T>): Promise<T[]> {
   const redis = getRedis()
   if (!redis) return Array.from(fallback.values())
-  const hash = await redis.hgetall<Record<string, T>>(`db:${collection}`)
-  if (!hash || Object.keys(hash).length === 0) return Array.from(fallback.values())
-  return Object.values(hash)
+  try {
+    const hash = await redis.hgetall(`db:${collection}`)
+    if (!hash || Object.keys(hash).length === 0) return Array.from(fallback.values())
+    return Object.values(hash).map((v) => JSON.parse(v) as T)
+  } catch {
+    return Array.from(fallback.values())
+  }
 }
 
 // ── League operations ───────────────────────────────────────────────────────

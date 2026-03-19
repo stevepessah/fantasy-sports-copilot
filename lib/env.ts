@@ -5,8 +5,7 @@ const envSchema = z.object({
   YAHOO_CONSUMER_SECRET: z.string().min(1),
   YAHOO_CALLBACK_URL: z.string().default('http://localhost:3000/api/yahoo/callback'),
   OPENAI_API_KEY: z.string().min(1).optional(),
-  UPSTASH_REDIS_REST_URL: z.string().url().optional(),
-  UPSTASH_REDIS_REST_TOKEN: z.string().min(1).optional(),
+  REDIS_URL: z.string().min(1).optional(),
 })
 
 export type Env = z.infer<typeof envSchema>
@@ -41,5 +40,5 @@ export function hasOpenAIConfig(): boolean {
 }
 
 export function hasRedisConfig(): boolean {
-  return !!(process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN)
+  return !!process.env.REDIS_URL
 }
