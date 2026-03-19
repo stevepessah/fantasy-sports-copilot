@@ -11,8 +11,8 @@
 Make sure your Vercel environment variables are set to the **original app** credentials:
 
 ```
-YAHOO_CONSUMER_KEY=dj0yJmk9aENxNmdMVVlKbW1UJmQ9WVdrOVVFVkRVSFo1Y2xjbWNHbzlNQT09JnM9Y29uc3VtZXJzZWNyZXQmc3Y9MCZ4PTE0
-YAHOO_CONSUMER_SECRET=f6d8351365a6a4a371d204cbc6aff6574a9c23f5
+YAHOO_CONSUMER_KEY=your_consumer_key_here
+YAHOO_CONSUMER_SECRET=your_consumer_secret_here
 YAHOO_CALLBACK_URL=https://fantasy-sports-copilot.vercel.app/api/yahoo/callback
 ```
 

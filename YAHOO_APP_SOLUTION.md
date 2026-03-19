@@ -7,8 +7,8 @@ New Yahoo app only provides Consumer Key, no Consumer Secret. Fantasy Sports API
 
 Since your **original app** had both Consumer Key and Consumer Secret, we should use that one. The original credentials were:
 
-- **Consumer Key**: `dj0yJmk9aENxNmdMVVlKbW1UJmQ9WVdrOVVFVkRVSFo1Y2xjbWNHbzlNQT09JnM9Y29uc3VtZXJzZWNyZXQmc3Y9MCZ4PTE0`
-- **Consumer Secret**: `f6d8351365a6a4a371d204cbc6aff6574a9c23f5`
+- **Consumer Key**: `your_consumer_key_here`
+- **Consumer Secret**: `your_consumer_secret_here`
 
 ## Why This Should Work
 

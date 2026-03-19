@@ -9,11 +9,11 @@
 
 ### For Production:
 - **Name**: `YAHOO_CONSUMER_KEY`
-- **Value**: `dj0yJmk9aENxNmdMVVlKbW1UJmQ9WVdrOVVFVkRVSFo1Y2xjbWNHbzlNQT09JnM9Y29uc3VtZXJzZWNyZXQmc3Y9MCZ4PTE0`
+- **Value**: `your_consumer_key_here`
 - **Environment**: Production, Preview, Development
 
 - **Name**: `YAHOO_CONSUMER_SECRET`
-- **Value**: `f6d8351365a6a4a371d204cbc6aff6574a9c23f5`
+- **Value**: `your_consumer_secret_here`
 - **Environment**: Production, Preview, Development
 
 - **Name**: `YAHOO_CALLBACK_URL`
