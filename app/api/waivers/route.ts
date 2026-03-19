@@ -1,8 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { rosterDB, playerDB, teamDB, leagueDB } from '@/lib/db'
+import { requireYahooAuth } from '@/lib/yahoo/auth'
 
 export async function POST(request: NextRequest) {
   try {
+    const token = await requireYahooAuth()
+    if (!token) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const { teamId, action, playerId, dropPlayerId, leagueId } = await request.json()
 
     if (!teamId || !action || !playerId) {
@@ -102,6 +108,11 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
+    const token = await requireYahooAuth()
+    if (!token) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const { searchParams } = new URL(request.url)
     const teamId = searchParams.get('teamId')
     const position = searchParams.get('position')

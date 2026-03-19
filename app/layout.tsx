@@ -5,7 +5,10 @@ import { YahooAuthProvider } from '@/contexts/YahooAuthContext'
 import { LeagueProvider } from '@/contexts/LeagueContext'
 import { ThemeProvider } from '@/contexts/ThemeContext'
 import { ToastProvider } from '@/components/Toast'
+import { validateEnv } from '@/lib/env'
 import './globals.css'
+
+validateEnv()
 
 const inter = Inter({ subsets: ['latin'] })
 

@@ -1,14 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { playerDB, initializeSampleData } from '@/lib/db'
 import { Sport } from '@/types'
+import { requireYahooAuth } from '@/lib/yahoo/auth'
 
-// Track initialized sports
 const initializedSports = new Set<Sport>()
 
 export const dynamic = 'force-dynamic'
 
 export async function GET(request: NextRequest) {
   try {
+    const token = await requireYahooAuth()
+    if (!token) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const { searchParams } = new URL(request.url)
     const position = searchParams.get('position')
     const search = searchParams.get('search')

@@ -1,24 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { YahooFantasyAPI } from '@/lib/yahoo/api'
 import { MLB_SEASON_TO_GAME_KEY } from '@/lib/yahoo/config'
-import { cookies } from 'next/headers'
+import { withYahooAuth } from '@/lib/yahoo/auth'
 
 export const dynamic = 'force-dynamic'
 
-// Cache stat categories per game key to avoid repeated API calls
 const statCategoriesCache: Record<string, { categories: Record<string, { name: string; displayName: string; positionType: string }>; timestamp: number }> = {}
-const CACHE_TTL = 60 * 60 * 1000 // 1 hour
+const CACHE_TTL = 60 * 60 * 1000
 
 export async function GET(request: NextRequest) {
   try {
-    const cookieStore = await cookies()
-    const accessToken = cookieStore.get('yahoo_access_token')?.value
-    
-    if (!accessToken) {
-      return NextResponse.json(
-        { error: 'Not authenticated' },
-        { status: 401 }
-      )
+    const auth = await withYahooAuth()
+    if (!auth) {
+      return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
     }
     
     const { searchParams } = new URL(request.url)
@@ -35,7 +29,7 @@ export async function GET(request: NextRequest) {
     }
     
     const api = new YahooFantasyAPI()
-    api.setAccessToken(accessToken)
+    api.setAccessToken(auth.accessToken)
     
     // Determine game key for stat categories
     let gameKey = playerKey.split('.')[0] // Extract from player key
@@ -52,7 +46,7 @@ export async function GET(request: NextRequest) {
     // Remap stats from numeric IDs to proper display names
     const remappedStats = remapStats(statsResponse.stats, categoriesData)
     
-    return NextResponse.json(
+    return auth.json(
       {
         stats: remappedStats,
         playerKey,

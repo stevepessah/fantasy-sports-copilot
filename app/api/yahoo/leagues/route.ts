@@ -1,24 +1,19 @@
 // Get Yahoo leagues for authenticated user
 import { NextRequest, NextResponse } from 'next/server'
 import { YahooFantasyAPI } from '@/lib/yahoo/api'
-import { cookies } from 'next/headers'
+import { withYahooAuth } from '@/lib/yahoo/auth'
 
 export const dynamic = 'force-dynamic'
 
 export async function GET(request: NextRequest) {
   try {
-    const cookieStore = await cookies()
-    const accessToken = cookieStore.get('yahoo_access_token')?.value
-    
-    if (!accessToken) {
-      return NextResponse.json(
-        { error: 'Not authenticated. Please connect your Yahoo account first.' },
-        { status: 401 }
-      )
+    const auth = await withYahooAuth()
+    if (!auth) {
+      return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
     }
     
     const api = new YahooFantasyAPI()
-    api.setAccessToken(accessToken)
+    api.setAccessToken(auth.accessToken)
     
     const { searchParams } = new URL(request.url)
     // Game keys: 414 = NFL, 423 = MLB (2024), 406 = MLB (2023), etc.
@@ -36,8 +31,7 @@ export async function GET(request: NextRequest) {
     
     const response = await api.getLeagues(gameKey)
     
-    // Return parsed leagues as JSON
-    return NextResponse.json(
+    return auth.json(
       { leagues: response.leagues, gameKey, count: response.leagues.length },
       { headers: { 'Cache-Control': 'private, s-maxage=60, stale-while-revalidate=300' } },
     )

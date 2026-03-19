@@ -2,20 +2,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { YahooFantasyAPI } from '@/lib/yahoo/api'
 import { MLB_SEASON_TO_GAME_KEY } from '@/lib/yahoo/config'
-import { cookies } from 'next/headers'
+import { withYahooAuth } from '@/lib/yahoo/auth'
 
 export const dynamic = 'force-dynamic'
 
 export async function GET(request: NextRequest) {
   try {
-    const cookieStore = await cookies()
-    const accessToken = cookieStore.get('yahoo_access_token')?.value
-
-    if (!accessToken) {
-      return NextResponse.json(
-        { error: 'Not authenticated. Please connect your Yahoo account first.' },
-        { status: 401 }
-      )
+    const auth = await withYahooAuth()
+    if (!auth) {
+      return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
     }
 
     const { searchParams } = new URL(request.url)
@@ -23,7 +18,7 @@ export async function GET(request: NextRequest) {
     const includeStandings = searchParams.get('standings') !== 'false' // default true
 
     const api = new YahooFantasyAPI()
-    api.setAccessToken(accessToken)
+    api.setAccessToken(auth.accessToken)
 
     // If no season specified, return all seasons the user has leagues for
     if (!seasonParam) {
@@ -45,7 +40,7 @@ export async function GET(request: NextRequest) {
         }))
         .sort((a, b) => parseInt(b.season) - parseInt(a.season))
 
-      return NextResponse.json({ seasons }, {
+      return auth.json({ seasons }, {
         headers: { 'Cache-Control': 's-maxage=120, stale-while-revalidate=600' },
       })
     }
@@ -71,7 +66,7 @@ export async function GET(request: NextRequest) {
     const { leagues } = await api.getLeagues(gameKey)
 
     if (leagues.length === 0) {
-      return NextResponse.json({
+      return auth.json({
         season,
         gameKey,
         leagues: [],
@@ -95,7 +90,7 @@ export async function GET(request: NextRequest) {
       })
     )
 
-    return NextResponse.json({
+    return auth.json({
       season,
       gameKey,
       leagues: leaguesWithStandings,

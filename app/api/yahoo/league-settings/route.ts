@@ -1,19 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { YahooFantasyAPI } from '@/lib/yahoo/api'
-import { cookies } from 'next/headers'
+import { withYahooAuth } from '@/lib/yahoo/auth'
 
 export const dynamic = 'force-dynamic'
 
 export async function GET(request: NextRequest) {
   try {
-    const cookieStore = await cookies()
-    const accessToken = cookieStore.get('yahoo_access_token')?.value
-
-    if (!accessToken) {
-      return NextResponse.json(
-        { error: 'Not authenticated' },
-        { status: 401 }
-      )
+    const auth = await withYahooAuth()
+    if (!auth) {
+      return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
     }
 
     const { searchParams } = new URL(request.url)
@@ -27,7 +22,7 @@ export async function GET(request: NextRequest) {
     }
 
     const api = new YahooFantasyAPI()
-    api.setAccessToken(accessToken)
+    api.setAccessToken(auth.accessToken)
 
     const [settingsResponse, leaguesResponse] = await Promise.all([
       api.getLeagueSettings(leagueKey),
@@ -36,7 +31,7 @@ export async function GET(request: NextRequest) {
 
     const league = leaguesResponse.leagues.find(l => l.league_key === leagueKey)
 
-    return NextResponse.json({
+    return auth.json({
       settings: settingsResponse.settings,
       league: league ? {
         league_key: league.league_key,

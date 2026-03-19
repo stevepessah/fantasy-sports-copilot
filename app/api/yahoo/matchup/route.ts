@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { cookies } from 'next/headers'
 import { YahooFantasyAPI } from '@/lib/yahoo/api'
+import { withYahooAuth } from '@/lib/yahoo/auth'
 
 export const dynamic = 'force-dynamic'
 
@@ -61,9 +61,8 @@ async function getCachedStatCategories(
 
 export async function GET(request: NextRequest) {
   try {
-    const cookieStore = await cookies()
-    const accessToken = cookieStore.get('yahoo_access_token')?.value
-    if (!accessToken) {
+    const auth = await withYahooAuth()
+    if (!auth) {
       return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
     }
 
@@ -77,7 +76,7 @@ export async function GET(request: NextRequest) {
     }
 
     const api = new YahooFantasyAPI()
-    api.setAccessToken(accessToken)
+    api.setAccessToken(auth.accessToken)
 
     const [scoreboardResult, teamsResult, leaguesResult, leagueSettingsResult] = await Promise.all([
       api.getMatchups(leagueKey, week),
@@ -175,7 +174,7 @@ export async function GET(request: NextRequest) {
       leagueCategories,
     }
 
-    return NextResponse.json(response, {
+    return auth.json(response, {
       headers: { 'Cache-Control': 'private, s-maxage=30, stale-while-revalidate=120' },
     })
   } catch (error: any) {

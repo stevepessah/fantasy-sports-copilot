@@ -1,9 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { tradeDB, rosterDB, playerDB, teamDB } from '@/lib/db'
 import { Trade } from '@/types'
+import { requireYahooAuth } from '@/lib/yahoo/auth'
 
 export async function POST(request: NextRequest) {
   try {
+    const token = await requireYahooAuth()
+    if (!token) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const { leagueId, team1Id, team2Id, player1Id, player2Id, message } = await request.json()
 
     if (!leagueId || !team1Id || !team2Id || !player1Id || !player2Id) {
@@ -72,6 +78,11 @@ export async function POST(request: NextRequest) {
 
 export async function PATCH(request: NextRequest) {
   try {
+    const token = await requireYahooAuth()
+    if (!token) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const { tradeId, status } = await request.json()
 
     if (!tradeId || !status) {
@@ -145,6 +156,11 @@ export async function PATCH(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
+    const token = await requireYahooAuth()
+    if (!token) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const { searchParams } = new URL(request.url)
     const leagueId = searchParams.get('leagueId')
     const teamId = searchParams.get('teamId')

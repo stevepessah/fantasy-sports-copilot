@@ -1,12 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { leagueDB, teamDB } from '@/lib/db'
 import { League, Team } from '@/types'
-
 import { getDefaultScoringType } from '@/lib/sports'
 import { Sport } from '@/types'
+import { requireYahooAuth } from '@/lib/yahoo/auth'
 
 export async function POST(request: NextRequest) {
   try {
+    const userId = await requireYahooAuth()
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const { numTeams, scoringType, draftType, name, commissionerId, sport } = await request.json()
 
     if (!numTeams || !draftType || !commissionerId) {
@@ -54,6 +59,11 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
+    const token = await requireYahooAuth()
+    if (!token) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const { searchParams } = new URL(request.url)
     const leagueId = searchParams.get('id')
     const userId = searchParams.get('userId')

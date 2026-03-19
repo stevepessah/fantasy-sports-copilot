@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { cookies } from 'next/headers'
 import { YahooFantasyAPI } from '@/lib/yahoo/api'
+import { withYahooAuth } from '@/lib/yahoo/auth'
 
 export interface LeaguePlayerEntry {
   playerKey: string
@@ -50,9 +50,8 @@ async function getCachedStatCategories(
 
 export async function GET(request: NextRequest) {
   try {
-    const cookieStore = await cookies()
-    const accessToken = cookieStore.get('yahoo_access_token')?.value
-    if (!accessToken) {
+    const auth = await withYahooAuth()
+    if (!auth) {
       return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
     }
 
@@ -70,7 +69,7 @@ export async function GET(request: NextRequest) {
     }
 
     const api = new YahooFantasyAPI()
-    api.setAccessToken(accessToken)
+    api.setAccessToken(auth.accessToken)
 
     // Determine game key — current league key for current season, or mapped key for historical
     const currentGameKey = leagueKey.split('.')[0]
@@ -187,7 +186,7 @@ export async function GET(request: NextRequest) {
       }
     })
 
-    return NextResponse.json({
+    return auth.json({
       players: entries,
       total: entries.length,
       totalAvailable: totalAvailable || entries.length,

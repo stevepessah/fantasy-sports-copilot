@@ -1,9 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { LeagueManager } from '@/lib/league'
 import { leagueDB, rosterDB } from '@/lib/db'
+import { requireYahooAuth } from '@/lib/yahoo/auth'
 
 export async function POST(request: NextRequest) {
   try {
+    const token = await requireYahooAuth()
+    if (!token) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const { teamId, leagueId } = await request.json()
 
     if (!teamId || !leagueId) {
@@ -41,6 +47,11 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
+    const token = await requireYahooAuth()
+    if (!token) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const { searchParams } = new URL(request.url)
     const teamId = searchParams.get('teamId')
     const leagueId = searchParams.get('leagueId')

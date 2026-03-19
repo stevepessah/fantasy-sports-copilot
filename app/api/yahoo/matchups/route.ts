@@ -1,20 +1,15 @@
 // Get matchups for a Yahoo league — returns parsed scoreboard data
 import { NextRequest, NextResponse } from 'next/server'
 import { YahooFantasyAPI } from '@/lib/yahoo/api'
-import { cookies } from 'next/headers'
+import { withYahooAuth } from '@/lib/yahoo/auth'
 
 export const dynamic = 'force-dynamic'
 
 export async function GET(request: NextRequest) {
   try {
-    const cookieStore = await cookies()
-    const accessToken = cookieStore.get('yahoo_access_token')?.value
-    
-    if (!accessToken) {
-      return NextResponse.json(
-        { error: 'Not authenticated' },
-        { status: 401 }
-      )
+    const auth = await withYahooAuth()
+    if (!auth) {
+      return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
     }
     
     const { searchParams } = new URL(request.url)
@@ -29,11 +24,11 @@ export async function GET(request: NextRequest) {
     }
     
     const api = new YahooFantasyAPI()
-    api.setAccessToken(accessToken)
+    api.setAccessToken(auth.accessToken)
     
     const { scoreboard } = await api.getMatchups(leagueKey, week ? parseInt(week) : undefined)
     
-    return NextResponse.json({ scoreboard })
+    return auth.json({ scoreboard })
   } catch (error) {
     console.error('Error fetching Yahoo matchups:', error)
     return NextResponse.json(
