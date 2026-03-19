@@ -19,7 +19,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const league = leagueDB.get(leagueId)
+    const league = await leagueDB.get(leagueId)
     if (!league) {
       return NextResponse.json(
         { error: 'League not found' },
@@ -27,8 +27,8 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const optimal = LeagueManager.optimizeLineup(teamId, league)
-    const updatedRoster = LeagueManager.setLineup(teamId, league)
+    const optimal = await LeagueManager.optimizeLineup(teamId, league)
+    const updatedRoster = await LeagueManager.setLineup(teamId, league)
 
     return NextResponse.json({
       success: true,
@@ -63,7 +63,7 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    const roster = rosterDB.get(teamId)
+    const roster = await rosterDB.get(teamId)
     if (!roster) {
       return NextResponse.json(
         { error: 'Roster not found' },
@@ -71,7 +71,7 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    const league = leagueDB.get(leagueId)
+    const league = await leagueDB.get(leagueId)
     if (!league) {
       return NextResponse.json(
         { error: 'League not found' },

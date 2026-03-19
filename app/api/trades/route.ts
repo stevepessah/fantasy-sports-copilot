@@ -20,8 +20,8 @@ export async function POST(request: NextRequest) {
     }
 
     // Validate players exist
-    const player1 = playerDB.get(player1Id)
-    const player2 = playerDB.get(player2Id)
+    const player1 = await playerDB.get(player1Id)
+    const player2 = await playerDB.get(player2Id)
 
     if (!player1 || !player2) {
       return NextResponse.json(
@@ -31,8 +31,8 @@ export async function POST(request: NextRequest) {
     }
 
     // Validate players are on correct teams
-    const roster1 = rosterDB.get(team1Id)
-    const roster2 = rosterDB.get(team2Id)
+    const roster1 = await rosterDB.get(team1Id)
+    const roster2 = await rosterDB.get(team2Id)
 
     if (!roster1 || !roster2) {
       return NextResponse.json(
@@ -64,7 +64,7 @@ export async function POST(request: NextRequest) {
       message: message || undefined,
     }
 
-    tradeDB.create(trade)
+    await tradeDB.create(trade)
 
     return NextResponse.json(trade, { status: 201 })
   } catch (error) {
@@ -99,7 +99,7 @@ export async function PATCH(request: NextRequest) {
       )
     }
 
-    const trade = tradeDB.get(tradeId)
+    const trade = await tradeDB.get(tradeId)
     if (!trade) {
       return NextResponse.json(
         { error: 'Trade not found' },
@@ -107,17 +107,17 @@ export async function PATCH(request: NextRequest) {
       )
     }
 
-    const updatedTrade = tradeDB.update(tradeId, { status: status as any })
+    const updatedTrade = await tradeDB.update(tradeId, { status: status as any })
 
     // If accepted, execute the trade
     if (status === 'accepted') {
-      const roster1 = rosterDB.get(trade.team1Id)
-      const roster2 = rosterDB.get(trade.team2Id)
+      const roster1 = await rosterDB.get(trade.team1Id)
+      const roster2 = await rosterDB.get(trade.team2Id)
 
       if (roster1 && roster2) {
         // Remove player1 from team1, add player2
         roster1.players = roster1.players.filter((p) => p.playerId !== trade.player1Id)
-        const player2 = playerDB.get(trade.player2Id)
+        const player2 = await playerDB.get(trade.player2Id)
         if (player2) {
           roster1.players.push({
             playerId: trade.player2Id,
@@ -129,7 +129,7 @@ export async function PATCH(request: NextRequest) {
 
         // Remove player2 from team2, add player1
         roster2.players = roster2.players.filter((p) => p.playerId !== trade.player2Id)
-        const player1 = playerDB.get(trade.player1Id)
+        const player1 = await playerDB.get(trade.player1Id)
         if (player1) {
           roster2.players.push({
             playerId: trade.player1Id,
@@ -139,8 +139,8 @@ export async function PATCH(request: NextRequest) {
           })
         }
 
-        rosterDB.update(trade.team1Id, roster1)
-        rosterDB.update(trade.team2Id, roster2)
+        await rosterDB.update(trade.team1Id, roster1)
+        await rosterDB.update(trade.team2Id, roster2)
       }
     }
 
@@ -172,7 +172,7 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    let trades = tradeDB.getByLeague(leagueId)
+    let trades = await tradeDB.getByLeague(leagueId)
 
     if (teamId) {
       trades = trades.filter(

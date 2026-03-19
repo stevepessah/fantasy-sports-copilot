@@ -26,19 +26,19 @@ export class LeagueManager {
     }))
   }
 
-  static optimizeLineup(
+  static async optimizeLineup(
     teamId: string,
     league: League
-  ): OptimalLineupResult {
-    const roster = rosterDB.get(teamId)
+  ): Promise<OptimalLineupResult> {
+    const roster = await rosterDB.get(teamId)
     if (!roster) {
       throw new Error('Roster not found')
     }
 
     // Get player details - filter by sport
-    const players = roster.players
-      .map((rp) => {
-        const player = playerDB.get(rp.playerId)
+    const players = (await Promise.all(roster.players
+      .map(async (rp) => {
+        const player = await playerDB.get(rp.playerId)
         if (!player || player.sport !== league.sport) return null
         return {
           ...player,
@@ -46,7 +46,7 @@ export class LeagueManager {
           isStarter: rp.isStarter,
         }
       })
-      .filter((p): p is Player & { slot: string | undefined; isStarter: boolean } => p !== null)
+    )).filter((p): p is Player & { slot: string | undefined; isStarter: boolean } => p !== null)
 
     // Filter out injured/out players
     const healthyPlayers = players.filter(
@@ -225,9 +225,9 @@ export class LeagueManager {
     }
   }
 
-  static setLineup(teamId: string, league: League): Roster {
-    const optimal = this.optimizeLineup(teamId, league)
-    const roster = rosterDB.get(teamId)
+  static async setLineup(teamId: string, league: League): Promise<Roster> {
+    const optimal = await this.optimizeLineup(teamId, league)
+    const roster = await rosterDB.get(teamId)
     if (!roster) {
       throw new Error('Roster not found')
     }
@@ -247,7 +247,7 @@ export class LeagueManager {
       players: updatedPlayers,
     }
 
-    rosterDB.update(teamId, updatedRoster)
+    await rosterDB.update(teamId, updatedRoster)
     return updatedRoster
   }
 }

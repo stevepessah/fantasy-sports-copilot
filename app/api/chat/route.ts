@@ -20,22 +20,22 @@ const ROSTER_CACHE_TTL = 5 * 60 * 1000
 const leagueSettingsCache: Record<string, { context: string; timestamp: number }> = {}
 const LEAGUE_SETTINGS_CACHE_TTL = 30 * 60 * 1000
 
-function getOptimalLineup(teamId: string, leagueId: string) {
-  const league = leagueDB.get(leagueId)
+async function getOptimalLineup(teamId: string, leagueId: string) {
+  const league = await leagueDB.get(leagueId)
   if (!league) return null
-  return LeagueManager.optimizeLineup(teamId, league)
+  return await LeagueManager.optimizeLineup(teamId, league)
 }
 
-function setOptimalLineup(teamId: string, leagueId: string) {
-  const league = leagueDB.get(leagueId)
+async function setOptimalLineup(teamId: string, leagueId: string) {
+  const league = await leagueDB.get(leagueId)
   if (!league) return null
-  const optimal = LeagueManager.optimizeLineup(teamId, league)
-  LeagueManager.setLineup(teamId, league)
+  const optimal = await LeagueManager.optimizeLineup(teamId, league)
+  await LeagueManager.setLineup(teamId, league)
   return optimal
 }
 
 /** Create a league directly instead of self-fetching /api/leagues. */
-function createLeague(data: any, currentSport: Sport, userId: string): League {
+async function createLeague(data: any, currentSport: Sport, userId: string): Promise<League> {
   const league: League = {
     id: `league_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
     name:
@@ -51,7 +51,7 @@ function createLeague(data: any, currentSport: Sport, userId: string): League {
     createdAt: new Date().toISOString(),
     season: new Date().getFullYear(),
   }
-  return leagueDB.create(league)
+  return await leagueDB.create(league)
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -86,7 +86,7 @@ export async function POST(request: NextRequest) {
     // If no leagueId provided, try to get the first baseball league
     let effectiveLeagueId = leagueId
     if (!effectiveLeagueId) {
-      const allLeagues = leagueDB.getAll()
+      const allLeagues = await leagueDB.getAll()
       const baseballLeague = allLeagues.find((l) => l.sport === 'baseball')
       if (baseballLeague) {
         effectiveLeagueId = baseballLeague.id
@@ -95,18 +95,18 @@ export async function POST(request: NextRequest) {
     }
 
     if (effectiveLeagueId) {
-      const league = leagueDB.get(effectiveLeagueId)
+      const league = await leagueDB.get(effectiveLeagueId)
       if (league) {
         context.league = league
         context.leagueId = effectiveLeagueId
 
         if (userId) {
-          const allTeams = teamDB.getByLeague(effectiveLeagueId)
+          const allTeams = await teamDB.getByLeague(effectiveLeagueId)
           const userTeam = allTeams.find((t) => t.ownerId === userId)
           if (userTeam) {
             context.team = userTeam
             context.teamId = userTeam.id
-            const roster = rosterDB.get(userTeam.id)
+            const roster = await rosterDB.get(userTeam.id)
             if (roster) {
               context.roster = roster
             }
@@ -269,17 +269,17 @@ export async function POST(request: NextRequest) {
 
     if ((intent.isShowLineup || intent.isSetLineup) && context.teamId && context.league) {
       try {
-        const optimal = getOptimalLineup(context.teamId, context.league.id)
+        const optimal = await getOptimalLineup(context.teamId, context.league.id)
         if (optimal) {
-          const slots = optimal.starters.map((s: any) => ({
+          const slots = await Promise.all(optimal.starters.map(async (s: any) => ({
             slot: s.position,
             player: {
-              name: playerDB.get(s.playerId)?.name || 'Unknown',
-              position: playerDB.get(s.playerId)?.position || '',
-              team: playerDB.get(s.playerId)?.team || '',
+              name: (await playerDB.get(s.playerId))?.name || 'Unknown',
+              position: (await playerDB.get(s.playerId))?.position || '',
+              team: (await playerDB.get(s.playerId))?.team || '',
               projectedPoints: s.projectedPoints,
             },
-          }))
+          })))
           
           response.cards.push({
             type: 'lineup',
@@ -403,7 +403,7 @@ export async function POST(request: NextRequest) {
         try {
           let leagueIdToUse = context.leagueId
           if (!leagueIdToUse) {
-            const allLeagues = leagueDB.getAll()
+            const allLeagues = await leagueDB.getAll()
             const baseballLeague = allLeagues.find((l) => l.sport === 'baseball')
             if (baseballLeague) {
               leagueIdToUse = baseballLeague.id
@@ -425,7 +425,7 @@ export async function POST(request: NextRequest) {
             }
           }
 
-          const allTeams = teamDB.getByLeague(leagueIdToUse)
+          const allTeams = await teamDB.getByLeague(leagueIdToUse)
           if (allTeams.length > 0) {
             const sortedTeams = [...allTeams].sort((a, b) => {
               if (b.wins !== a.wins) return b.wins - a.wins
@@ -739,7 +739,7 @@ export async function POST(request: NextRequest) {
       }
       
       if (!player) {
-        const players = playerDB.getAll().filter((p) => p.sport === currentSport)
+        const players = (await playerDB.getAll()).filter((p) => p.sport === currentSport)
         const foundPlayer = findPlayerByNameApprox(playerQuery, players)
         if (foundPlayer) {
           player = foundPlayer
@@ -794,7 +794,7 @@ export async function POST(request: NextRequest) {
     if (response.action) {
       if (response.action.type === 'create_league' && response.action.data) {
         try {
-          const newLeague = createLeague(response.action.data, currentSport, context.userId)
+          const newLeague = await createLeague(response.action.data, currentSport, context.userId)
           response.message += `\n\n✅ League created! Your league ID is: ${newLeague.id}`
           response.action.data = { ...response.action.data, leagueId: newLeague.id }
         } catch {
@@ -802,7 +802,7 @@ export async function POST(request: NextRequest) {
         }
       } else if (response.action.type === 'set_lineup' && context.teamId && context.league) {
         try {
-          const optimal = setOptimalLineup(context.teamId, context.league.id)
+          const optimal = await setOptimalLineup(context.teamId, context.league.id)
           if (optimal) {
             response.message += `\n\n✅ Lineup updated! ${optimal.totalProjected.toFixed(1)} projected points with ${optimal.starters.length} starters.`
           } else {
@@ -819,17 +819,17 @@ export async function POST(request: NextRequest) {
         // Teams card is already generated via intent parsing
       } else if (response.action.type === 'show_lineup' && context.teamId && context.league) {
         try {
-          const optimal = getOptimalLineup(context.teamId, context.league.id)
+          const optimal = await getOptimalLineup(context.teamId, context.league.id)
           if (optimal) {
-            const slots = optimal.starters.map((s: any) => ({
+            const slots = await Promise.all(optimal.starters.map(async (s: any) => ({
               slot: s.position,
               player: {
-                name: playerDB.get(s.playerId)?.name || 'Unknown',
-                position: playerDB.get(s.playerId)?.position || '',
-                team: playerDB.get(s.playerId)?.team || '',
+                name: (await playerDB.get(s.playerId))?.name || 'Unknown',
+                position: (await playerDB.get(s.playerId))?.position || '',
+                team: (await playerDB.get(s.playerId))?.team || '',
                 projectedPoints: s.projectedPoints,
               },
-            }))
+            })))
             
             if (!response.cards) response.cards = []
             response.cards.push({
@@ -848,7 +848,7 @@ export async function POST(request: NextRequest) {
         }
       } else if (response.action.type === 'show_matchup' && context.teamId && context.league) {
         try {
-          const optimal = getOptimalLineup(context.teamId, context.league.id)
+          const optimal = await getOptimalLineup(context.teamId, context.league.id)
           if (optimal) {
             const myProj = optimal.totalProjected
             const oppProj = myProj * 0.95 + Math.random() * 5

@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
       season: new Date().getFullYear(),
     }
 
-    const createdLeague = leagueDB.create(league)
+    const createdLeague = await leagueDB.create(league)
 
     return NextResponse.json(createdLeague, { status: 201 })
   } catch (error) {
@@ -69,7 +69,7 @@ export async function GET(request: NextRequest) {
     const userId = searchParams.get('userId')
 
     if (leagueId) {
-      const league = leagueDB.get(leagueId)
+      const league = await leagueDB.get(leagueId)
       if (!league) {
         return NextResponse.json(
           { error: 'League not found' },
@@ -81,7 +81,7 @@ export async function GET(request: NextRequest) {
 
     if (userId) {
       // Get leagues where user is commissioner or team owner
-      const allLeagues = leagueDB.getAll()
+      const allLeagues = await leagueDB.getAll()
       const userLeagues = allLeagues.filter(
         (l) => l.commissionerId === userId
       )
@@ -89,7 +89,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Return all leagues (for MVP - in production, add pagination)
-    const allLeagues = leagueDB.getAll()
+    const allLeagues = await leagueDB.getAll()
     return NextResponse.json(allLeagues)
   } catch (error) {
     console.error('League fetch error:', error)

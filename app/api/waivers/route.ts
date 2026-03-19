@@ -18,7 +18,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const roster = rosterDB.get(teamId)
+    const roster = await rosterDB.get(teamId)
     if (!roster) {
       return NextResponse.json(
         { error: 'Roster not found' },
@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const player = playerDB.get(playerId)
+    const player = await playerDB.get(playerId)
     if (!player) {
       return NextResponse.json(
         { error: 'Player not found' },
@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
 
     // Get league to verify sport match
     if (leagueId) {
-      const league = leagueDB.get(leagueId)
+      const league = await leagueDB.get(leagueId)
       if (league && player.sport !== league.sport) {
         return NextResponse.json(
           { error: 'Player does not match league sport' },
@@ -67,7 +67,7 @@ export async function POST(request: NextRequest) {
         slot: 'BN',
       })
 
-      rosterDB.update(teamId, roster)
+      await rosterDB.update(teamId, roster)
 
       return NextResponse.json({
         success: true,
@@ -85,7 +85,7 @@ export async function POST(request: NextRequest) {
       }
 
       roster.players.splice(playerIndex, 1)
-      rosterDB.update(teamId, roster)
+      await rosterDB.update(teamId, roster)
 
       return NextResponse.json({
         success: true,
@@ -124,7 +124,7 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    const roster = rosterDB.get(teamId)
+    const roster = await rosterDB.get(teamId)
     if (!roster) {
       return NextResponse.json(
         { error: 'Roster not found' },
@@ -134,11 +134,11 @@ export async function GET(request: NextRequest) {
 
     // Get league to filter by sport
     const leagueId = searchParams.get('leagueId')
-    let availablePlayers = playerDB.getAll()
+    let availablePlayers = await playerDB.getAll()
 
     // Filter by sport if league is provided
     if (leagueId) {
-      const league = leagueDB.get(leagueId)
+      const league = await leagueDB.get(leagueId)
       if (league) {
         availablePlayers = availablePlayers.filter((p) => p.sport === league.sport)
       }

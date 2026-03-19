@@ -1,112 +1,173 @@
-// Simple in-memory database for MVP
-// In production, replace with PostgreSQL, MongoDB, or similar
+// Persistent database layer with in-memory fallback.
+// Uses Upstash Redis when UPSTASH_REDIS_REST_URL is configured;
+// falls back to in-memory Maps for local dev without Redis.
 
 import { League, Team, Player, Roster, DraftPick, Trade, Matchup } from '@/types'
+import { Redis } from '@upstash/redis'
 import { loadMLBPlayersFromCSV } from './loadPlayersFromCSV'
 
-// In-memory stores
-const leagues: Map<string, League> = new Map()
-const teams: Map<string, Team> = new Map()
-const rosters: Map<string, Roster> = new Map()
-const players: Map<string, Player> = new Map()
-const draftPicks: Map<string, DraftPick> = new Map()
-const trades: Map<string, Trade> = new Map()
-const matchups: Map<string, Matchup> = new Map()
+// ── Redis client (lazy, singleton) ──────────────────────────────────────────
 
-// League operations
+let _redis: Redis | null = null
+
+function getRedis(): Redis | null {
+  if (_redis) return _redis
+  const url = process.env.UPSTASH_REDIS_REST_URL
+  const token = process.env.UPSTASH_REDIS_REST_TOKEN
+  if (!url || !token) return null
+  _redis = new Redis({ url, token })
+  return _redis
+}
+
+function useRedis(): boolean {
+  return !!getRedis()
+}
+
+// ── In-memory fallback stores ───────────────────────────────────────────────
+
+const memLeagues: Map<string, League> = new Map()
+const memTeams: Map<string, Team> = new Map()
+const memRosters: Map<string, Roster> = new Map()
+const memPlayers: Map<string, Player> = new Map()
+const memDraftPicks: Map<string, DraftPick> = new Map()
+const memTrades: Map<string, Trade> = new Map()
+const memMatchups: Map<string, Matchup> = new Map()
+
+// ── Generic hash store helpers ──────────────────────────────────────────────
+// Each entity type gets a Redis hash: "db:{collection}" with field = id.
+
+async function kvGet<T>(collection: string, id: string, fallback: Map<string, T>): Promise<T | undefined> {
+  const redis = getRedis()
+  if (!redis) return fallback.get(id)
+  const val = await redis.hget<T>(`db:${collection}`, id)
+  return val ?? undefined
+}
+
+async function kvSet<T>(collection: string, id: string, value: T, fallback: Map<string, T>): Promise<void> {
+  fallback.set(id, value)
+  const redis = getRedis()
+  if (redis) await redis.hset(`db:${collection}`, { [id]: value })
+}
+
+async function kvDel(collection: string, id: string, fallback: Map<string, unknown>): Promise<boolean> {
+  const had = fallback.delete(id)
+  const redis = getRedis()
+  if (redis) {
+    const removed = await redis.hdel(`db:${collection}`, id)
+    return removed > 0 || had
+  }
+  return had
+}
+
+async function kvGetAll<T>(collection: string, fallback: Map<string, T>): Promise<T[]> {
+  const redis = getRedis()
+  if (!redis) return Array.from(fallback.values())
+  const hash = await redis.hgetall<Record<string, T>>(`db:${collection}`)
+  if (!hash || Object.keys(hash).length === 0) return Array.from(fallback.values())
+  return Object.values(hash)
+}
+
+// ── League operations ───────────────────────────────────────────────────────
+
 export const leagueDB = {
-  create: (league: League): League => {
-    leagues.set(league.id, league)
+  async create(league: League): Promise<League> {
+    await kvSet('leagues', league.id, league, memLeagues)
     return league
   },
 
-  get: (id: string): League | undefined => {
-    return leagues.get(id)
+  async get(id: string): Promise<League | undefined> {
+    return kvGet('leagues', id, memLeagues)
   },
 
-  getAll: (): League[] => {
-    return Array.from(leagues.values())
+  async getAll(): Promise<League[]> {
+    return kvGetAll('leagues', memLeagues)
   },
 
-  update: (id: string, updates: Partial<League>): League | undefined => {
-    const league = leagues.get(id)
+  async update(id: string, updates: Partial<League>): Promise<League | undefined> {
+    const league = await this.get(id)
     if (!league) return undefined
     const updated = { ...league, ...updates }
-    leagues.set(id, updated)
+    await kvSet('leagues', id, updated, memLeagues)
     return updated
   },
 
-  delete: (id: string): boolean => {
-    return leagues.delete(id)
+  async delete(id: string): Promise<boolean> {
+    return kvDel('leagues', id, memLeagues as Map<string, unknown>)
   },
 }
 
-// Team operations
+// ── Team operations ─────────────────────────────────────────────────────────
+
 export const teamDB = {
-  create: (team: Team): Team => {
-    teams.set(team.id, team)
+  async create(team: Team): Promise<Team> {
+    await kvSet('teams', team.id, team, memTeams)
     return team
   },
 
-  get: (id: string): Team | undefined => {
-    return teams.get(id)
+  async get(id: string): Promise<Team | undefined> {
+    return kvGet('teams', id, memTeams)
   },
 
-  getByLeague: (leagueId: string): Team[] => {
-    return Array.from(teams.values()).filter((t) => t.leagueId === leagueId)
+  async getByLeague(leagueId: string): Promise<Team[]> {
+    const all = await kvGetAll('teams', memTeams)
+    return all.filter((t) => t.leagueId === leagueId)
   },
 
-  update: (id: string, updates: Partial<Team>): Team | undefined => {
-    const team = teams.get(id)
+  async update(id: string, updates: Partial<Team>): Promise<Team | undefined> {
+    const team = await this.get(id)
     if (!team) return undefined
     const updated = { ...team, ...updates }
-    teams.set(id, updated)
+    await kvSet('teams', id, updated, memTeams)
     return updated
   },
 }
 
-// Roster operations
+// ── Roster operations ───────────────────────────────────────────────────────
+
 export const rosterDB = {
-  create: (roster: Roster): Roster => {
-    rosters.set(roster.teamId, roster)
+  async create(roster: Roster): Promise<Roster> {
+    await kvSet('rosters', roster.teamId, roster, memRosters)
     return roster
   },
 
-  get: (teamId: string): Roster | undefined => {
-    return rosters.get(teamId)
+  async get(teamId: string): Promise<Roster | undefined> {
+    return kvGet('rosters', teamId, memRosters)
   },
 
-  update: (teamId: string, updates: Partial<Roster>): Roster | undefined => {
-    const roster = rosters.get(teamId)
+  async update(teamId: string, updates: Partial<Roster>): Promise<Roster | undefined> {
+    const roster = await this.get(teamId)
     if (!roster) return undefined
     const updated = { ...roster, ...updates }
-    rosters.set(teamId, updated)
+    await kvSet('rosters', teamId, updated, memRosters)
     return updated
   },
 }
 
-// Player operations
+// ── Player operations ───────────────────────────────────────────────────────
+
 export const playerDB = {
-  create: (player: Player): Player => {
-    players.set(player.id, player)
+  async create(player: Player): Promise<Player> {
+    await kvSet('players', player.id, player, memPlayers)
     return player
   },
 
-  get: (id: string): Player | undefined => {
-    return players.get(id)
+  async get(id: string): Promise<Player | undefined> {
+    return kvGet('players', id, memPlayers)
   },
 
-  getAll: (): Player[] => {
-    return Array.from(players.values())
+  async getAll(): Promise<Player[]> {
+    return kvGetAll('players', memPlayers)
   },
 
-  getByPosition: (position: Player['position']): Player[] => {
-    return Array.from(players.values()).filter((p) => p.position === position)
+  async getByPosition(position: Player['position']): Promise<Player[]> {
+    const all = await this.getAll()
+    return all.filter((p) => p.position === position)
   },
 
-  search: (query: string): Player[] => {
+  async search(query: string): Promise<Player[]> {
     const lowerQuery = query.toLowerCase()
-    return Array.from(players.values()).filter(
+    const all = await this.getAll()
+    return all.filter(
       (p) =>
         p.name.toLowerCase().includes(lowerQuery) ||
         p.team.toLowerCase().includes(lowerQuery)
@@ -114,15 +175,17 @@ export const playerDB = {
   },
 }
 
-// Draft operations
+// ── Draft operations ────────────────────────────────────────────────────────
+
 export const draftDB = {
-  create: (pick: DraftPick): DraftPick => {
-    draftPicks.set(pick.id, pick)
+  async create(pick: DraftPick): Promise<DraftPick> {
+    await kvSet('draftPicks', pick.id, pick, memDraftPicks)
     return pick
   },
 
-  getByLeague: (leagueId: string): DraftPick[] => {
-    return Array.from(draftPicks.values())
+  async getByLeague(leagueId: string): Promise<DraftPick[]> {
+    const all = await kvGetAll('draftPicks', memDraftPicks)
+    return all
       .filter((p) => p.leagueId === leagueId)
       .sort((a, b) => {
         if (a.round !== b.round) return a.round - b.round
@@ -130,8 +193,9 @@ export const draftDB = {
       })
   },
 
-  getByTeam: (teamId: string): DraftPick[] => {
-    return Array.from(draftPicks.values())
+  async getByTeam(teamId: string): Promise<DraftPick[]> {
+    const all = await kvGetAll('draftPicks', memDraftPicks)
+    return all
       .filter((p) => p.teamId === teamId)
       .sort((a, b) => {
         if (a.round !== b.round) return a.round - b.round
@@ -140,41 +204,43 @@ export const draftDB = {
   },
 }
 
-// Trade operations
+// ── Trade operations ────────────────────────────────────────────────────────
+
 export const tradeDB = {
-  create: (trade: Trade): Trade => {
-    trades.set(trade.id, trade)
+  async create(trade: Trade): Promise<Trade> {
+    await kvSet('trades', trade.id, trade, memTrades)
     return trade
   },
 
-  get: (id: string): Trade | undefined => {
-    return trades.get(id)
+  async get(id: string): Promise<Trade | undefined> {
+    return kvGet('trades', id, memTrades)
   },
 
-  getByLeague: (leagueId: string): Trade[] => {
-    return Array.from(trades.values()).filter((t) => t.leagueId === leagueId)
+  async getByLeague(leagueId: string): Promise<Trade[]> {
+    const all = await kvGetAll('trades', memTrades)
+    return all.filter((t) => t.leagueId === leagueId)
   },
 
-  update: (id: string, updates: Partial<Trade>): Trade | undefined => {
-    const trade = trades.get(id)
+  async update(id: string, updates: Partial<Trade>): Promise<Trade | undefined> {
+    const trade = await this.get(id)
     if (!trade) return undefined
     const updated = { ...trade, ...updates }
-    trades.set(id, updated)
+    await kvSet('trades', id, updated, memTrades)
     return updated
   },
 }
 
-// Matchup operations
+// ── Matchup operations ──────────────────────────────────────────────────────
+
 export const matchupDB = {
-  create: (matchup: Matchup): Matchup => {
-    matchups.set(matchup.id, matchup)
+  async create(matchup: Matchup): Promise<Matchup> {
+    await kvSet('matchups', matchup.id, matchup, memMatchups)
     return matchup
   },
 
-  getByLeague: (leagueId: string, week?: number): Matchup[] => {
-    let results = Array.from(matchups.values()).filter(
-      (m) => m.leagueId === leagueId
-    )
+  async getByLeague(leagueId: string, week?: number): Promise<Matchup[]> {
+    const all = await kvGetAll('matchups', memMatchups)
+    let results = all.filter((m) => m.leagueId === leagueId)
     if (week !== undefined) {
       results = results.filter((m) => m.week === week)
     }
@@ -182,30 +248,25 @@ export const matchupDB = {
   },
 }
 
-// Initialize sample player data
-export function initializeSampleData(sport?: 'football' | 'baseball') {
+// ── Sample data initializer ─────────────────────────────────────────────────
+
+let baseballPlayersLoaded = false
+
+export async function initializeSampleData(sport?: 'football' | 'baseball') {
   if (sport === 'baseball') {
-    initializeBaseballPlayers()
+    await initializeBaseballPlayers()
   }
 }
 
-// Track if baseball players have been loaded from CSV
-let baseballPlayersLoaded = false
-
-function initializeBaseballPlayers() {
-  // Only load once to avoid duplicates
-  if (baseballPlayersLoaded) {
-    return
-  }
+async function initializeBaseballPlayers() {
+  if (baseballPlayersLoaded) return
 
   try {
-    // Try to load from CSV first
     const csvPlayers = loadMLBPlayersFromCSV()
-    
     if (csvPlayers.length > 0) {
-      csvPlayers.forEach((player) => {
-        playerDB.create(player)
-      })
+      for (const player of csvPlayers) {
+        await playerDB.create(player)
+      }
       baseballPlayersLoaded = true
       return
     }
@@ -213,34 +274,22 @@ function initializeBaseballPlayers() {
     console.warn('Could not load players from CSV, falling back to sample data:', error)
   }
 
-  // Fallback to sample data if CSV loading fails
   const samplePlayers: Player[] = [
-    // Catchers
     { id: 'b1', name: 'Adley Rutschman', sport: 'baseball', position: 'C', team: 'BAL', projectedPoints: 12.5, adp: 45 },
     { id: 'b2', name: 'J.T. Realmuto', sport: 'baseball', position: 'C', team: 'PHI', projectedPoints: 11.8, adp: 60 },
     { id: 'b3', name: 'Will Smith', sport: 'baseball', position: 'C', team: 'LAD', projectedPoints: 11.5, adp: 55 },
-    
-    // First Base
     { id: 'b4', name: 'Vladimir Guerrero Jr.', sport: 'baseball', position: '1B', team: 'TOR', projectedPoints: 15.2, adp: 25 },
     { id: 'b5', name: 'Freddie Freeman', sport: 'baseball', position: '1B', team: 'LAD', projectedPoints: 14.8, adp: 20 },
     { id: 'b6', name: 'Pete Alonso', sport: 'baseball', position: '1B', team: 'NYM', projectedPoints: 14.5, adp: 22 },
-    
-    // Second Base
     { id: 'b7', name: 'Jose Altuve', sport: 'baseball', position: '2B', team: 'HOU', projectedPoints: 13.5, adp: 30 },
     { id: 'b8', name: 'Marcus Semien', sport: 'baseball', position: '2B', team: 'TEX', projectedPoints: 13.2, adp: 35 },
     { id: 'b9', name: 'Ozzie Albies', sport: 'baseball', position: '2B', team: 'ATL', projectedPoints: 12.8, adp: 40 },
-    
-    // Third Base
     { id: 'b10', name: 'Jose Ramirez', sport: 'baseball', position: '3B', team: 'CLE', projectedPoints: 15.5, adp: 15 },
     { id: 'b11', name: 'Manny Machado', sport: 'baseball', position: '3B', team: 'SD', projectedPoints: 14.2, adp: 28 },
     { id: 'b12', name: 'Rafael Devers', sport: 'baseball', position: '3B', team: 'BOS', projectedPoints: 14.0, adp: 32 },
-    
-    // Shortstop
     { id: 'b13', name: 'Trea Turner', sport: 'baseball', position: 'SS', team: 'PHI', projectedPoints: 16.2, adp: 8 },
     { id: 'b14', name: 'Bo Bichette', sport: 'baseball', position: 'SS', team: 'TOR', projectedPoints: 15.8, adp: 12 },
     { id: 'b15', name: 'Fernando Tatis Jr.', sport: 'baseball', position: 'SS', team: 'SD', projectedPoints: 15.5, adp: 10 },
-    
-    // Outfielders
     { id: 'b16', name: 'Ronald Acuna Jr.', sport: 'baseball', position: 'OF', team: 'ATL', projectedPoints: 17.5, adp: 1 },
     { id: 'b17', name: 'Juan Soto', sport: 'baseball', position: 'OF', team: 'NYY', projectedPoints: 16.8, adp: 3 },
     { id: 'b18', name: 'Mookie Betts', sport: 'baseball', position: 'OF', team: 'LAD', projectedPoints: 16.5, adp: 5 },
@@ -249,23 +298,18 @@ function initializeBaseballPlayers() {
     { id: 'b21', name: 'Kyle Tucker', sport: 'baseball', position: 'OF', team: 'HOU', projectedPoints: 15.5, adp: 9 },
     { id: 'b22', name: 'Julio Rodriguez', sport: 'baseball', position: 'OF', team: 'SEA', projectedPoints: 15.2, adp: 11 },
     { id: 'b23', name: 'Yordan Alvarez', sport: 'baseball', position: 'OF', team: 'HOU', projectedPoints: 15.0, adp: 13 },
-    
-    // Starting Pitchers
     { id: 'b24', name: 'Gerrit Cole', sport: 'baseball', position: 'SP', team: 'NYY', projectedPoints: 18.5, adp: 18 },
     { id: 'b25', name: 'Spencer Strider', sport: 'baseball', position: 'SP', team: 'ATL', projectedPoints: 18.2, adp: 16 },
     { id: 'b26', name: 'Corbin Burnes', sport: 'baseball', position: 'SP', team: 'MIL', projectedPoints: 17.8, adp: 19 },
     { id: 'b27', name: 'Jacob deGrom', sport: 'baseball', position: 'SP', team: 'TEX', projectedPoints: 17.5, adp: 21 },
     { id: 'b28', name: 'Shane McClanahan', sport: 'baseball', position: 'SP', team: 'TB', projectedPoints: 17.2, adp: 24 },
     { id: 'b29', name: 'Zac Gallen', sport: 'baseball', position: 'SP', team: 'ARI', projectedPoints: 16.8, adp: 26 },
-    
-    // Relief Pitchers
     { id: 'b30', name: 'Josh Hader', sport: 'baseball', position: 'RP', team: 'HOU', projectedPoints: 14.5, adp: 50 },
     { id: 'b31', name: 'Emmanuel Clase', sport: 'baseball', position: 'RP', team: 'CLE', projectedPoints: 14.2, adp: 52 },
     { id: 'b32', name: 'Devin Williams', sport: 'baseball', position: 'RP', team: 'MIL', projectedPoints: 13.8, adp: 58 },
   ]
 
-  samplePlayers.forEach((player) => {
-    // Add some projected stats for baseball
+  for (const player of samplePlayers) {
     if (player.position === 'SP' || player.position === 'RP') {
       player.projectedStats = {
         wins: player.position === 'SP' ? 15 : 0,
@@ -283,8 +327,8 @@ function initializeBaseballPlayers() {
         sb: 15,
       }
     }
-    playerDB.create(player)
-  })
-  
+    await playerDB.create(player)
+  }
+
   baseballPlayersLoaded = true
 }

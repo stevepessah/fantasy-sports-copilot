@@ -19,7 +19,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const league = leagueDB.get(leagueId)
+    const league = await leagueDB.get(leagueId)
     if (!league) {
       return NextResponse.json(
         { error: 'League not found' },
@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const player = playerDB.get(playerId)
+    const player = await playerDB.get(playerId)
     if (!player) {
       return NextResponse.json(
         { error: 'Player not found' },
@@ -44,7 +44,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Get existing picks to calculate round and pick number
-    const existingPicks = draftDB.getByLeague(leagueId)
+    const existingPicks = await draftDB.getByLeague(leagueId)
     const totalPicks = existingPicks.length
     const round = Math.floor(totalPicks / league.numTeams) + 1
     const pickInRound = (totalPicks % league.numTeams) + 1
@@ -60,10 +60,10 @@ export async function POST(request: NextRequest) {
       timestamp: new Date().toISOString(),
     }
 
-    draftDB.create(draftPick)
+    await draftDB.create(draftPick)
 
     // Add player to roster
-    let roster = rosterDB.get(teamId)
+    let roster = await rosterDB.get(teamId)
     if (!roster) {
       roster = {
         teamId,
@@ -78,7 +78,7 @@ export async function POST(request: NextRequest) {
       slot: 'BN',
     })
 
-    rosterDB.update(teamId, roster)
+    await rosterDB.update(teamId, roster)
 
     return NextResponse.json(draftPick, { status: 201 })
   } catch (error) {
@@ -109,11 +109,11 @@ export async function GET(request: NextRequest) {
     }
 
     if (teamId) {
-      const picks = draftDB.getByTeam(teamId)
+      const picks = await draftDB.getByTeam(teamId)
       return NextResponse.json(picks)
     }
 
-    const picks = draftDB.getByLeague(leagueId)
+    const picks = await draftDB.getByLeague(leagueId)
     return NextResponse.json(picks)
   } catch (error) {
     console.error('Draft fetch error:', error)

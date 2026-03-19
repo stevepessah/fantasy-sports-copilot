@@ -21,19 +21,19 @@ export async function GET(request: NextRequest) {
 
     // Initialize data for the requested sport if not already done
     if (!initializedSports.has(sport)) {
-      initializeSampleData(sport)
+      await initializeSampleData(sport)
       initializedSports.add(sport)
     }
 
-    let players = playerDB.getAll().filter((p) => p.sport === sport)
+    let players = (await playerDB.getAll()).filter((p) => p.sport === sport)
 
     if (position) {
-      const positionPlayers = playerDB.getByPosition(position as any)
+      const positionPlayers = await playerDB.getByPosition(position as any)
       players = positionPlayers.filter((p) => p.sport === sport)
     }
 
     if (search) {
-      const searchPlayers = playerDB.search(search)
+      const searchPlayers = await playerDB.search(search)
       players = searchPlayers.filter((p) => p.sport === sport)
     }
 

@@ -7,10 +7,10 @@ import { fetchLeaguePlayers } from '@/lib/yahoo/leaguePlayers'
 import { getPlayerOwnership } from '@/lib/yahoo/playerSearch'
 import { buildMatchupCards } from './matchupCards'
 
-function getOptimalLineup(teamId: string, leagueId: string) {
-  const league = leagueDB.get(leagueId)
+async function getOptimalLineup(teamId: string, leagueId: string) {
+  const league = await leagueDB.get(leagueId)
   if (!league) return null
-  return LeagueManager.optimizeLineup(teamId, league)
+  return await LeagueManager.optimizeLineup(teamId, league)
 }
 
 export async function buildCardsForIntent(
@@ -25,7 +25,7 @@ export async function buildCardsForIntent(
 
   try {
     if ((intent.isShowLineup || intent.isSetLineup) && context.teamId && context.league) {
-      const optimal = getOptimalLineup(context.teamId, context.league.id)
+      const optimal = await getOptimalLineup(context.teamId, context.league.id)
       if (optimal) {
         cards.push({
           type: 'lineup',
@@ -33,15 +33,15 @@ export async function buildCardsForIntent(
           payload: {
             teamName: context.team?.name || 'Your Team',
             week: context.league.week || 1,
-            slots: optimal.starters.map((s: any) => ({
+            slots: await Promise.all(optimal.starters.map(async (s: any) => ({
               slot: s.position,
               player: {
-                name: playerDB.get(s.playerId)?.name || 'Unknown',
-                position: playerDB.get(s.playerId)?.position || '',
-                team: playerDB.get(s.playerId)?.team || '',
+                name: (await playerDB.get(s.playerId))?.name || 'Unknown',
+                position: (await playerDB.get(s.playerId))?.position || '',
+                team: (await playerDB.get(s.playerId))?.team || '',
                 projectedPoints: s.projectedPoints,
               },
-            })),
+            }))),
             projectedTotal: optimal.totalProjected,
           },
         })
@@ -97,7 +97,7 @@ export async function buildCardsForIntent(
       if (!standingsDone) {
         let leagueIdToUse = context.leagueId
         if (!leagueIdToUse) {
-          const allLeagues = leagueDB.getAll()
+          const allLeagues = await leagueDB.getAll()
           const baseballLeague = allLeagues.find((l: any) => l.sport === 'baseball')
           if (baseballLeague) { leagueIdToUse = baseballLeague.id }
           else if (yahooAccessToken) {
@@ -108,7 +108,7 @@ export async function buildCardsForIntent(
           }
         }
         if (leagueIdToUse) {
-          const allTeams = teamDB.getByLeague(leagueIdToUse)
+          const allTeams = await teamDB.getByLeague(leagueIdToUse)
           if (allTeams.length > 0) {
             const sorted = [...allTeams].sort((a, b) =>
               b.wins !== a.wins ? b.wins - a.wins : b.pointsFor - a.pointsFor

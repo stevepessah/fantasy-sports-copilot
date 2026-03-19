@@ -32,9 +32,9 @@ export async function setupBaseballLeague(accessToken: string, gameKey: string =
   }
 
   // Avoid re-creating if this Yahoo league is already in the in-memory DB
-  const existing = leagueDB.get(yahooLeague.league_key)
+  const existing = await leagueDB.get(yahooLeague.league_key)
   if (existing) {
-    const teams = teamDB.getByLeague(existing.id)
+    const teams = await teamDB.getByLeague(existing.id)
     return { league: existing, teams, yahooLeagueKey: yahooLeague.league_key }
   }
 
@@ -54,7 +54,7 @@ export async function setupBaseballLeague(accessToken: string, gameKey: string =
     season: yahooLeague.season ? parseInt(yahooLeague.season, 10) : new Date().getFullYear(),
   }
 
-  const createdLeague = leagueDB.create(league)
+  const createdLeague = await leagueDB.create(league)
 
   // 3. Fetch standings (includes team records, wins/losses, etc.)
   let standingsTeams: ParsedStandingsTeam[] = []
@@ -69,12 +69,12 @@ export async function setupBaseballLeague(accessToken: string, gameKey: string =
   let teams: Team[] = []
 
   if (standingsTeams.length > 0) {
-    teams = standingsTeams.map((st, index) => {
+    teams = await Promise.all(standingsTeams.map(async (st, index) => {
       const isCommissioner = st.managers?.some(m => m.is_commissioner === '1')
       if (isCommissioner && !createdLeague.commissionerId) {
         const commMgr = st.managers!.find(m => m.is_commissioner === '1')
         createdLeague.commissionerId = commMgr?.guid || commMgr?.manager_id || ''
-        leagueDB.update(createdLeague.id, { commissionerId: createdLeague.commissionerId })
+        await leagueDB.update(createdLeague.id, { commissionerId: createdLeague.commissionerId })
       }
 
       const ownerId = st.managers?.[0]?.guid || st.managers?.[0]?.manager_id || `owner_${index + 1}`
@@ -91,23 +91,23 @@ export async function setupBaseballLeague(accessToken: string, gameKey: string =
         pointsAgainst: st.points_against ?? 0,
       }
 
-      teamDB.create(team)
+      await teamDB.create(team)
 
       // Create empty roster for each team (will be populated on demand)
-      rosterDB.create({ teamId: team.id, players: [] })
+      await rosterDB.create({ teamId: team.id, players: [] })
 
       return team
-    })
+    }))
   } else {
     // Fallback: use plain team list (no W/L data yet)
     const { teams: yahooTeams } = await api.getLeagueTeams(yahooLeague.league_key)
 
-    teams = yahooTeams.map((yt, index) => {
+    teams = await Promise.all(yahooTeams.map(async (yt, index) => {
       const isCommissioner = yt.managers?.some(m => m.is_commissioner === '1')
       if (isCommissioner && !createdLeague.commissionerId) {
         const commMgr = yt.managers!.find(m => m.is_commissioner === '1')
         createdLeague.commissionerId = commMgr?.guid || commMgr?.manager_id || ''
-        leagueDB.update(createdLeague.id, { commissionerId: createdLeague.commissionerId })
+        await leagueDB.update(createdLeague.id, { commissionerId: createdLeague.commissionerId })
       }
 
       const ownerId = yt.managers?.[0]?.guid || yt.managers?.[0]?.manager_id || `owner_${index + 1}`
@@ -124,11 +124,11 @@ export async function setupBaseballLeague(accessToken: string, gameKey: string =
         pointsAgainst: 0,
       }
 
-      teamDB.create(team)
-      rosterDB.create({ teamId: team.id, players: [] })
+      await teamDB.create(team)
+      await rosterDB.create({ teamId: team.id, players: [] })
 
       return team
-    })
+    }))
   }
 
   return {
