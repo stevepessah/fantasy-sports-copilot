@@ -104,13 +104,38 @@ export async function GET(request: NextRequest) {
     const gameKey = leagueKey.split('.')[0]
     const dynamicCats = await getCachedStatCategories(api, gameKey)
 
+    const scoringStatIds = new Set<string>()
+    const displayNameCounts = new Map<string, number>()
+    if (leagueSettingsResult?.settings?.statCategories) {
+      for (const c of leagueSettingsResult.settings.statCategories) {
+        if (!c.isOnlyDisplayStat) {
+          scoringStatIds.add(c.statId)
+          displayNameCounts.set(c.displayName, (displayNameCounts.get(c.displayName) || 0) + 1)
+        }
+      }
+    }
+    const duplicateNames = new Set(
+      [...displayNameCounts.entries()].filter(([, n]) => n > 1).map(([name]) => name),
+    )
+
+    const resolveDisplayName = (id: string): string => {
+      const cat = dynamicCats[id]
+      let name = cat?.displayName || STAT_ID_FALLBACK[id] || `stat_${id}`
+      if (duplicateNames.has(name)) {
+        const leagueStat = leagueSettingsResult?.settings?.statCategories?.find((c) => c.statId === id)
+        const posType = leagueStat?.positionType || cat?.positionType
+        if (posType === 'B') name = `${name}(B)`
+        else if (posType === 'P') name = `${name}(P)`
+      }
+      return name
+    }
+
     const mapStats = (raw?: Record<string, number | string>): Record<string, number | string> => {
       if (!raw) return {}
       const mapped: Record<string, number | string> = {}
       for (const [id, val] of Object.entries(raw)) {
-        const cat = dynamicCats[id]
-        const name = cat?.displayName || STAT_ID_FALLBACK[id] || `stat_${id}`
-        mapped[name] = val
+        if (scoringStatIds.size > 0 && !scoringStatIds.has(id)) continue
+        mapped[resolveDisplayName(id)] = val
       }
       return mapped
     }
@@ -157,7 +182,7 @@ export async function GET(request: NextRequest) {
       leagueCategories = leagueSettingsResult.settings.statCategories
         .filter((c) => !c.isOnlyDisplayStat)
         .map((c) => ({
-          displayName: c.displayName,
+          displayName: resolveDisplayName(c.statId),
           positionType: c.positionType,
           sortOrder: c.sortOrder,
         }))

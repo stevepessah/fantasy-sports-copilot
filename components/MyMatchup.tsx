@@ -141,6 +141,7 @@ export default function MyMatchup({ leagueKey }: MyMatchupProps) {
             matchup={data.userMatchup}
             isUserMatchup
             lowerBetterStats={lowerBetterStats}
+            leagueCategories={data.leagueCategories}
           />
         )}
 
@@ -156,6 +157,7 @@ export default function MyMatchup({ leagueKey }: MyMatchupProps) {
                   key={i}
                   matchup={m}
                   lowerBetterStats={lowerBetterStats}
+                  leagueCategories={data.leagueCategories}
                 />
               ))}
             </div>
@@ -170,10 +172,12 @@ function MatchupCard({
   matchup,
   isUserMatchup,
   lowerBetterStats,
+  leagueCategories,
 }: {
   matchup: MatchupPayload
   isUserMatchup?: boolean
   lowerBetterStats: Set<string>
+  leagueCategories: MatchupResponse['leagueCategories']
 }) {
   const [expanded, setExpanded] = useState(isUserMatchup ?? false)
 
@@ -193,13 +197,19 @@ function MatchupCard({
 
   const catResults = useMemo(() => {
     if (!hasStats || !t1.stats || !t2.stats) return null
+
+    const statKeys = leagueCategories
+      ? leagueCategories.map((c) => c.displayName)
+      : Object.keys(t1.stats)
+
     let t1Wins = 0, t2Wins = 0, ties = 0
     const rows: { stat: string; t1Val: number | string; t2Val: number | string; winner: 1 | 2 | 0 }[] = []
-    for (const [stat, v1] of Object.entries(t1.stats)) {
+    for (const stat of statKeys) {
+      const v1 = t1.stats[stat]
       const v2 = t2.stats[stat]
-      if (v2 == null) continue
-      const n1 = typeof v1 === 'number' ? v1 : parseFloat(v1 as string)
-      const n2 = typeof v2 === 'number' ? v2 : parseFloat(v2 as string)
+      if (v1 == null && v2 == null) continue
+      const n1 = typeof v1 === 'number' ? v1 : parseFloat(String(v1 ?? '0'))
+      const n2 = typeof v2 === 'number' ? v2 : parseFloat(String(v2 ?? '0'))
       const lowerBetter = lowerBetterStats.has(stat)
       let winner: 1 | 2 | 0 = 0
       if (!isNaN(n1) && !isNaN(n2)) {
@@ -213,10 +223,10 @@ function MatchupCard({
           else ties++
         }
       }
-      rows.push({ stat, t1Val: v1, t2Val: v2, winner })
+      rows.push({ stat, t1Val: v1 ?? 0, t2Val: v2 ?? 0, winner })
     }
     return { t1Wins, t2Wins, ties, rows }
-  }, [t1.stats, t2.stats, hasStats, lowerBetterStats])
+  }, [t1.stats, t2.stats, hasStats, lowerBetterStats, leagueCategories])
 
   return (
     <div className={`rounded-xl border overflow-hidden ${

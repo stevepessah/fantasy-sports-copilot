@@ -7,7 +7,10 @@ export async function buildMatchupCards(
   userTeamKey: string,
   week?: number,
 ): Promise<any[]> {
-  const { scoreboard } = await api.getMatchups(leagueKey, week)
+  const [{ scoreboard }, leagueSettingsResult] = await Promise.all([
+    api.getMatchups(leagueKey, week),
+    api.getLeagueSettings(leagueKey).catch(() => null),
+  ])
   if (!scoreboard || !scoreboard.matchups.length) return []
 
   const userMatchup = scoreboard.matchups.find(m =>
@@ -26,6 +29,20 @@ export async function buildMatchupCards(
     }
   } catch { /* non-critical */ }
 
+  const scoringStatIds = new Set<string>()
+  const displayNameCounts = new Map<string, number>()
+  if (leagueSettingsResult?.settings?.statCategories) {
+    for (const c of leagueSettingsResult.settings.statCategories) {
+      if (!c.isOnlyDisplayStat) {
+        scoringStatIds.add(c.statId)
+        displayNameCounts.set(c.displayName, (displayNameCounts.get(c.displayName) || 0) + 1)
+      }
+    }
+  }
+  const duplicateNames = new Set(
+    [...displayNameCounts.entries()].filter(([, n]) => n > 1).map(([name]) => name),
+  )
+
   let statIdMap: Record<string, string> = { ...STAT_ID_MAP }
   try {
     const gameKey = leagueKey.split('.')[0]
@@ -39,7 +56,14 @@ export async function buildMatchupCards(
     if (!raw) return {}
     const mapped: Record<string, number | string> = {}
     for (const [id, val] of Object.entries(raw)) {
-      const name = statIdMap[id] || `stat_${id}`
+      if (scoringStatIds.size > 0 && !scoringStatIds.has(id)) continue
+      let name = statIdMap[id] || `stat_${id}`
+      if (duplicateNames.has(name)) {
+        const leagueStat = leagueSettingsResult?.settings?.statCategories?.find((c) => c.statId === id)
+        const posType = leagueStat?.positionType
+        if (posType === 'B') name = `${name}(B)`
+        else if (posType === 'P') name = `${name}(P)`
+      }
       mapped[name] = val
     }
     return mapped
