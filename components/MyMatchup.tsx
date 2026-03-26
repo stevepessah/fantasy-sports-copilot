@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback, useMemo, Fragment } from 'react'
 import { useYahooLeagues } from '@/hooks/useYahooLeagues'
 import type { MatchupResponse, MatchupPayload, MatchupTeamPayload } from '@/app/api/yahoo/matchup/route'
 
@@ -185,6 +185,7 @@ function MatchupCard({
   const t2 = matchup.teams[1]
 
   const hasStats = t1.stats && Object.keys(t1.stats).length > 0
+  const canShowCategories = (leagueCategories && leagueCategories.length > 0) || hasStats
 
   const statusLabel =
     matchup.status === 'midevent' ? '🔴 Live' :
@@ -196,20 +197,28 @@ function MatchupCard({
     'bg-slate-600/30 text-slate-400 border-slate-600'
 
   const catResults = useMemo(() => {
-    if (!hasStats || !t1.stats || !t2.stats) return null
+    if (!canShowCategories) return null
+    const stats1 = t1.stats || {}
+    const stats2 = t2.stats || {}
 
-    const statKeys = leagueCategories
-      ? leagueCategories.map((c) => c.displayName)
-      : Object.keys(t1.stats)
+    const statEntries = leagueCategories
+      ? leagueCategories.map((c) => ({ key: c.displayName, positionType: c.positionType }))
+      : Object.keys(stats1).map((k) => ({ key: k, positionType: undefined as string | undefined }))
 
     let t1Wins = 0, t2Wins = 0, ties = 0
-    const rows: { stat: string; t1Val: number | string; t2Val: number | string; winner: 1 | 2 | 0 }[] = []
-    for (const stat of statKeys) {
-      const v1 = t1.stats[stat]
-      const v2 = t2.stats[stat]
-      if (v1 == null && v2 == null) continue
-      const n1 = typeof v1 === 'number' ? v1 : parseFloat(String(v1 ?? '0'))
-      const n2 = typeof v2 === 'number' ? v2 : parseFloat(String(v2 ?? '0'))
+    const rows: { stat: string; displayStat: string; t1Val: number | string | null; t2Val: number | string | null; winner: 1 | 2 | 0; positionType?: string }[] = []
+    for (const { key: stat, positionType } of statEntries) {
+      const v1 = stat in stats1 ? stats1[stat] : null
+      const v2 = stat in stats2 ? stats2[stat] : null
+      const displayStat = stat.replace(/\(B\)$/, '').replace(/\(P\)$/, '')
+
+      if (v1 == null && v2 == null) {
+        rows.push({ stat, displayStat, t1Val: null, t2Val: null, winner: 0, positionType })
+        continue
+      }
+
+      const n1 = v1 != null ? (typeof v1 === 'number' ? v1 : parseFloat(String(v1))) : NaN
+      const n2 = v2 != null ? (typeof v2 === 'number' ? v2 : parseFloat(String(v2))) : NaN
       const lowerBetter = lowerBetterStats.has(stat)
       let winner: 1 | 2 | 0 = 0
       if (!isNaN(n1) && !isNaN(n2)) {
@@ -223,10 +232,10 @@ function MatchupCard({
           else ties++
         }
       }
-      rows.push({ stat, t1Val: v1 ?? 0, t2Val: v2 ?? 0, winner })
+      rows.push({ stat, displayStat, t1Val: v1, t2Val: v2, winner, positionType })
     }
     return { t1Wins, t2Wins, ties, rows }
-  }, [t1.stats, t2.stats, hasStats, lowerBetterStats, leagueCategories])
+  }, [t1.stats, t2.stats, canShowCategories, lowerBetterStats, leagueCategories])
 
   return (
     <div className={`rounded-xl border overflow-hidden ${
@@ -302,17 +311,30 @@ function MatchupCard({
                 </tr>
               </thead>
               <tbody>
-                {catResults.rows.map((row) => (
-                  <tr key={row.stat} className="border-b border-slate-700/30 last:border-0">
-                    <td className={`py-1 px-1 font-mono text-left ${row.winner === 1 ? 'text-green-400 font-bold' : 'text-slate-300'}`}>
-                      {fmtStatVal(row.t1Val)}
-                    </td>
-                    <td className="py-1 px-1 text-center text-slate-400 font-medium">{row.stat}</td>
-                    <td className={`py-1 px-1 font-mono text-right ${row.winner === 2 ? 'text-green-400 font-bold' : 'text-slate-300'}`}>
-                      {fmtStatVal(row.t2Val)}
-                    </td>
-                  </tr>
-                ))}
+                {catResults.rows.map((row, i) => {
+                  const prev = i > 0 ? catResults.rows[i - 1] : null
+                  const showSection = row.positionType && row.positionType !== prev?.positionType
+                  return (
+                    <Fragment key={row.stat}>
+                      {showSection && (
+                        <tr>
+                          <td colSpan={3} className="pt-2.5 pb-1 px-1 text-[9px] font-bold uppercase tracking-wider text-slate-500 border-0">
+                            {row.positionType === 'B' ? 'Batting' : row.positionType === 'P' ? 'Pitching' : ''}
+                          </td>
+                        </tr>
+                      )}
+                      <tr className="border-b border-slate-700/30 last:border-0">
+                        <td className={`py-1 px-1 font-mono text-left ${row.t1Val == null ? 'text-slate-600' : row.winner === 1 ? 'text-green-400 font-bold' : 'text-slate-300'}`}>
+                          {fmtStatVal(row.t1Val)}
+                        </td>
+                        <td className="py-1 px-1 text-center text-slate-400 font-medium">{row.displayStat}</td>
+                        <td className={`py-1 px-1 font-mono text-right ${row.t2Val == null ? 'text-slate-600' : row.winner === 2 ? 'text-green-400 font-bold' : 'text-slate-300'}`}>
+                          {fmtStatVal(row.t2Val)}
+                        </td>
+                      </tr>
+                    </Fragment>
+                  )
+                })}
               </tbody>
             </table>
           </div>
@@ -384,7 +406,8 @@ function PointsPanel({ team, isWinner }: { team: MatchupTeamPayload; isWinner: b
   )
 }
 
-function fmtStatVal(val: number | string): string {
+function fmtStatVal(val: number | string | null): string {
+  if (val == null) return '-'
   if (typeof val === 'number') {
     if (Number.isInteger(val)) return val.toString()
     return val.toFixed(3).replace(/^0\./, '.')
