@@ -20,6 +20,12 @@ export interface LeaguePlayerEntry {
   ownershipType?: string
   ownerTeamKey?: string
   ownerTeamName?: string
+  rank: number
+  percentOwned?: number
+  percentOwnedDelta?: number
+  averageDraftPick?: number
+  averageDraftRound?: number
+  percentDrafted?: number
 }
 
 const PAGE_SIZE = 25
@@ -87,7 +93,7 @@ export async function fetchLeaguePlayers(
         position: positionType || undefined,
         status: status || undefined,
         sort: 'AR',
-        out: 'stats,ownership',
+        out: 'stats,ownership,percent_owned,draft_analysis',
       })
       .catch(() => ({ players: [] as any[], raw: undefined as string | undefined }))
 
@@ -140,8 +146,8 @@ export async function fetchLeaguePlayers(
     }
   }
 
-  // Remap stat IDs → display names
-  const entries: LeaguePlayerEntry[] = allRaw.map((p: any) => {
+  // Remap stat IDs → display names and assign rank from sort position
+  const entries: LeaguePlayerEntry[] = allRaw.map((p: any, index: number) => {
     const remapped: Record<string, number | string> = {}
     if (p.player_stats && categories) {
       for (const [statId, value] of Object.entries(p.player_stats)) {
@@ -164,6 +170,12 @@ export async function fetchLeaguePlayers(
       ownershipType: p.ownership_type,
       ownerTeamKey: p.owner_team_key,
       ownerTeamName: p.owner_team_name,
+      rank: index + 1,
+      percentOwned: p.percent_owned,
+      percentOwnedDelta: p.percent_owned_delta,
+      averageDraftPick: p.average_draft_pick,
+      averageDraftRound: p.average_draft_round,
+      percentDrafted: p.percent_drafted,
     }
   })
 

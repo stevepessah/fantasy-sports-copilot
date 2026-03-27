@@ -1,6 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { writeFileSync } from 'fs'
-import { join } from 'path'
 import { YahooFantasyAPI } from '@/lib/yahoo/api'
 import { withYahooAuth } from '@/lib/yahoo/auth'
 
@@ -17,6 +15,12 @@ export interface LeaguePlayerEntry {
   ownershipType?: string      // 'team' | 'freeagents' | 'waivers'
   ownerTeamKey?: string
   ownerTeamName?: string
+  rank: number
+  percentOwned?: number
+  percentOwnedDelta?: number
+  averageDraftPick?: number
+  averageDraftRound?: number
+  percentDrafted?: number
 }
 
 const PAGE_SIZE = 25
@@ -104,18 +108,10 @@ export async function GET(request: NextRequest) {
         position: positionType || undefined,
         status,
         sort: 'AR',
-        out: 'stats,ownership',
+        out: 'stats,ownership,percent_owned,draft_analysis',
       }).catch(() => ({ players: [], raw: undefined }))
 
     const firstPage = await fetchPage(0)
-
-    // DEBUG: dump first page raw XML to disk for inspection
-    if (firstPage.raw) {
-      try {
-        writeFileSync(join(process.cwd(), 'debug-players-raw.xml'), firstPage.raw, 'utf-8')
-      } catch {}
-    }
-
     const allRaw = [...firstPage.players]
 
     // Try to extract total from XML: <players ... total="500"> or count="500"
@@ -168,8 +164,8 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Remap stat IDs → display names for each player
-    const entries: LeaguePlayerEntry[] = allRaw.map((p) => {
+    // Remap stat IDs → display names and assign rank from sort position
+    const entries: LeaguePlayerEntry[] = allRaw.map((p, index) => {
       const remapped: Record<string, number | string> = {}
       if (p.player_stats && categories) {
         for (const [statId, value] of Object.entries(p.player_stats)) {
@@ -193,6 +189,12 @@ export async function GET(request: NextRequest) {
         ownershipType: p.ownership_type,
         ownerTeamKey: p.owner_team_key,
         ownerTeamName: p.owner_team_name,
+        rank: index + 1,
+        percentOwned: p.percent_owned,
+        percentOwnedDelta: p.percent_owned_delta,
+        averageDraftPick: p.average_draft_pick,
+        averageDraftRound: p.average_draft_round,
+        percentDrafted: p.percent_drafted,
       }
     })
 

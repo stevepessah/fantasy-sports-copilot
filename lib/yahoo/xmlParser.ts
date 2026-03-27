@@ -73,6 +73,14 @@ export interface ParsedRosterPlayer {
   ownership_type?: string      // 'team' | 'freeagents' | 'waivers'
   owner_team_key?: string
   owner_team_name?: string
+  // Percent owned (present when fetched with ;out=percent_owned)
+  percent_owned?: number
+  percent_owned_delta?: number
+  // Draft analysis (present when fetched with ;out=draft_analysis)
+  average_draft_pick?: number
+  average_draft_round?: number
+  average_draft_cost?: number
+  percent_drafted?: number
 }
 
 /**
@@ -296,6 +304,28 @@ export function parseRosterXML(xml: string): ParsedRosterPlayer[] {
       player.ownership_type = extractValue('ownership_type', ownershipBlock)
       player.owner_team_key = extractValue('owner_team_key', ownershipBlock)
       player.owner_team_name = extractValue('owner_team_name', ownershipBlock)
+    }
+
+    // Extract percent_owned (present when fetched with ;out=percent_owned)
+    const percentOwnedBlock = playerBlock.match(/<percent_owned>([\s\S]*?)<\/percent_owned>/)?.[1]
+    if (percentOwnedBlock) {
+      const val = extractValue('value', percentOwnedBlock)
+      if (val) player.percent_owned = parseFloat(val)
+      const delta = extractValue('delta', percentOwnedBlock)
+      if (delta) player.percent_owned_delta = parseFloat(delta)
+    }
+
+    // Extract draft_analysis (present when fetched with ;out=draft_analysis)
+    const draftAnalysisBlock = playerBlock.match(/<draft_analysis>([\s\S]*?)<\/draft_analysis>/)?.[1]
+    if (draftAnalysisBlock) {
+      const avgPick = extractValue('average_pick', draftAnalysisBlock)
+      if (avgPick) player.average_draft_pick = parseFloat(avgPick)
+      const avgRound = extractValue('average_round', draftAnalysisBlock)
+      if (avgRound) player.average_draft_round = parseFloat(avgRound)
+      const avgCost = extractValue('average_cost', draftAnalysisBlock)
+      if (avgCost) player.average_draft_cost = parseFloat(avgCost)
+      const pctDrafted = extractValue('percent_drafted', draftAnalysisBlock)
+      if (pctDrafted) player.percent_drafted = parseFloat(pctDrafted)
     }
 
     // Extract player_stats (present when fetched with ;out=stats)
