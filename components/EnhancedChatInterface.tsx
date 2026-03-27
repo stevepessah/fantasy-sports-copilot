@@ -96,12 +96,6 @@ interface TabDef {
   icon: string
 }
 
-const SUGGESTION_PILLS = [
-  { label: 'Set my best lineup', cmd: 'set my best lineup' },
-  { label: 'Who should I draft?', cmd: 'Who should I draft?' },
-  { label: 'Waiver targets', cmd: 'who should I pick up on waivers?' },
-  { label: 'Suggest a trade', cmd: 'suggest a trade' },
-] as const
 
 interface ChatInterfaceProps {
   leagueId?: string
@@ -856,8 +850,7 @@ export default function EnhancedChatInterface({ leagueId, userId, initialMessage
             ) : messages.length === 0 && !isLoading ? (
               <div className="text-center text-slate-400 mt-8 sm:mt-12 max-w-2xl mx-auto px-2">
                 <h2 className="text-xl sm:text-2xl font-bold mb-3 sm:mb-4 text-white">Fantasy Baseball Copilot</h2>
-                <p className="mb-2 text-sm sm:text-base">Your AI-powered fantasy baseball assistant</p>
-                <p className="text-xs sm:text-sm mb-4">⚾ Baseball</p>
+                <p className="mb-4 text-sm sm:text-base">Your AI-powered fantasy baseball assistant. Connect your Yahoo account to see all your leagues, view your teams, and gain an edge!</p>
 
                 {/* Mobile: connect CTA */}
                 {mounted && isNarrow && !isYahooConnected && (
@@ -871,18 +864,6 @@ export default function EnhancedChatInterface({ leagueId, userId, initialMessage
                     </button>
                   </div>
                 )}
-
-                <div className="mt-4 flex flex-wrap gap-2 justify-center">
-                  {SUGGESTION_PILLS.map(s => (
-                    <button
-                      key={s.cmd}
-                      onClick={() => runCommand(s.cmd)}
-                      className="px-3 py-2 rounded-full border border-slate-700 bg-slate-800/50 hover:bg-slate-700 active:bg-slate-600 text-xs sm:text-sm text-slate-300 transition-colors"
-                    >
-                      {s.label}
-                    </button>
-                  ))}
-                </div>
 
                 {/* Keyboard shortcut hint (desktop) */}
                 {mounted && !isNarrow && (
