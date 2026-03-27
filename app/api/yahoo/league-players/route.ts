@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { writeFileSync } from 'fs'
+import { join } from 'path'
 import { YahooFantasyAPI } from '@/lib/yahoo/api'
 import { withYahooAuth } from '@/lib/yahoo/auth'
 
@@ -106,6 +108,14 @@ export async function GET(request: NextRequest) {
       }).catch(() => ({ players: [], raw: undefined }))
 
     const firstPage = await fetchPage(0)
+
+    // DEBUG: dump first page raw XML to disk for inspection
+    if (firstPage.raw) {
+      try {
+        writeFileSync(join(process.cwd(), 'debug-players-raw.xml'), firstPage.raw, 'utf-8')
+      } catch {}
+    }
+
     const allRaw = [...firstPage.players]
 
     // Try to extract total from XML: <players ... total="500"> or count="500"
