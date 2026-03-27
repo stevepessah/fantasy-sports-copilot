@@ -96,8 +96,11 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Fetch stat categories first (needed for remapping)
-    const categories = await getCachedStatCategories(api, gameKey)
+    // Fetch stat categories + league settings in parallel
+    const [categories, leagueSettings] = await Promise.all([
+      getCachedStatCategories(api, gameKey),
+      api.getLeagueSettings(effectiveLeagueKey).catch(() => null),
+    ])
 
     // Fetch all pages of players. Yahoo returns max 25/page.
     // Strategy: fetch first page, then keep fetching in batches until we get < PAGE_SIZE results.
@@ -164,14 +167,18 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    const FALLBACK_STAT_NAMES: Record<string, string> = {
+      '1': 'GP', '6': 'AB', '8': 'H', '18': 'BB',
+    }
+
     // Remap stat IDs → display names and assign rank from sort position
     const entries: LeaguePlayerEntry[] = allRaw.map((p, index) => {
       const remapped: Record<string, number | string> = {}
       if (p.player_stats && categories) {
         for (const [statId, value] of Object.entries(p.player_stats)) {
-          const cat = categories[statId]
-          if (cat) {
-            remapped[cat.displayName] = value
+          const displayName = categories[statId]?.displayName ?? FALLBACK_STAT_NAMES[statId]
+          if (displayName) {
+            remapped[displayName] = value
           }
         }
       }
@@ -198,12 +205,24 @@ export async function GET(request: NextRequest) {
       }
     })
 
+    let leagueCategories: { displayName: string; positionType: string; sortOrder: string }[] | null = null
+    if (leagueSettings?.settings?.statCategories) {
+      leagueCategories = leagueSettings.settings.statCategories
+        .filter((c) => !c.isOnlyDisplayStat)
+        .map((c) => ({
+          displayName: c.displayName,
+          positionType: c.positionType,
+          sortOrder: c.sortOrder,
+        }))
+    }
+
     return auth.json({
       players: entries,
       total: entries.length,
       totalAvailable: totalAvailable || entries.length,
       positionType: positionType || 'all',
       season: season || null,
+      leagueCategories,
     })
   } catch (error: any) {
     console.error('Error in league-players API:', error)

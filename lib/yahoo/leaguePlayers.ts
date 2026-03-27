@@ -147,7 +147,7 @@ export async function fetchLeaguePlayers(
   }
 
   const FALLBACK_STAT_NAMES: Record<string, string> = {
-    '1': 'GP', '6': 'AB', '8': 'H',
+    '1': 'GP', '6': 'AB', '8': 'H', '18': 'BB',
   }
 
   // Remap stat IDs → display names and assign rank from sort position

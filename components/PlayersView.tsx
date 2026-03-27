@@ -1,41 +1,22 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useYahooLeagues } from '@/hooks/useYahooLeagues'
 import AuthRequiredMessage, { isAuthError } from '@/components/AuthRequiredMessage'
-import { type ColDef, fmtStat, buildHAB } from '@/lib/statFormatters'
+import {
+  type ColDef,
+  type LeagueStatCategory,
+  fmtStat,
+  buildHAB,
+  buildColsFromCategories,
+  FALLBACK_BATTER_COLS,
+  FALLBACK_PITCHER_COLS,
+} from '@/lib/statFormatters'
 
 interface PlayersViewProps {
   leagueKey: string | null
   onAction?: (cmd: string) => void
 }
-
-const BATTER_COLS: ColDef[] = [
-  { key: 'GP', label: 'GP', fmt: 'int' },
-  { key: 'H/AB', label: 'H/AB', composite: 'h_ab' },
-  { key: 'AVG', label: 'AVG', fmt: 'rate3' },
-  { key: 'OBP', label: 'OBP', fmt: 'rate3' },
-  { key: 'OPS', label: 'OPS', fmt: 'rate3' },
-  { key: 'R', label: 'R', fmt: 'int' },
-  { key: 'HR', label: 'HR', fmt: 'int' },
-  { key: 'RBI', label: 'RBI', fmt: 'int' },
-  { key: 'SB', label: 'SB', fmt: 'int' },
-  { key: 'BB', label: 'BB', fmt: 'int' },
-  { key: 'K', label: 'K', fmt: 'int' },
-]
-
-const PITCHER_COLS: ColDef[] = [
-  { key: 'GP', label: 'GP', fmt: 'int' },
-  { key: 'IP', label: 'IP', fmt: 'ip' },
-  { key: 'W', label: 'W', fmt: 'int' },
-  { key: 'L', label: 'L', fmt: 'int' },
-  { key: 'SV', label: 'SV', fmt: 'int' },
-  { key: 'HLD', label: 'HLD', fmt: 'int' },
-  { key: 'K', label: 'K', fmt: 'int' },
-  { key: 'ERA', label: 'ERA', fmt: 'rate2' },
-  { key: 'WHIP', label: 'WHIP', fmt: 'rate2' },
-  { key: 'QS', label: 'QS', fmt: 'int' },
-]
 
 const CURRENT_YEAR = new Date().getFullYear()
 const SEASON_OPTIONS = [
@@ -94,8 +75,17 @@ export default function PlayersView({ leagueKey, onAction }: PlayersViewProps) {
   const effectiveLeagueKey = leagueKey ?? leagues[0]?.league_key ?? null
 
   const [positionType, setPositionType] = useState<'B' | 'P'>('B')
-  const isPitcher = positionType === 'P'
-  const cols = isPitcher ? PITCHER_COLS : BATTER_COLS
+  const [leagueCategories, setLeagueCategories] = useState<LeagueStatCategory[] | null>(null)
+
+  const batterCols = useMemo(
+    () => leagueCategories ? buildColsFromCategories(leagueCategories, 'B') : FALLBACK_BATTER_COLS,
+    [leagueCategories],
+  )
+  const pitcherCols = useMemo(
+    () => leagueCategories ? buildColsFromCategories(leagueCategories, 'P') : FALLBACK_PITCHER_COLS,
+    [leagueCategories],
+  )
+  const cols = positionType === 'P' ? pitcherCols : batterCols
 
   const [page, setPage] = useState(0)
   const [sortCol, setSortCol] = useState<string | null>(null)
@@ -142,6 +132,7 @@ export default function PlayersView({ leagueKey, onAction }: PlayersViewProps) {
 
       setPlayerCache(prev => ({ ...prev, [key]: data.players || [] }))
       setTotalCache(prev => ({ ...prev, [key]: data.total || 0 }))
+      if (data.leagueCategories) setLeagueCategories(data.leagueCategories)
     } catch (err: any) {
       setError(err.message || 'Failed to load data')
     } finally {

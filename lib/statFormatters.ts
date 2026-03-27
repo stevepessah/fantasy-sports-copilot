@@ -110,9 +110,9 @@ const PINNED_FIRST_COLS: Record<'B' | 'P', ColDef[]> = {
   ],
 }
 
-const SKIP_DISPLAY: Record<'B' | 'P', Set<string>> = {
-  B: new Set(['GP', 'H', 'AB', 'OBP']),
-  P: new Set(['GP', 'W']),
+const PINNED_KEYS: Record<'B' | 'P', Set<string>> = {
+  B: new Set(['GP', 'H', 'AB']),
+  P: new Set(['GP']),
 }
 
 export function buildColsFromCategories(
@@ -120,11 +120,11 @@ export function buildColsFromCategories(
   positionType: 'B' | 'P',
 ): ColDef[] {
   const filtered = categories.filter((c) => c.positionType === positionType)
-  const skip = SKIP_DISPLAY[positionType]
+  const pinned = PINNED_KEYS[positionType]
   const cols: ColDef[] = [...PINNED_FIRST_COLS[positionType]]
 
   for (const cat of filtered) {
-    if (skip.has(cat.displayName)) continue
+    if (pinned.has(cat.displayName)) continue
     cols.push({
       key: cat.displayName,
       label: cat.displayName,

@@ -113,7 +113,7 @@ export async function GET(request: NextRequest) {
     const categories = await getCachedStatCategories(api, gameKey)
 
     const FALLBACK_STAT_NAMES: Record<string, string> = {
-      '1': 'GP', '6': 'AB', '8': 'H',
+      '1': 'GP', '6': 'AB', '8': 'H', '18': 'BB',
     }
 
     const entries: RosterPlayerEntry[] = players.map((p) => {
