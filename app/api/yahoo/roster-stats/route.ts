@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { YahooFantasyAPI } from '@/lib/yahoo/api'
 import { withYahooAuth } from '@/lib/yahoo/auth'
 import { MLB_SEASON_TO_GAME_KEY } from '@/lib/yahoo/config'
+import { BATTER_STAT_IDS, PITCHER_STAT_IDS } from '@/lib/statFormatters'
 
 export const dynamic = 'force-dynamic'
 
@@ -143,17 +144,27 @@ export async function GET(request: NextRequest) {
     const gameKey = effectiveTeamKey.split('.')[0]
     const categories = await getCachedStatCategories(api, gameKey)
 
-    const FALLBACK_STAT_NAMES: Record<string, string> = {
-      '1': 'GP', '6': 'AB', '8': 'H', '18': 'BB',
+    // Canonical stat_id → display name used by the frontend columns.
+    // Yahoo's stat categories may use different names (e.g. 'G' instead of 'GP'),
+    // so we store under the canonical name first, then also under Yahoo's name
+    // when they differ (to support dynamically-built league columns).
+    const CANONICAL_STAT_NAMES: Record<string, string> = {
+      ...BATTER_STAT_IDS,
+      ...PITCHER_STAT_IDS,
     }
 
     const entries: RosterPlayerEntry[] = players.map((p) => {
       const remapped: Record<string, number | string> = {}
-      if (p.player_stats && categories) {
+      if (p.player_stats) {
         for (const [statId, value] of Object.entries(p.player_stats)) {
-          const displayName = categories[statId]?.displayName ?? FALLBACK_STAT_NAMES[statId]
-          if (displayName) {
-            remapped[displayName] = value
+          const canonicalName = CANONICAL_STAT_NAMES[statId]
+          const yahooName = categories[statId]?.displayName
+
+          if (canonicalName) {
+            remapped[canonicalName] = value
+          }
+          if (yahooName && yahooName !== canonicalName) {
+            remapped[yahooName] = value
           }
         }
       }

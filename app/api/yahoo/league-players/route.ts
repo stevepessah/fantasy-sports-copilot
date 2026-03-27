@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { YahooFantasyAPI } from '@/lib/yahoo/api'
 import { withYahooAuth } from '@/lib/yahoo/auth'
+import { BATTER_STAT_IDS, PITCHER_STAT_IDS } from '@/lib/statFormatters'
 
 export interface LeaguePlayerEntry {
   playerKey: string
@@ -167,18 +168,23 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    const FALLBACK_STAT_NAMES: Record<string, string> = {
-      '1': 'GP', '6': 'AB', '8': 'H', '18': 'BB',
+    const CANONICAL_STAT_NAMES: Record<string, string> = {
+      ...BATTER_STAT_IDS,
+      ...PITCHER_STAT_IDS,
     }
 
-    // Remap stat IDs → display names and assign rank from sort position
     const entries: LeaguePlayerEntry[] = allRaw.map((p, index) => {
       const remapped: Record<string, number | string> = {}
-      if (p.player_stats && categories) {
+      if (p.player_stats) {
         for (const [statId, value] of Object.entries(p.player_stats)) {
-          const displayName = categories[statId]?.displayName ?? FALLBACK_STAT_NAMES[statId]
-          if (displayName) {
-            remapped[displayName] = value
+          const canonicalName = CANONICAL_STAT_NAMES[statId]
+          const yahooName = categories[statId]?.displayName
+
+          if (canonicalName) {
+            remapped[canonicalName] = value
+          }
+          if (yahooName && yahooName !== canonicalName) {
+            remapped[yahooName] = value
           }
         }
       }

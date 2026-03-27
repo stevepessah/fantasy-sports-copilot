@@ -111,8 +111,8 @@ const PINNED_FIRST_COLS: Record<'B' | 'P', ColDef[]> = {
 }
 
 const PINNED_KEYS: Record<'B' | 'P', Set<string>> = {
-  B: new Set(['GP', 'H', 'AB']),
-  P: new Set(['GP']),
+  B: new Set(['GP', 'G', 'H', 'AB']),
+  P: new Set(['GP', 'G']),
 }
 
 export function buildColsFromCategories(
