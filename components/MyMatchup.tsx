@@ -318,7 +318,7 @@ function MatchupCard({
                     <Fragment key={row.stat}>
                       {showSection && (
                         <tr>
-                          <td colSpan={3} className="pt-2.5 pb-1 px-1 text-[9px] font-bold uppercase tracking-wider text-slate-500 border-0">
+                          <td colSpan={3} className="pt-2.5 pb-1 px-1 text-[11px] font-bold uppercase tracking-wider text-slate-500 border-0 text-center">
                             {row.positionType === 'B' ? 'Batting' : row.positionType === 'P' ? 'Pitching' : ''}
                           </td>
                         </tr>
