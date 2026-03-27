@@ -1,0 +1,923 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fantasy Baseball Copilot — Development Journey</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3/dist/gsap.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3/dist/ScrollTrigger.min.js"></script>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --surface: #1e293b;
+      --surface-raised: #293548;
+      --border: #334155;
+      --text-primary: #f8fafc;
+      --text-secondary: #e2e8f0;
+      --text-muted: #94a3b8;
+      --text-dim: #64748b;
+      --primary: #0ea5e9;
+      --primary-glow: rgba(14, 165, 233, 0.15);
+
+      --cat-api: #0ea5e9;
+      --cat-features: #a855f7;
+      --cat-frontend: #f59e0b;
+      --cat-llm: #10b981;
+      --cat-refactoring: #6366f1;
+      --cat-devops: #ec4899;
+      --cat-security: #ef4444;
+      --cat-data: #14b8a6;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text-primary);
+      overflow-x: hidden;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .page {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 0 24px;
+    }
+
+    /* ── Grain overlay ── */
+    body::after {
+      content: '';
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 9999;
+      opacity: 0.025;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+      background-repeat: repeat;
+      background-size: 256px 256px;
+    }
+
+    /* ── Hero ── */
+    .hero {
+      padding: 80px 0 40px;
+      position: relative;
+    }
+
+    .hero::before {
+      content: '';
+      position: absolute;
+      top: -120px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 800px;
+      height: 600px;
+      background: radial-gradient(ellipse at center, rgba(14, 165, 233, 0.08) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    .hero-eyebrow {
+      font-size: 13px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 2.5px;
+      color: var(--primary);
+      margin-bottom: 16px;
+      opacity: 0;
+    }
+
+    .hero-title {
+      font-family: 'Instrument Serif', serif;
+      font-size: clamp(42px, 6vw, 72px);
+      line-height: 1.05;
+      font-weight: 400;
+      color: var(--text-primary);
+      margin-bottom: 16px;
+      opacity: 0;
+    }
+
+    .hero-title em {
+      font-style: italic;
+      color: var(--primary);
+    }
+
+    .hero-subtitle {
+      font-size: 18px;
+      color: var(--text-muted);
+      max-width: 600px;
+      line-height: 1.6;
+      opacity: 0;
+    }
+
+    /* ── Stats bar ── */
+    .stats-bar {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 1px;
+      background: var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      margin: 48px 0 64px;
+      opacity: 0;
+    }
+
+    .stat-cell {
+      background: var(--surface);
+      padding: 28px 20px;
+      text-align: center;
+      position: relative;
+      transition: background 0.2s;
+    }
+
+    .stat-cell:hover {
+      background: var(--surface-raised);
+    }
+
+    .stat-number {
+      font-size: 36px;
+      font-weight: 700;
+      color: var(--text-primary);
+      line-height: 1;
+      margin-bottom: 6px;
+    }
+
+    .stat-number .counter {
+      display: inline-block;
+    }
+
+    .stat-label {
+      font-size: 12px;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      color: var(--text-dim);
+    }
+
+    /* ── Section headings ── */
+    .section-heading {
+      font-family: 'Instrument Serif', serif;
+      font-size: clamp(28px, 4vw, 40px);
+      margin-bottom: 8px;
+      opacity: 0;
+    }
+
+    .section-subheading {
+      font-size: 15px;
+      color: var(--text-muted);
+      margin-bottom: 40px;
+      opacity: 0;
+    }
+
+    /* ── Donut + Legend ── */
+    .distribution-section {
+      display: grid;
+      grid-template-columns: 300px 1fr;
+      gap: 48px;
+      align-items: center;
+      margin-bottom: 80px;
+    }
+
+    .donut-container {
+      position: relative;
+      width: 300px;
+      height: 300px;
+      opacity: 0;
+    }
+
+    .donut-center-text {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      text-align: center;
+      pointer-events: none;
+    }
+
+    .donut-center-number {
+      font-size: 48px;
+      font-weight: 700;
+      line-height: 1;
+    }
+
+    .donut-center-label {
+      font-size: 13px;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .legend {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      opacity: 0;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 14px 16px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      cursor: default;
+      transition: all 0.25s;
+    }
+
+    .legend-item:hover {
+      background: var(--surface-raised);
+      border-color: var(--text-dim);
+      transform: translateY(-1px);
+    }
+
+    .legend-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 3px;
+      flex-shrink: 0;
+    }
+
+    .legend-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .legend-name {
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--text-secondary);
+    }
+
+    .legend-count {
+      font-size: 12px;
+      color: var(--text-dim);
+    }
+
+    .legend-bar-track {
+      width: 100%;
+      height: 4px;
+      background: rgba(255,255,255,0.05);
+      border-radius: 2px;
+      margin-top: 6px;
+      overflow: hidden;
+    }
+
+    .legend-bar-fill {
+      height: 100%;
+      border-radius: 2px;
+      transition: width 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+      width: 0;
+    }
+
+    /* ── Timeline chart ── */
+    .timeline-section {
+      margin-bottom: 80px;
+    }
+
+    .chart-container {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 32px 24px 20px;
+      opacity: 0;
+    }
+
+    /* ── Category cards ── */
+    .cards-section {
+      margin-bottom: 80px;
+    }
+
+    .cards-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 16px;
+    }
+
+    .category-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 24px;
+      position: relative;
+      overflow: hidden;
+      transition: all 0.3s;
+      opacity: 0;
+      transform: translateY(20px);
+    }
+
+    .category-card:hover {
+      border-color: var(--text-dim);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+    }
+
+    .category-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+    }
+
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 12px;
+    }
+
+    .card-title {
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    .card-count {
+      font-size: 28px;
+      font-weight: 700;
+      line-height: 1;
+    }
+
+    .card-desc {
+      font-size: 13px;
+      color: var(--text-muted);
+      line-height: 1.5;
+      margin-bottom: 16px;
+    }
+
+    .card-highlights {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .card-tag {
+      font-size: 11px;
+      padding: 4px 10px;
+      border-radius: 6px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.06);
+      color: var(--text-dim);
+      white-space: nowrap;
+    }
+
+    /* ── Milestones ── */
+    .milestones-section {
+      margin-bottom: 100px;
+    }
+
+    .milestone-timeline {
+      position: relative;
+      padding-left: 32px;
+    }
+
+    .milestone-timeline::before {
+      content: '';
+      position: absolute;
+      left: 7px;
+      top: 8px;
+      bottom: 8px;
+      width: 2px;
+      background: linear-gradient(to bottom, var(--primary), var(--border));
+      border-radius: 1px;
+    }
+
+    .milestone {
+      position: relative;
+      padding: 0 0 32px 24px;
+      opacity: 0;
+      transform: translateX(-10px);
+    }
+
+    .milestone:last-child { padding-bottom: 0; }
+
+    .milestone-dot {
+      position: absolute;
+      left: -28px;
+      top: 6px;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: var(--bg);
+      border: 3px solid var(--primary);
+      z-index: 1;
+    }
+
+    .milestone-dot.major {
+      background: var(--primary);
+      box-shadow: 0 0 12px rgba(14, 165, 233, 0.4);
+    }
+
+    .milestone-date {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--primary);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 4px;
+    }
+
+    .milestone-title {
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin-bottom: 4px;
+    }
+
+    .milestone-desc {
+      font-size: 13px;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+
+    /* ── Footer ── */
+    .footer {
+      text-align: center;
+      padding: 40px 0 60px;
+      border-top: 1px solid var(--border);
+    }
+
+    .footer-text {
+      font-size: 13px;
+      color: var(--text-dim);
+    }
+
+    .footer-text a {
+      color: var(--primary);
+      text-decoration: none;
+    }
+
+    /* ── Responsive ── */
+    @media (max-width: 768px) {
+      .stats-bar { grid-template-columns: repeat(3, 1fr); }
+      .stats-bar .stat-cell:nth-child(4),
+      .stats-bar .stat-cell:nth-child(5) {
+        grid-column: span 1;
+      }
+      .distribution-section {
+        grid-template-columns: 1fr;
+        justify-items: center;
+      }
+      .donut-container { width: 240px; height: 240px; }
+      .legend { grid-template-columns: 1fr; }
+      .cards-grid { grid-template-columns: 1fr; }
+    }
+
+    @media (max-width: 480px) {
+      .stats-bar { grid-template-columns: repeat(2, 1fr); }
+      .hero { padding: 48px 0 24px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+
+    <!-- ═══ Hero ═══ -->
+    <section class="hero">
+      <div class="hero-eyebrow">Development Portfolio</div>
+      <h1 class="hero-title">Fantasy Baseball <em>Copilot</em></h1>
+      <p class="hero-subtitle">
+        An AI-powered fantasy baseball assistant built with Next.js, OpenAI, and the Yahoo Fantasy Sports API.
+        52 days of rapid iteration from MVP to production.
+      </p>
+    </section>
+
+    <!-- ═══ Stats Bar ═══ -->
+    <div class="stats-bar">
+      <div class="stat-cell">
+        <div class="stat-number"><span class="counter" data-target="109">0</span></div>
+        <div class="stat-label">Commits</div>
+      </div>
+      <div class="stat-cell">
+        <div class="stat-number"><span class="counter" data-target="52">0</span></div>
+        <div class="stat-label">Days Active</div>
+      </div>
+      <div class="stat-cell">
+        <div class="stat-number"><span class="counter" data-target="35" data-suffix="k">0</span></div>
+        <div class="stat-label">Lines Added</div>
+      </div>
+      <div class="stat-cell">
+        <div class="stat-number"><span class="counter" data-target="56">0</span></div>
+        <div class="stat-label">Files Touched</div>
+      </div>
+      <div class="stat-cell">
+        <div class="stat-number"><span class="counter" data-target="4">0</span></div>
+        <div class="stat-label">PRs Merged</div>
+      </div>
+    </div>
+
+    <!-- ═══ Distribution ═══ -->
+    <h2 class="section-heading">Work Distribution</h2>
+    <p class="section-subheading">How 109 commits break down across engineering disciplines</p>
+
+    <div class="distribution-section">
+      <div class="donut-container">
+        <svg id="donut" viewBox="0 0 300 300" width="300" height="300"></svg>
+        <div class="donut-center-text">
+          <div class="donut-center-number">109</div>
+          <div class="donut-center-label">Commits</div>
+        </div>
+      </div>
+      <div class="legend" id="legend"></div>
+    </div>
+
+    <!-- ═══ Timeline ═══ -->
+    <h2 class="section-heading">Development Timeline</h2>
+    <p class="section-subheading">Weekly commit activity colored by work category</p>
+
+    <div class="timeline-section">
+      <div class="chart-container">
+        <canvas id="timelineChart" height="280"></canvas>
+      </div>
+    </div>
+
+    <!-- ═══ Category Cards ═══ -->
+    <h2 class="section-heading">Category Deep Dive</h2>
+    <p class="section-subheading">Key highlights from each area of development</p>
+
+    <div class="cards-section">
+      <div class="cards-grid" id="cardsGrid"></div>
+    </div>
+
+    <!-- ═══ Milestones ═══ -->
+    <h2 class="section-heading">Key Milestones</h2>
+    <p class="section-subheading">Major achievements across the development lifecycle</p>
+
+    <div class="milestones-section">
+      <div class="milestone-timeline" id="milestoneTimeline"></div>
+    </div>
+
+    <div class="footer">
+      <div class="footer-text">Built with Next.js, TypeScript, Tailwind CSS, OpenAI &amp; Yahoo Fantasy API</div>
+    </div>
+
+  </div>
+
+  <script>
+    /* ═══════════════════════════════════════════
+       DATA
+       ═══════════════════════════════════════════ */
+    const categories = [
+      { key: 'api',         name: 'Yahoo API Integration', count: 26, color: '#0ea5e9',
+        desc: 'Full OAuth 1.0a to 2.0 migration, XML response parsing, and 15+ API endpoints for leagues, teams, rosters, matchups, and player data.',
+        tags: ['OAuth 2.0', 'XML Parser', 'Rate Limiting', '15+ Endpoints', 'Token Refresh'] },
+      { key: 'features',    name: 'New Features',          count: 22, color: '#a855f7',
+        desc: 'Player statistics, head-to-head comparison, draft results with keepers, tab navigation, league settings, persistent database, and more.',
+        tags: ['Player Stats', 'Player Compare', 'Draft Results', 'Keepers', 'Upstash Redis', 'Waiver Wire'] },
+      { key: 'frontend',    name: 'Frontend / UI',         count: 20, color: '#f59e0b',
+        desc: 'Mobile-first responsive design, swipe gestures, scroll effects, sticky headers, theme system, and accessibility improvements.',
+        tags: ['Mobile-First', 'Swipe Gestures', 'Dark/Light Theme', 'Scroll Fade', 'Accessibility', 'Safe Areas'] },
+      { key: 'llm',         name: 'LLM / AI Tuning',      count: 9,  color: '#10b981',
+        desc: 'Prompt engineering, streaming responses, roster context injection, flexible NLP intent parsing, and canned-response elimination.',
+        tags: ['Streaming', 'Context Injection', 'NLP Parsing', 'Prompt Engineering'] },
+      { key: 'refactoring', name: 'Refactoring',           count: 14, color: '#6366f1',
+        desc: 'Component decomposition (EnhancedCards split into focused modules), shared stat formatters, state simplification, and dead code removal.',
+        tags: ['Component Split', 'Stat Formatters', 'State Cleanup', 'Code Extraction'] },
+      { key: 'devops',      name: 'DevOps / Infra',        count: 11, color: '#ec4899',
+        desc: 'Vercel deployment, CI/CD with GitHub Actions, testing setup (Vitest + Playwright), OpenAI SDK upgrade, and Redis migration.',
+        tags: ['Vercel', 'GitHub Actions', 'Vitest', 'Playwright', 'SDK Upgrade'] },
+      { key: 'security',    name: 'Security',              count: 3,  color: '#ef4444',
+        desc: 'Credential scrubbing from git history, token refresh guards on all API routes, and environment variable validation.',
+        tags: ['Credential Scrub', 'Auth Guards', 'Env Validation'] },
+      { key: 'data',        name: 'Data',                  count: 4,  color: '#14b8a6',
+        desc: 'MLB roster CSV ingestion pipeline with 1,200+ players, roster configuration expansion, and Google Sheets integration scripts.',
+        tags: ['1,200+ Players', 'CSV Pipeline', 'Roster Config'] },
+    ];
+
+    const weeklyData = {
+      labels: ['Feb 3–9', 'Feb 10–16', 'Feb 17–23', 'Feb 24–\nMar 2', 'Mar 3–9', 'Mar 10–16', 'Mar 17–23', 'Mar 24–26'],
+      datasets: {
+        api:         [19, 0, 4, 0, 0, 0, 2, 1],
+        features:    [4,  8, 0, 0, 4, 1, 3, 2],
+        frontend:    [1, 10, 3, 0, 0, 0, 3, 3],
+        llm:         [2,  2, 2, 0, 0, 1, 0, 0],
+        refactoring: [0,  3, 0, 0, 1, 0, 8, 0],
+        devops:      [5,  0, 1, 0, 0, 1, 4, 0],
+        security:    [0,  0, 0, 0, 0, 0, 2, 1],
+        data:        [5,  0, 0, 0, 0, 0, 0, 0],
+      }
+    };
+
+    const milestones = [
+      { date: 'Feb 3',  title: 'MVP Launch',                    desc: 'Initial commit — full-stack Next.js app with AI chat, command parsing, draft room, and league management. 36 files, 10,800+ lines.', major: true },
+      { date: 'Feb 8',  title: 'Yahoo OAuth Integration',       desc: 'Connected to Yahoo Fantasy Sports API via OAuth 2.0. Built XML parser, league selector, and 7 API routes.', major: true },
+      { date: 'Feb 9',  title: 'Player Statistics Engine',      desc: 'Real-time player stats fetched from Yahoo with season/week views, stat ID remapping, and context-aware labels.', major: false },
+      { date: 'Feb 12', title: 'AI Streaming + Player Compare', desc: 'Introduced real-time streaming AI responses and head-to-head player comparison with ownership data and sparklines.', major: true },
+      { date: 'Feb 15', title: 'Navigation Overhaul',           desc: 'Tab-based navigation for League, Roster, Matchups, and Players. Quick action prefill, swipe-to-close drawer.', major: false },
+      { date: 'Feb 21', title: 'LLM Quality Overhaul',          desc: 'Injected league settings into AI context, eliminated canned responses, wired league selection end-to-end.', major: true },
+      { date: 'Mar 3',  title: 'Draft Results + Keepers',       desc: 'Full draft history integration with keeper detection, round-by-round results, and team-specific filtering.', major: false },
+      { date: 'Mar 10', title: 'League Settings + SDK Upgrade',  desc: 'Added Settings tab displaying Yahoo league configuration. Upgraded OpenAI SDK from v4 to v6.', major: false },
+      { date: 'Mar 18', title: 'Architecture Overhaul',         desc: 'Split monolithic components, extracted stat formatters, added auth guards to all routes, set up Vitest + Playwright, hardened security.', major: true },
+      { date: 'Mar 26', title: 'PlayersView + Matchup Polish',  desc: 'New PlayersView with origin-tab tracking, enhanced matchup statistics display, and auth error handling across all components.', major: false },
+    ];
+
+    /* ═══════════════════════════════════════════
+       DONUT CHART (SVG)
+       ═══════════════════════════════════════════ */
+    function buildDonut() {
+      const svg = document.getElementById('donut');
+      const total = categories.reduce((s, c) => s + c.count, 0);
+      const cx = 150, cy = 150, r = 110, stroke = 36;
+      const circumference = 2 * Math.PI * r;
+      let offset = -circumference * 0.25; // start at 12 o'clock
+
+      categories.forEach((cat, i) => {
+        const pct = cat.count / total;
+        const dashLen = pct * circumference;
+        const gap = circumference - dashLen;
+
+        const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        circle.setAttribute('cx', cx);
+        circle.setAttribute('cy', cy);
+        circle.setAttribute('r', r);
+        circle.setAttribute('fill', 'none');
+        circle.setAttribute('stroke', cat.color);
+        circle.setAttribute('stroke-width', stroke);
+        circle.setAttribute('stroke-dasharray', `${dashLen} ${gap}`);
+        circle.setAttribute('stroke-dashoffset', `${-offset}`);
+        circle.setAttribute('data-cat', cat.key);
+        circle.style.transition = 'opacity 0.2s, stroke-width 0.2s';
+        circle.style.cursor = 'pointer';
+
+        circle.addEventListener('mouseenter', () => {
+          svg.querySelectorAll('circle').forEach(c => {
+            c.style.opacity = c === circle ? '1' : '0.25';
+          });
+          circle.setAttribute('stroke-width', stroke + 6);
+        });
+        circle.addEventListener('mouseleave', () => {
+          svg.querySelectorAll('circle').forEach(c => {
+            c.style.opacity = '1';
+          });
+          circle.setAttribute('stroke-width', stroke);
+        });
+
+        svg.appendChild(circle);
+        offset += dashLen;
+      });
+    }
+
+    /* ═══════════════════════════════════════════
+       LEGEND
+       ═══════════════════════════════════════════ */
+    function buildLegend() {
+      const container = document.getElementById('legend');
+      const maxCount = Math.max(...categories.map(c => c.count));
+
+      categories.forEach(cat => {
+        const item = document.createElement('div');
+        item.className = 'legend-item';
+        item.innerHTML = `
+          <div class="legend-dot" style="background:${cat.color}"></div>
+          <div class="legend-info">
+            <div class="legend-name">${cat.name}</div>
+            <div class="legend-count">${cat.count} commits &middot; ${Math.round(cat.count / 109 * 100)}%</div>
+            <div class="legend-bar-track">
+              <div class="legend-bar-fill" style="background:${cat.color}" data-width="${(cat.count / maxCount * 100).toFixed(0)}%"></div>
+            </div>
+          </div>
+        `;
+        container.appendChild(item);
+      });
+    }
+
+    /* ═══════════════════════════════════════════
+       TIMELINE CHART (Chart.js)
+       ═══════════════════════════════════════════ */
+    function buildTimeline() {
+      const ctx = document.getElementById('timelineChart').getContext('2d');
+
+      const datasets = categories.map(cat => ({
+        label: cat.name,
+        data: weeklyData.datasets[cat.key],
+        backgroundColor: cat.color + 'cc',
+        borderColor: cat.color,
+        borderWidth: 1,
+        borderRadius: 4,
+        borderSkipped: false,
+      }));
+
+      new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: weeklyData.labels,
+          datasets,
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              display: false,
+            },
+            tooltip: {
+              backgroundColor: '#1e293b',
+              titleColor: '#f8fafc',
+              bodyColor: '#94a3b8',
+              borderColor: '#334155',
+              borderWidth: 1,
+              cornerRadius: 8,
+              padding: 12,
+              titleFont: { family: 'Inter', weight: '600' },
+              bodyFont: { family: 'Inter' },
+              callbacks: {
+                title: (items) => items[0].label.replace('\n', ' '),
+              }
+            },
+          },
+          scales: {
+            x: {
+              stacked: true,
+              grid: { display: false },
+              ticks: {
+                color: '#64748b',
+                font: { family: 'Inter', size: 11 },
+                callback: function(val, idx) {
+                  return this.getLabelForValue(val).replace('\n', ' ');
+                }
+              },
+              border: { display: false },
+            },
+            y: {
+              stacked: true,
+              grid: {
+                color: 'rgba(255,255,255,0.04)',
+                drawTicks: false,
+              },
+              ticks: {
+                color: '#64748b',
+                font: { family: 'Inter', size: 11 },
+                padding: 8,
+                stepSize: 5,
+              },
+              border: { display: false },
+            },
+          },
+          interaction: {
+            mode: 'index',
+            intersect: false,
+          },
+        },
+      });
+    }
+
+    /* ═══════════════════════════════════════════
+       CATEGORY CARDS
+       ═══════════════════════════════════════════ */
+    function buildCards() {
+      const grid = document.getElementById('cardsGrid');
+
+      categories.forEach(cat => {
+        const card = document.createElement('div');
+        card.className = 'category-card';
+        card.style.cssText = `--accent: ${cat.color}`;
+        card.innerHTML = `
+          <style>.category-card[style*="${cat.color}"]::before { background: ${cat.color}; }</style>
+          <div class="card-header">
+            <div class="card-title">${cat.name}</div>
+            <div class="card-count" style="color:${cat.color}">${cat.count}</div>
+          </div>
+          <div class="card-desc">${cat.desc}</div>
+          <div class="card-highlights">
+            ${cat.tags.map(t => `<span class="card-tag">${t}</span>`).join('')}
+          </div>
+        `;
+        grid.appendChild(card);
+      });
+    }
+
+    /* ═══════════════════════════════════════════
+       MILESTONES
+       ═══════════════════════════════════════════ */
+    function buildMilestones() {
+      const container = document.getElementById('milestoneTimeline');
+
+      milestones.forEach(m => {
+        const el = document.createElement('div');
+        el.className = 'milestone';
+        el.innerHTML = `
+          <div class="milestone-dot ${m.major ? 'major' : ''}"></div>
+          <div class="milestone-date">${m.date}</div>
+          <div class="milestone-title">${m.title}</div>
+          <div class="milestone-desc">${m.desc}</div>
+        `;
+        container.appendChild(el);
+      });
+    }
+
+    /* ═══════════════════════════════════════════
+       ANIMATIONS (GSAP + ScrollTrigger)
+       ═══════════════════════════════════════════ */
+    function animateCounters() {
+      document.querySelectorAll('.counter').forEach(el => {
+        const target = parseInt(el.dataset.target);
+        const suffix = el.dataset.suffix || '';
+        const obj = { val: 0 };
+        gsap.to(obj, {
+          val: target,
+          duration: 1.6,
+          ease: 'power2.out',
+          onUpdate: () => { el.textContent = Math.round(obj.val) + suffix; }
+        });
+      });
+    }
+
+    function initAnimations() {
+      gsap.registerPlugin(ScrollTrigger);
+
+      // Hero entrance
+      const heroTl = gsap.timeline({ defaults: { ease: 'power3.out' } });
+      heroTl
+        .to('.hero-eyebrow', { opacity: 1, y: 0, duration: 0.6, delay: 0.2 })
+        .to('.hero-title', { opacity: 1, y: 0, duration: 0.8 }, '-=0.3')
+        .to('.hero-subtitle', { opacity: 1, y: 0, duration: 0.6 }, '-=0.4');
+
+      // Stats bar
+      gsap.to('.stats-bar', {
+        opacity: 1, y: 0, duration: 0.6,
+        scrollTrigger: { trigger: '.stats-bar', start: 'top 85%' },
+        onComplete: animateCounters,
+      });
+
+      // Section headings
+      document.querySelectorAll('.section-heading').forEach(el => {
+        gsap.to(el, {
+          opacity: 1, y: 0, duration: 0.5,
+          scrollTrigger: { trigger: el, start: 'top 85%' },
+        });
+      });
+
+      document.querySelectorAll('.section-subheading').forEach(el => {
+        gsap.to(el, {
+          opacity: 1, y: 0, duration: 0.5, delay: 0.1,
+          scrollTrigger: { trigger: el, start: 'top 85%' },
+        });
+      });
+
+      // Donut
+      gsap.to('.donut-container', {
+        opacity: 1, scale: 1, duration: 0.7,
+        scrollTrigger: { trigger: '.distribution-section', start: 'top 80%' },
+      });
+
+      // Legend
+      gsap.to('.legend', {
+        opacity: 1, duration: 0.5,
+        scrollTrigger: {
+          trigger: '.legend',
+          start: 'top 85%',
+          onEnter: () => {
+            document.querySelectorAll('.legend-bar-fill').forEach(bar => {
+              bar.style.width = bar.dataset.width;
+            });
+          }
+        },
+      });
+
+      // Chart
+      gsap.to('.chart-container', {
+        opacity: 1, y: 0, duration: 0.6,
+        scrollTrigger: { trigger: '.chart-container', start: 'top 85%' },
+      });
+
+      // Category cards — staggered
+      gsap.utils.toArray('.category-card').forEach((card, i) => {
+        gsap.to(card, {
+          opacity: 1, y: 0, duration: 0.5, delay: i * 0.08,
+          scrollTrigger: { trigger: card, start: 'top 90%' },
+        });
+      });
+
+      // Milestones — staggered
+      gsap.utils.toArray('.milestone').forEach((ms, i) => {
+        gsap.to(ms, {
+          opacity: 1, x: 0, duration: 0.5, delay: i * 0.1,
+          scrollTrigger: { trigger: ms, start: 'top 90%' },
+        });
+      });
+    }
+
+    /* ═══════════════════════════════════════════
+       INIT
+       ═══════════════════════════════════════════ */
+    buildDonut();
+    buildLegend();
+    buildTimeline();
+    buildCards();
+    buildMilestones();
+
+    // Wait one frame for DOM then animate
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        initAnimations();
+      });
+    });
+  </script>
+</body>
+</html>
