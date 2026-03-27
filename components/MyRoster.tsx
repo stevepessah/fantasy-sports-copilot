@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useYahooLeagues } from '@/hooks/useYahooLeagues'
 import { useYahooTeams } from '@/hooks/useYahooTeams'
+import AuthRequiredMessage, { isAuthError } from '@/components/AuthRequiredMessage'
 import type { RosterPlayerEntry } from '@/app/api/yahoo/roster-stats/route'
 import {
   type ColDef,
@@ -101,6 +102,7 @@ export default function MyRoster({ leagueKey }: MyRosterProps) {
   }
 
   if (error) {
+    if (isAuthError(error)) return <AuthRequiredMessage />
     return (
       <div className="flex items-center justify-center py-16 text-red-400 text-sm">
         {error}

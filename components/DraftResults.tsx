@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import { useYahooLeagues } from '@/hooks/useYahooLeagues'
+import AuthRequiredMessage, { isAuthError } from '@/components/AuthRequiredMessage'
 
 interface DraftPick {
   pick: number
@@ -145,6 +146,7 @@ export default function DraftResults({ leagueKey }: DraftResultsProps) {
   }
 
   if (error) {
+    if (isAuthError(error)) return <AuthRequiredMessage />
     return (
       <div className="flex items-center justify-center py-16">
         <div className="text-center">

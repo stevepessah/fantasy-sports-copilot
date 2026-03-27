@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import { useYahooLeagues } from '@/hooks/useYahooLeagues'
+import AuthRequiredMessage, { isAuthError } from '@/components/AuthRequiredMessage'
 import type { ParsedStandingsTeam } from '@/lib/yahoo/xmlParser'
 import type { RosterPlayerEntry } from '@/app/api/yahoo/roster-stats/route'
 import {
@@ -79,6 +80,7 @@ export default function LeagueStandings({ leagueKey }: LeagueStandingsProps) {
   }
 
   if (error) {
+    if (isAuthError(error)) return <AuthRequiredMessage />
     return (
       <div className="flex items-center justify-center py-16 text-red-400 text-sm">
         {error}
@@ -282,9 +284,11 @@ function TeamRosterView({
         )}
 
         {error && (
-          <div className="flex items-center justify-center py-12 text-red-400 text-sm">
-            {error}
-          </div>
+          isAuthError(error) ? <AuthRequiredMessage /> : (
+            <div className="flex items-center justify-center py-12 text-red-400 text-sm">
+              {error}
+            </div>
+          )
         )}
 
         {!isLoading && !error && players.length > 0 && (

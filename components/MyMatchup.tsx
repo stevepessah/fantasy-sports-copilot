@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo, Fragment } from 'react'
 import { useYahooLeagues } from '@/hooks/useYahooLeagues'
+import AuthRequiredMessage, { isAuthError } from '@/components/AuthRequiredMessage'
 import type { MatchupResponse, MatchupPayload, MatchupTeamPayload } from '@/app/api/yahoo/matchup/route'
 
 interface MyMatchupProps {
@@ -83,6 +84,7 @@ export default function MyMatchup({ leagueKey }: MyMatchupProps) {
   }
 
   if (error && !data) {
+    if (isAuthError(error)) return <AuthRequiredMessage />
     return (
       <div className="flex items-center justify-center py-16 text-red-400 text-sm">
         {error}

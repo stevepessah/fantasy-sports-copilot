@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { PlayerStatsSkeleton } from './Skeleton'
+import AuthRequiredMessage, { isAuthError } from '@/components/AuthRequiredMessage'
 import { formatStatValue as sharedFormatStatValue } from '@/lib/statFormatters'
 
 interface PlayerStatsProps {
@@ -175,6 +176,7 @@ export function PlayerStats({ playerKey, leagueKey, playerName, positions = [] }
   }
 
   if (error) {
+    if (isAuthError(error)) return <AuthRequiredMessage />
     return (
       <div className="mt-2 p-2 bg-red-900/20 border border-red-800/50 rounded-lg">
         <div className="text-xs text-red-400">{error}</div>
