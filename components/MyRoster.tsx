@@ -483,7 +483,7 @@ function PlayerRow({
             <img
               src={player.imageUrl}
               alt=""
-              className="w-12 h-12 rounded-full shrink-0 bg-slate-700"
+              className="w-9 h-9 rounded-full shrink-0 bg-slate-700 object-cover"
             />
           )}
           <div className="min-w-0">
