@@ -100,19 +100,31 @@ export function formatStatValue(
 
 // ── Column builders ─────────────────────────────────────────────────────────
 
+const PINNED_FIRST_COLS: Record<'B' | 'P', ColDef[]> = {
+  B: [
+    { key: 'GP', label: 'GP', fmt: 'int' },
+    { key: 'H/AB', label: 'H/AB', composite: 'h_ab' },
+  ],
+  P: [
+    { key: 'GP', label: 'GP', fmt: 'int' },
+  ],
+}
+
+const SKIP_DISPLAY: Record<'B' | 'P', Set<string>> = {
+  B: new Set(['GP', 'H', 'AB', 'OBP']),
+  P: new Set(['GP', 'W']),
+}
+
 export function buildColsFromCategories(
   categories: LeagueStatCategory[],
   positionType: 'B' | 'P',
 ): ColDef[] {
   const filtered = categories.filter((c) => c.positionType === positionType)
-  const cols: ColDef[] = []
-
-  if (positionType === 'B') {
-    cols.push({ key: 'H/AB', label: 'H/AB', composite: 'h_ab' })
-  }
+  const skip = SKIP_DISPLAY[positionType]
+  const cols: ColDef[] = [...PINNED_FIRST_COLS[positionType]]
 
   for (const cat of filtered) {
-    if (cat.displayName === 'H' || cat.displayName === 'AB') continue
+    if (skip.has(cat.displayName)) continue
     cols.push({
       key: cat.displayName,
       label: cat.displayName,
@@ -124,6 +136,7 @@ export function buildColsFromCategories(
 }
 
 export const FALLBACK_BATTER_COLS: ColDef[] = [
+  { key: 'GP', label: 'GP', fmt: 'int' },
   { key: 'H/AB', label: 'H/AB', composite: 'h_ab' },
   { key: 'R', label: 'R', fmt: 'int' },
   { key: 'HR', label: 'HR', fmt: 'int' },
@@ -135,6 +148,7 @@ export const FALLBACK_BATTER_COLS: ColDef[] = [
 ]
 
 export const FALLBACK_PITCHER_COLS: ColDef[] = [
+  { key: 'GP', label: 'GP', fmt: 'int' },
   { key: 'IP', label: 'IP', fmt: 'ip' },
   { key: 'L', label: 'L', fmt: 'int' },
   { key: 'SV', label: 'SV', fmt: 'int' },

@@ -112,13 +112,17 @@ export async function GET(request: NextRequest) {
     const gameKey = effectiveTeamKey.split('.')[0]
     const categories = await getCachedStatCategories(api, gameKey)
 
+    const FALLBACK_STAT_NAMES: Record<string, string> = {
+      '1': 'GP', '6': 'AB', '8': 'H',
+    }
+
     const entries: RosterPlayerEntry[] = players.map((p) => {
       const remapped: Record<string, number | string> = {}
       if (p.player_stats && categories) {
         for (const [statId, value] of Object.entries(p.player_stats)) {
-          const cat = categories[statId]
-          if (cat) {
-            remapped[cat.displayName] = value
+          const displayName = categories[statId]?.displayName ?? FALLBACK_STAT_NAMES[statId]
+          if (displayName) {
+            remapped[displayName] = value
           }
         }
       }

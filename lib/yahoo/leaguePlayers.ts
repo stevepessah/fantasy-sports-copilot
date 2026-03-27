@@ -146,14 +146,18 @@ export async function fetchLeaguePlayers(
     }
   }
 
+  const FALLBACK_STAT_NAMES: Record<string, string> = {
+    '1': 'GP', '6': 'AB', '8': 'H',
+  }
+
   // Remap stat IDs → display names and assign rank from sort position
   const entries: LeaguePlayerEntry[] = allRaw.map((p: any, index: number) => {
     const remapped: Record<string, number | string> = {}
     if (p.player_stats && categories) {
       for (const [statId, value] of Object.entries(p.player_stats)) {
-        const cat = categories[statId]
-        if (cat) {
-          remapped[cat.displayName] = value as number | string
+        const displayName = categories[statId]?.displayName ?? FALLBACK_STAT_NAMES[statId]
+        if (displayName) {
+          remapped[displayName] = value as number | string
         }
       }
     }
