@@ -378,18 +378,46 @@ export class YahooFantasyAPI {
       status?: string     // 'A' = all, 'FA' = free agents, 'T' = taken, 'W' = waivers
       sort?: string       // 'AR' = average rank, 'PTS' = points, 'OR' = overall rank
       out?: string        // Sub-resources: 'stats', 'ownership', 'percent_owned', etc.
+      playerKeys?: string[] // Fetch specific players by key (skips pagination)
+      dateRange?: string    // Coverage type for stats: 'lastweek', 'lastmonth', 'date=YYYY-MM-DD'
     } = {}
   ): Promise<{ players: ParsedRosterPlayer[]; raw?: string }> {
     if (!this.accessToken) {
       throw new Error('Access token not set. Please authenticate first.')
     }
 
-    const { start = 0, count = 25, position, status, sort, out } = options
-    let filters = `;start=${start};count=${count}`
+    const { start = 0, count = 25, position, status, sort, out, playerKeys, dateRange } = options
+    let filters = ''
+    if (playerKeys && playerKeys.length > 0) {
+      filters += `;player_keys=${playerKeys.join(',')}`
+    } else {
+      filters += `;start=${start};count=${count}`
+    }
     if (position) filters += `;position=${position}`
     if (status) filters += `;status=${status}`
     if (sort) filters += `;sort=${sort}`
-    if (out) filters += `;out=${out}`
+    if (out) {
+      if (dateRange) {
+        // Navigate to the sub-resource path so ;type= applies to stats
+        const outParts = out.split(',')
+        const statsIdx = outParts.indexOf('stats')
+        if (statsIdx >= 0) {
+          outParts.splice(statsIdx, 1)
+          if (outParts.length > 0) filters += `;out=${outParts.join(',')}`
+          let typeParam: string
+          if (dateRange.startsWith('date=')) {
+            typeParam = `type=date;${dateRange}`
+          } else {
+            typeParam = `type=${dateRange}`
+          }
+          filters += `/stats;${typeParam}`
+        } else {
+          filters += `;out=${out}`
+        }
+      } else {
+        filters += `;out=${out}`
+      }
+    }
 
     const endpoint = `/league/${leagueKey}/players${filters}`
 

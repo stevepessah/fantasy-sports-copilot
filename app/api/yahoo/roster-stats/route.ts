@@ -67,6 +67,7 @@ export async function GET(request: NextRequest) {
 
     // For historical seasons, discover the user's league & team from that year
     let effectiveTeamKey = teamKey
+    let effectiveLeagueKey = leagueKey
     if (seasonParam) {
       const season = parseInt(seasonParam, 10)
       const historicalGameKey = MLB_SEASON_TO_GAME_KEY[season]
@@ -80,6 +81,7 @@ export async function GET(request: NextRequest) {
             )
           }
           const historicalLeagueKey = leagues[0].league_key
+          effectiveLeagueKey = historicalLeagueKey
           const { teams } = await api.getLeagueTeams(historicalLeagueKey)
           const userTeam = teams.find((t) =>
             t.managers?.some((m) => m.is_current_login === '1'),
@@ -101,53 +103,50 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    const leagueSettingsPromise = leagueKey
-      ? api.getLeagueSettings(leagueKey).catch(() => null)
-      : Promise.resolve(null)
+    // 1) Fetch roster (positions + metadata) and league settings in parallel
+    const [rosterResult, leagueSettings] = await Promise.all([
+      api.getTeamRoster(effectiveTeamKey),
+      leagueKey
+        ? api.getLeagueSettings(leagueKey).catch(() => null)
+        : Promise.resolve(null),
+    ])
+    const rosterPlayers = rosterResult.players
+    const playerKeys = rosterPlayers.map((p) => p.player_key).filter(Boolean)
 
-    let players: Awaited<ReturnType<typeof api.getTeamRoster>>['players']
-    let leagueSettings: Awaited<ReturnType<typeof api.getLeagueSettings>> | null
-
-    if (dateRange) {
-      // Fetch roster metadata + date-range stats in parallel.
-      // The metadata call always includes full player info (name, image, etc.).
-      // The stats call uses the /stats sub-resource path so ;type= is scoped correctly.
-      const [metaResult, statsResult, ls] = await Promise.all([
-        api.getTeamRoster(effectiveTeamKey, { out: 'stats' }),
-        api.getTeamRoster(effectiveTeamKey, { out: 'stats', dateRange }),
-        leagueSettingsPromise,
-      ])
-      leagueSettings = ls
-
-      // Build a map of date-range stats keyed by player_key
-      const statsMap = new Map<string, typeof statsResult.players[0]['player_stats']>()
-      for (const sp of statsResult.players) {
-        if (sp.player_key && sp.player_stats) {
-          statsMap.set(sp.player_key, sp.player_stats)
-        }
+    // 2) Fetch actual stats from the league/players endpoint (same source the Players tab uses).
+    //    The roster/players;out=stats endpoint returns limited data; the league/players endpoint
+    //    returns full stats including all counting and rate categories.
+    let statsPlayers: Awaited<ReturnType<typeof api.getPlayers>>['players'] = []
+    if (playerKeys.length > 0 && effectiveLeagueKey) {
+      try {
+        const statsResult = await api.getPlayers(effectiveLeagueKey, {
+          playerKeys,
+          out: 'stats',
+          dateRange: dateRange || undefined,
+        })
+        statsPlayers = statsResult.players
+      } catch (err) {
+        console.error('[roster-stats] Failed to fetch player stats from league endpoint:', err)
       }
-
-      // Merge: use full metadata from metaResult, overlay stats from statsResult
-      players = metaResult.players.map((p) => ({
-        ...p,
-        player_stats: statsMap.get(p.player_key) ?? p.player_stats,
-      }))
-    } else {
-      const [rosterResult, ls] = await Promise.all([
-        api.getTeamRoster(effectiveTeamKey, { out: 'stats' }),
-        leagueSettingsPromise,
-      ])
-      leagueSettings = ls
-      players = rosterResult.players
     }
+
+    // 3) Build a map of stats keyed by player_key
+    const statsMap = new Map<string, Record<string, string | number>>()
+    for (const sp of statsPlayers) {
+      if (sp.player_key && sp.player_stats) {
+        statsMap.set(sp.player_key, sp.player_stats)
+      }
+    }
+
+    // 4) Merge: roster positions + metadata from getTeamRoster, stats from getPlayers
+    const players = rosterPlayers.map((p) => ({
+      ...p,
+      player_stats: statsMap.get(p.player_key) ?? p.player_stats,
+    }))
 
     const gameKey = effectiveTeamKey.split('.')[0]
     const categories = await getCachedStatCategories(api, gameKey)
 
-    // Canonical stat_id → display name used by the frontend columns.
-    // Yahoo's stat categories may use different names (e.g. 'G' instead of 'GP'),
-    // so we store under the canonical name first, then also under Yahoo's name
-    // when they differ (to support dynamically-built league columns).
     const CANONICAL_STAT_NAMES: Record<string, string> = {
       ...BATTER_STAT_IDS,
       ...PITCHER_STAT_IDS,
