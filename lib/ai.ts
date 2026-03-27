@@ -19,6 +19,8 @@ export interface AIContext {
   yahooLeagueSettingsContext?: string
   // Whether the user has Yahoo connected (affects fallback messaging)
   hasYahooConnection?: boolean
+  // Which tab the user was viewing when they started the chat
+  originTab?: string
 }
 
 // ─── Deep Fantasy Baseball Knowledge ────────────────────────────────────────
@@ -229,6 +231,10 @@ ${FANTASY_BASEBALL_EXPERTISE}
 ## Current Context
 - Sport: Baseball
 `
+
+    if (context.originTab) {
+      prompt += `- User was viewing: ${context.originTab} (tailor your response to be relevant to what they were looking at)\n`
+    }
 
     if (context.league) {
       prompt += `- League: ${context.league.name} (${context.league.numTeams} teams, ${context.league.scoringType} scoring)\n`

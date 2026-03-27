@@ -59,7 +59,7 @@ async function createLeague(data: any, currentSport: Sport, userId: string): Pro
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { message, leagueId, userId, sport, conversationHistory, stream: wantStream, yahooLeagueKey: requestedYahooLeagueKey } = body
+    const { message, leagueId, userId, sport, conversationHistory, stream: wantStream, yahooLeagueKey: requestedYahooLeagueKey, originTab } = body
 
     if (!message || typeof message !== 'string') {
       return NextResponse.json(
@@ -77,10 +77,20 @@ export async function POST(request: NextRequest) {
     const currentSport = sport || 'baseball'
 
     // Build context
+    const TAB_LABELS: Record<string, string> = {
+      league: 'League Standings',
+      roster: 'My Roster',
+      matchups: 'My Matchup',
+      players: 'Players',
+      draft: 'Draft Results',
+      settings: 'League Settings',
+    }
+
     const context: any = {
       userId: userId || 'user_1',
       leagueId,
       sport: currentSport,
+      ...(originTab && TAB_LABELS[originTab] ? { originTab: TAB_LABELS[originTab] } : {}),
     }
 
     // If no leagueId provided, try to get the first baseball league

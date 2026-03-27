@@ -65,6 +65,12 @@ const MyMatchup = dynamic(() => import('./MyMatchup'), {
   loading: () => <div className="text-xs text-slate-400 py-2">Loading…</div>,
   ssr: false,
 })
+
+// Lazy-load Players View (only when Players tab is active)
+const PlayersView = dynamic(() => import('./PlayersView'), {
+  loading: () => <div className="text-xs text-slate-400 py-2">Loading…</div>,
+  ssr: false,
+})
 // ── Static constants ──
 
 const BOUNCE_DELAY_200 = { animationDelay: '0.2s' } as const
@@ -354,6 +360,16 @@ export default function EnhancedChatInterface({ leagueId, userId, initialMessage
 
     hapticTap()
 
+    // When sending from a dedicated view tab, start a fresh chat first
+    const originTab = activeTab
+    if (activeTab) {
+      const newConv = createNewConversation()
+      setConversationId(newConv.id)
+      setActiveConversationId(newConv.id)
+      setMessages([])
+      setActiveTab(null)
+    }
+
     // Strip embedded metadata tags (e.g. [pk:...]) for display, keep for API
     const displayText = rawText.replace(/\s*\[pk:[^\]]*\]/g, '').trim()
 
@@ -381,6 +397,7 @@ export default function EnhancedChatInterface({ leagueId, userId, initialMessage
           userId,
           sport: currentSport,
           yahooLeagueKey: selectedLeagueKey || undefined,
+          originTab: originTab || undefined,
           conversationHistory: messages.slice(-10).map((m) => ({
             role: m.role,
             content: m.content,
@@ -605,10 +622,6 @@ export default function EnhancedChatInterface({ leagueId, userId, initialMessage
                     return
                   }
                   setActiveTab(tab.id)
-                  // Dedicated view tabs — no chat command needed
-                  if (tab.id === 'league' || tab.id === 'roster' || tab.id === 'matchups' || tab.id === 'draft' || tab.id === 'settings') return
-                  // Fire the appropriate command
-                  if (tab.id === 'players') runCommand('show all batters')
                 }}
                 className={`flex-1 flex items-center justify-center gap-1.5 px-2 py-2.5 text-xs sm:text-sm font-medium transition-colors relative ${
                   activeTab === tab.id
@@ -835,6 +848,8 @@ export default function EnhancedChatInterface({ leagueId, userId, initialMessage
             <MyRoster leagueKey={selectedLeagueKey} />
           ) : activeTab === 'matchups' ? (
             <MyMatchup leagueKey={selectedLeagueKey} />
+          ) : activeTab === 'players' ? (
+            <PlayersView leagueKey={selectedLeagueKey} onAction={handleCardAction} />
           ) : activeTab === 'draft' ? (
             <DraftResults leagueKey={selectedLeagueKey} />
           ) : activeTab === 'settings' ? (
@@ -962,11 +977,10 @@ export default function EnhancedChatInterface({ leagueId, userId, initialMessage
           </div>
           )}
 
-          {/* Input Bar — hidden when dedicated view tabs are active */}
-          {activeTab !== 'league' && activeTab !== 'roster' && activeTab !== 'matchups' && activeTab !== 'draft' && activeTab !== 'settings' && (
+          {/* Input Bar — visible on all pages */}
           <div className="landscape-compact-footer bg-gradient-to-t from-slate-900 via-slate-800/95 to-slate-800/80 backdrop-blur-md border-t border-slate-700/40 px-2.5 sm:px-4 pt-2.5 sm:pt-3 pb-[calc(env(safe-area-inset-bottom,0px)+0.625rem)] shrink-0">
-            {/* Mobile quick actions toggle */}
-            {mounted && isNarrow && (
+            {/* Mobile quick actions toggle — only in chat view */}
+            {mounted && isNarrow && !activeTab && (
               <div className="mb-2.5">
                 <button
                   type="button"
@@ -1032,7 +1046,6 @@ export default function EnhancedChatInterface({ leagueId, userId, initialMessage
               </button>
             </form>
           </div>
-          )}
         </main>
       </div>
     </div>
