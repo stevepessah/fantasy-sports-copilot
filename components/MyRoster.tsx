@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { useYahooLeagues } from '@/hooks/useYahooLeagues'
 import { useYahooTeams } from '@/hooks/useYahooTeams'
 import AuthRequiredMessage, { isAuthError } from '@/components/AuthRequiredMessage'
@@ -14,6 +14,42 @@ import {
   FALLBACK_BATTER_COLS,
   FALLBACK_PITCHER_COLS,
 } from '@/lib/statFormatters'
+
+// ── Date range options ──
+
+interface DateRangeOption {
+  id: string
+  label: string
+  dateRange?: string
+  season?: number
+}
+
+const today = () => {
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
+const DATE_RANGE_OPTIONS: DateRangeOption[] = [
+  { id: 'today', label: 'Today', dateRange: `date=${today()}` },
+  { id: 'last7', label: 'Last 7', dateRange: 'lastweek' },
+  { id: 'last14', label: 'Last 14', dateRange: 'last2weeks' },
+  { id: 'last30', label: 'Last 30', dateRange: 'lastmonth' },
+  { id: '2026', label: '2026' },
+  { id: '2025', label: '2025', season: 2025 },
+  { id: '2024', label: '2024', season: 2024 },
+]
+
+const DATE_RANGE_DISPLAY: Record<string, string> = {
+  today: "today's games",
+  last7: 'the last 7 days',
+  last14: 'the last 14 days',
+  last30: 'the last 30 days',
+  '2026': 'the 2026 season',
+  '2025': 'the 2025 season',
+  '2024': 'the 2024 season',
+}
+
+// ── Component ──
 
 interface MyRosterProps {
   leagueKey: string | null
@@ -29,11 +65,21 @@ export default function MyRoster({ leagueKey }: MyRosterProps) {
     [teams],
   )
 
+  const [selectedRange, setSelectedRange] = useState<string>('today')
   const [players, setPlayers] = useState<RosterPlayerEntry[]>([])
   const [leagueCategories, setLeagueCategories] = useState<LeagueStatCategory[] | null>(null)
   const [rosterLoading, setRosterLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  const [recapSummary, setRecapSummary] = useState<string | null>(null)
+  const [recapLoading, setRecapLoading] = useState(false)
+
+  const activeRange = useMemo(
+    () => DATE_RANGE_OPTIONS.find((o) => o.id === selectedRange) ?? DATE_RANGE_OPTIONS[0],
+    [selectedRange],
+  )
+
+  // Fetch roster stats whenever team, league, or date range changes
   useEffect(() => {
     if (!userTeam?.team_key) return
 
@@ -43,6 +89,8 @@ export default function MyRoster({ leagueKey }: MyRosterProps) {
 
     const params = new URLSearchParams({ teamKey: userTeam.team_key })
     if (effectiveLeagueKey) params.set('leagueKey', effectiveLeagueKey)
+    if (activeRange.dateRange) params.set('dateRange', activeRange.dateRange)
+    if (activeRange.season) params.set('season', String(activeRange.season))
 
     fetch(`/api/yahoo/roster-stats?${params}`)
       .then((res) => {
@@ -63,7 +111,49 @@ export default function MyRoster({ leagueKey }: MyRosterProps) {
       })
 
     return () => { cancelled = true }
-  }, [userTeam?.team_key, effectiveLeagueKey])
+  }, [userTeam?.team_key, effectiveLeagueKey, activeRange])
+
+  // Fetch LLM recap after players load
+  const fetchRecap = useCallback(
+    (rosterPlayers: RosterPlayerEntry[], teamName: string, rangeId: string) => {
+      if (rosterPlayers.length === 0) {
+        setRecapSummary(null)
+        return
+      }
+
+      setRecapLoading(true)
+      setRecapSummary(null)
+
+      const payload = {
+        players: rosterPlayers.map((p) => ({
+          name: p.name,
+          positionType: p.positionType,
+          selectedPosition: p.selectedPosition,
+          stats: p.stats,
+          injuryStatus: p.injuryStatus,
+        })),
+        teamName,
+        dateRangeLabel: DATE_RANGE_DISPLAY[rangeId] ?? rangeId,
+      }
+
+      fetch('/api/roster-recap', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+        .then((res) => res.json())
+        .then((json) => setRecapSummary(json.summary ?? null))
+        .catch(() => setRecapSummary(null))
+        .finally(() => setRecapLoading(false))
+    },
+    [],
+  )
+
+  useEffect(() => {
+    if (players.length > 0 && userTeam?.name) {
+      fetchRecap(players, userTeam.name, selectedRange)
+    }
+  }, [players, userTeam?.name, selectedRange, fetchRecap])
 
   const batterCols = useMemo(
     () => leagueCategories ? buildColsFromCategories(leagueCategories, 'B') : FALLBACK_BATTER_COLS,
@@ -85,9 +175,7 @@ export default function MyRoster({ leagueKey }: MyRosterProps) {
     )
   }
 
-  const isLoading = teamsLoading || rosterLoading
-
-  if (isLoading) {
+  if (teamsLoading) {
     return (
       <div className="flex items-center justify-center py-16">
         <div className="flex items-center gap-3 text-slate-400 text-sm">
@@ -121,7 +209,8 @@ export default function MyRoster({ leagueKey }: MyRosterProps) {
   return (
     <div className="flex-1 overflow-auto">
       <div className="max-w-5xl mx-auto px-3 sm:px-4 py-6">
-        <div className="flex items-center gap-3 mb-5 px-1">
+        {/* Team header */}
+        <div className="flex items-center gap-3 mb-4 px-1">
           {userTeam.logo_url && (
             <img src={userTeam.logo_url} alt="" className="w-9 h-9 rounded-lg" />
           )}
@@ -133,7 +222,28 @@ export default function MyRoster({ leagueKey }: MyRosterProps) {
           </div>
         </div>
 
-        {players.length > 0 && (
+        {/* Date range picker */}
+        <DateRangePicker
+          selected={selectedRange}
+          onChange={setSelectedRange}
+          disabled={rosterLoading}
+        />
+
+        {/* LLM recap banner */}
+        <RecapBanner loading={recapLoading} summary={recapSummary} />
+
+        {/* Stats tables */}
+        {rosterLoading ? (
+          <div className="flex items-center justify-center py-12">
+            <div className="flex items-center gap-3 text-slate-400 text-sm">
+              <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+              </svg>
+              Loading stats…
+            </div>
+          </div>
+        ) : players.length > 0 ? (
           <div className="space-y-5">
             {batters.length > 0 && (
               <RosterStatsTable
@@ -150,7 +260,71 @@ export default function MyRoster({ leagueKey }: MyRosterProps) {
               />
             )}
           </div>
-        )}
+        ) : null}
+      </div>
+    </div>
+  )
+}
+
+// ── Date Range Picker ──
+
+function DateRangePicker({
+  selected,
+  onChange,
+  disabled,
+}: {
+  selected: string
+  onChange: (id: string) => void
+  disabled?: boolean
+}) {
+  return (
+    <div className="flex flex-wrap gap-1.5 mb-4 px-1">
+      {DATE_RANGE_OPTIONS.map((opt) => (
+        <button
+          key={opt.id}
+          onClick={() => onChange(opt.id)}
+          disabled={disabled}
+          className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
+            selected === opt.id
+              ? 'bg-blue-600 text-white shadow-md shadow-blue-600/25'
+              : 'bg-slate-700/50 text-slate-400 hover:bg-slate-700 hover:text-slate-200'
+          } ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+        >
+          {opt.label}
+        </button>
+      ))}
+    </div>
+  )
+}
+
+// ── LLM Recap Banner ──
+
+function RecapBanner({
+  loading,
+  summary,
+}: {
+  loading: boolean
+  summary: string | null
+}) {
+  if (!loading && !summary) return null
+
+  return (
+    <div className="mb-5 rounded-xl border border-slate-700/50 bg-gradient-to-r from-slate-800/60 to-slate-800/40 p-4">
+      <div className="flex items-start gap-2.5">
+        <span className="mt-0.5 text-sm shrink-0" aria-hidden>
+          ✦
+        </span>
+        <div className="min-w-0 flex-1">
+          {loading ? (
+            <div className="space-y-2">
+              <div className="h-3.5 w-full rounded bg-slate-700/60 animate-pulse" />
+              <div className="h-3.5 w-11/12 rounded bg-slate-700/60 animate-pulse" />
+              <div className="h-3.5 w-4/5 rounded bg-slate-700/60 animate-pulse" />
+            </div>
+          ) : (
+            <p className="text-sm leading-relaxed text-slate-200">{summary}</p>
+          )}
+        </div>
       </div>
     </div>
   )

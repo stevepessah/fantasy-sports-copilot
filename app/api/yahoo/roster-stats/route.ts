@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { YahooFantasyAPI } from '@/lib/yahoo/api'
 import { withYahooAuth } from '@/lib/yahoo/auth'
+import { MLB_SEASON_TO_GAME_KEY } from '@/lib/yahoo/config'
 
 export const dynamic = 'force-dynamic'
 
@@ -54,15 +55,27 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const teamKey = searchParams.get('teamKey')
     const leagueKey = searchParams.get('leagueKey')
+    const dateRange = searchParams.get('dateRange') || undefined
+    const seasonParam = searchParams.get('season')
     if (!teamKey) {
       return NextResponse.json({ error: 'teamKey parameter is required' }, { status: 400 })
+    }
+
+    // For historical seasons, remap the game key prefix in the team key
+    let effectiveTeamKey = teamKey
+    if (seasonParam) {
+      const season = parseInt(seasonParam, 10)
+      const historicalGameKey = MLB_SEASON_TO_GAME_KEY[season]
+      if (historicalGameKey) {
+        effectiveTeamKey = teamKey.replace(/^\d+/, historicalGameKey)
+      }
     }
 
     const api = new YahooFantasyAPI()
     api.setAccessToken(auth.accessToken)
 
     const [rosterResult, leagueSettings] = await Promise.all([
-      api.getTeamRoster(teamKey, { out: 'stats' }),
+      api.getTeamRoster(effectiveTeamKey, { out: 'stats', dateRange }),
       leagueKey
         ? api.getLeagueSettings(leagueKey).catch(() => null)
         : Promise.resolve(null),
@@ -70,7 +83,7 @@ export async function GET(request: NextRequest) {
 
     const { players } = rosterResult
 
-    const gameKey = teamKey.split('.')[0]
+    const gameKey = effectiveTeamKey.split('.')[0]
     const categories = await getCachedStatCategories(api, gameKey)
 
     const entries: RosterPlayerEntry[] = players.map((p) => {
