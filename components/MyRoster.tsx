@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { useYahooLeagues } from '@/hooks/useYahooLeagues'
 import { useYahooTeams } from '@/hooks/useYahooTeams'
 import AuthRequiredMessage, { isAuthError } from '@/components/AuthRequiredMessage'
@@ -303,6 +303,8 @@ function DateRangePicker({
 
 // ── LLM Recap Banner ──
 
+const COLLAPSED_MAX_HEIGHT = 108 // ~6 lines at text-sm leading-relaxed (18px line-height)
+
 function RecapBanner({
   loading,
   summary,
@@ -310,6 +312,19 @@ function RecapBanner({
   loading: boolean
   summary: string | null
 }) {
+  const [expanded, setExpanded] = useState(false)
+  const [needsClamp, setNeedsClamp] = useState(false)
+  const textRef = useRef<HTMLParagraphElement>(null)
+
+  useEffect(() => {
+    setExpanded(false)
+  }, [summary])
+
+  useEffect(() => {
+    if (!textRef.current) return
+    setNeedsClamp(textRef.current.scrollHeight > COLLAPSED_MAX_HEIGHT)
+  }, [summary])
+
   if (!loading && !summary) return null
 
   return (
@@ -326,7 +341,29 @@ function RecapBanner({
               <div className="h-3.5 w-4/5 rounded bg-slate-700/60 animate-pulse" />
             </div>
           ) : (
-            <p className="text-sm leading-relaxed text-slate-200">{summary}</p>
+            <>
+              <div
+                className="overflow-hidden transition-[max-height] duration-300 ease-in-out"
+                style={{
+                  maxHeight: expanded || !needsClamp ? '600px' : `${COLLAPSED_MAX_HEIGHT}px`,
+                }}
+              >
+                <p
+                  ref={textRef}
+                  className="text-sm leading-relaxed text-slate-200"
+                >
+                  {summary}
+                </p>
+              </div>
+              {needsClamp && (
+                <button
+                  onClick={() => setExpanded((v) => !v)}
+                  className="mt-1.5 text-xs font-medium text-blue-400 hover:text-blue-300 transition-colors"
+                >
+                  {expanded ? 'Read less' : 'Read more'}
+                </button>
+              )}
+            </>
           )}
         </div>
       </div>
