@@ -32,7 +32,6 @@ const today = () => {
 const DATE_RANGE_OPTIONS: DateRangeOption[] = [
   { id: 'today', label: 'Today', dateRange: `date=${today()}` },
   { id: 'last7', label: 'Last 7', dateRange: 'lastweek' },
-  { id: 'last14', label: 'Last 14', dateRange: 'last2weeks' },
   { id: 'last30', label: 'Last 30', dateRange: 'lastmonth' },
   { id: '2026', label: '2026' },
   { id: '2025', label: '2025', season: 2025 },
@@ -42,7 +41,6 @@ const DATE_RANGE_OPTIONS: DateRangeOption[] = [
 const DATE_RANGE_DISPLAY: Record<string, string> = {
   today: "today's games",
   last7: 'the last 7 days',
-  last14: 'the last 14 days',
   last30: 'the last 30 days',
   '2026': 'the 2026 season',
   '2025': 'the 2025 season',

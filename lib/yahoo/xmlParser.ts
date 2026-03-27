@@ -328,18 +328,38 @@ export function parseRosterXML(xml: string): ParsedRosterPlayer[] {
       if (pctDrafted) player.percent_drafted = parseFloat(pctDrafted)
     }
 
-    // Extract player_stats (present when fetched with ;out=stats)
-    const playerStatsBlock = playerBlock.match(/<player_stats>([\s\S]*?)<\/player_stats>/)?.[1]
+    // Extract player_stats (present when fetched with ;out=stats or /stats path)
+    // Use matchAll to handle multiple <player_stats> blocks (e.g., season + requested coverage).
+    // The last block is preferred as it corresponds to the specifically requested coverage type.
+    const playerStatsMatches = [...playerBlock.matchAll(/<player_stats>([\s\S]*?)<\/player_stats>/g)]
+    const playerStatsBlock = playerStatsMatches.length > 0
+      ? playerStatsMatches[playerStatsMatches.length - 1][1]
+      : null
     if (playerStatsBlock) {
       const statsMap: Record<string, string | number> = {}
-      const statRegex = /<stat>\s*<stat_id>(\d+)<\/stat_id>\s*<value>(.*?)<\/value>\s*<\/stat>/gs
+      // Two-pass: first extract individual <stat> blocks, then parse stat_id + value
+      // from each. This handles Yahoo XML that includes extra elements (coverage_type,
+      // name, etc.) between or around stat_id and value.
+      const statBlockRegex = /<stat>([\s\S]*?)<\/stat>/g
       let sm
-      while ((sm = statRegex.exec(playerStatsBlock)) !== null) {
-        const id = sm[1]
-        const raw = sm[2].trim()
-        // Parse numeric values, keep strings for non-numeric
-        const num = parseFloat(raw)
-        statsMap[id] = isNaN(num) ? raw : num
+      while ((sm = statBlockRegex.exec(playerStatsBlock)) !== null) {
+        const sBlock = sm[1]
+        const idMatch = sBlock.match(/<stat_id>(\d+)<\/stat_id>/)
+        const valueMatch = sBlock.match(/<value>([\s\S]*?)<\/value>/)
+        if (idMatch) {
+          const id = idMatch[1]
+          if (valueMatch) {
+            const raw = valueMatch[1].trim()
+            if (raw === '' || raw === '-') {
+              statsMap[id] = 0
+            } else {
+              const num = parseFloat(raw)
+              statsMap[id] = isNaN(num) ? raw : num
+            }
+          } else if (sBlock.match(/<value\s*\/>/)) {
+            statsMap[id] = 0
+          }
+        }
       }
       if (Object.keys(statsMap).length > 0) {
         player.player_stats = statsMap

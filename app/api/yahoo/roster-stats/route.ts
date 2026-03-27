@@ -100,14 +100,45 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    const [rosterResult, leagueSettings] = await Promise.all([
-      api.getTeamRoster(effectiveTeamKey, { out: 'stats', dateRange }),
-      leagueKey
-        ? api.getLeagueSettings(leagueKey).catch(() => null)
-        : Promise.resolve(null),
-    ])
+    const leagueSettingsPromise = leagueKey
+      ? api.getLeagueSettings(leagueKey).catch(() => null)
+      : Promise.resolve(null)
 
-    const { players } = rosterResult
+    let players: Awaited<ReturnType<typeof api.getTeamRoster>>['players']
+    let leagueSettings: Awaited<ReturnType<typeof api.getLeagueSettings>> | null
+
+    if (dateRange) {
+      // Fetch roster metadata + date-range stats in parallel.
+      // The metadata call always includes full player info (name, image, etc.).
+      // The stats call uses the /stats sub-resource path so ;type= is scoped correctly.
+      const [metaResult, statsResult, ls] = await Promise.all([
+        api.getTeamRoster(effectiveTeamKey, { out: 'stats' }),
+        api.getTeamRoster(effectiveTeamKey, { out: 'stats', dateRange }),
+        leagueSettingsPromise,
+      ])
+      leagueSettings = ls
+
+      // Build a map of date-range stats keyed by player_key
+      const statsMap = new Map<string, typeof statsResult.players[0]['player_stats']>()
+      for (const sp of statsResult.players) {
+        if (sp.player_key && sp.player_stats) {
+          statsMap.set(sp.player_key, sp.player_stats)
+        }
+      }
+
+      // Merge: use full metadata from metaResult, overlay stats from statsResult
+      players = metaResult.players.map((p) => ({
+        ...p,
+        player_stats: statsMap.get(p.player_key) ?? p.player_stats,
+      }))
+    } else {
+      const [rosterResult, ls] = await Promise.all([
+        api.getTeamRoster(effectiveTeamKey, { out: 'stats' }),
+        leagueSettingsPromise,
+      ])
+      leagueSettings = ls
+      players = rosterResult.players
+    }
 
     const gameKey = effectiveTeamKey.split('.')[0]
     const categories = await getCachedStatCategories(api, gameKey)

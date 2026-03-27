@@ -202,9 +202,16 @@ export class YahooFantasyAPI {
 
     let endpoint = `/team/${teamKey}/roster`
     if (options?.out) {
-      endpoint += `/players;out=${options.out}`
       if (options.dateRange) {
-        endpoint += `;type=${options.dateRange}`
+        // Use the direct sub-resource path so ;type= applies to stats, not players
+        if (options.dateRange.startsWith('date=')) {
+          const dateValue = options.dateRange.substring(5)
+          endpoint += `/players/${options.out};type=date;date=${dateValue}`
+        } else {
+          endpoint += `/players/${options.out};type=${options.dateRange}`
+        }
+      } else {
+        endpoint += `/players;out=${options.out}`
       }
     }
     
