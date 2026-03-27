@@ -1063,12 +1063,26 @@ function isDifferentDay(a: string, b: string): boolean {
     da.getDate() !== db.getDate()
 }
 
-/** Small status badge for the header on mobile */
+/** Small status badge / connect button for the header on mobile */
 function YahooStatusBadge({ isAuthenticated }: { isAuthenticated: boolean }) {
+  if (!isAuthenticated) {
+    return (
+      <a
+        href="/api/yahoo/auth"
+        className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 active:from-indigo-700 active:to-violet-700 text-[11px] font-semibold text-white shadow-sm shadow-indigo-500/25 transition-all shrink-0"
+      >
+        <svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m9.86-2.51a4.5 4.5 0 00-6.364-6.364L4.5 8.25" />
+        </svg>
+        Connect
+      </a>
+    )
+  }
+
   return (
     <div className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-slate-800 border border-slate-700 text-[10px] shrink-0">
-      <div className={`w-1.5 h-1.5 rounded-full ${isAuthenticated ? 'bg-green-500' : 'bg-slate-500'}`} />
-      <span className="text-slate-400">{isAuthenticated ? 'Yahoo' : 'Not connected'}</span>
+      <div className="w-1.5 h-1.5 rounded-full bg-green-500" />
+      <span className="text-slate-400">Yahoo</span>
     </div>
   )
 }
