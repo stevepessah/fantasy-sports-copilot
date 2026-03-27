@@ -47,6 +47,7 @@
       max-width: 1100px;
       margin: 0 auto;
       padding: 0 24px;
+      overflow-x: hidden;
     }
 
     /* ── Grain overlay ── */
@@ -456,22 +457,64 @@
     /* ── Responsive ── */
     @media (max-width: 768px) {
       .stats-bar { grid-template-columns: repeat(3, 1fr); }
-      .stats-bar .stat-cell:nth-child(4),
-      .stats-bar .stat-cell:nth-child(5) {
-        grid-column: span 1;
-      }
       .distribution-section {
         grid-template-columns: 1fr;
         justify-items: center;
+        gap: 32px;
+        margin-bottom: 56px;
       }
       .donut-container { width: 240px; height: 240px; }
+      .donut-center-number { font-size: 40px; }
       .legend { grid-template-columns: 1fr; }
       .cards-grid { grid-template-columns: 1fr; }
+      .chart-container { padding: 20px 12px 12px; }
+      .timeline-section { margin-bottom: 56px; }
+      .cards-section { margin-bottom: 56px; }
+      .milestones-section { margin-bottom: 64px; }
     }
 
     @media (max-width: 480px) {
-      .stats-bar { grid-template-columns: repeat(2, 1fr); }
-      .hero { padding: 48px 0 24px; }
+      .page { padding: 0 16px; }
+      .hero { padding: 40px 0 20px; }
+      .hero-eyebrow { font-size: 11px; letter-spacing: 2px; margin-bottom: 12px; }
+      .hero-subtitle { font-size: 15px; }
+
+      .stats-bar {
+        grid-template-columns: repeat(3, 1fr);
+        margin: 28px 0 40px;
+      }
+      .stat-cell { padding: 16px 6px; }
+      .stat-number { font-size: 24px; }
+      .stat-label { font-size: 9px; letter-spacing: 1px; }
+
+      .section-heading { margin-bottom: 4px; }
+      .section-subheading { font-size: 13px; margin-bottom: 24px; }
+
+      .donut-container { width: 200px; height: 200px; }
+      .donut-center-number { font-size: 32px; }
+      .donut-center-label { font-size: 10px; }
+      .distribution-section { gap: 24px; margin-bottom: 48px; }
+
+      .legend-item { padding: 10px 12px; gap: 10px; }
+      .legend-name { font-size: 13px; }
+      .legend-count { font-size: 11px; }
+
+      .chart-container { padding: 16px 8px 8px; }
+
+      .category-card { padding: 18px; }
+      .card-title { font-size: 14px; }
+      .card-count { font-size: 24px; }
+      .card-desc { font-size: 12px; }
+      .card-tag { font-size: 10px; padding: 3px 8px; }
+
+      .milestone-timeline { padding-left: 28px; }
+      .milestone { padding-left: 20px; padding-bottom: 24px; }
+      .milestone-dot { left: -24px; width: 14px; height: 14px; }
+      .milestone-title { font-size: 14px; }
+      .milestone-desc { font-size: 12px; }
+
+      .footer { padding: 32px 0 48px; }
+      .footer-text { font-size: 12px; }
     }
   </style>
 </head>
@@ -518,7 +561,7 @@
 
     <div class="distribution-section">
       <div class="donut-container">
-        <svg id="donut" viewBox="0 0 300 300" width="300" height="300"></svg>
+        <svg id="donut" viewBox="0 0 300 300" style="width:100%;height:100%"></svg>
         <div class="donut-center-text">
           <div class="donut-center-number">109</div>
           <div class="donut-center-label">Commits</div>
@@ -737,9 +780,15 @@
               grid: { display: false },
               ticks: {
                 color: '#64748b',
-                font: { family: 'Inter', size: 11 },
+                font: { family: 'Inter', size: window.innerWidth < 480 ? 9 : 11 },
+                maxRotation: window.innerWidth < 480 ? 45 : 0,
+                minRotation: 0,
                 callback: function(val, idx) {
-                  return this.getLabelForValue(val).replace('\n', ' ');
+                  const label = this.getLabelForValue(val).replace('\n', ' ');
+                  if (window.innerWidth < 480) {
+                    return label.replace('Feb ', 'F').replace('Mar ', 'M').replace('–', '-');
+                  }
+                  return label;
                 }
               },
               border: { display: false },
