@@ -61,18 +61,44 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'teamKey parameter is required' }, { status: 400 })
     }
 
-    // For historical seasons, remap the game key prefix in the team key
+    const api = new YahooFantasyAPI()
+    api.setAccessToken(auth.accessToken)
+
+    // For historical seasons, discover the user's league & team from that year
     let effectiveTeamKey = teamKey
     if (seasonParam) {
       const season = parseInt(seasonParam, 10)
       const historicalGameKey = MLB_SEASON_TO_GAME_KEY[season]
       if (historicalGameKey) {
-        effectiveTeamKey = teamKey.replace(/^\d+/, historicalGameKey)
+        try {
+          const { leagues } = await api.getLeagues(historicalGameKey)
+          if (leagues.length === 0) {
+            return NextResponse.json(
+              { error: `No leagues found for the ${season} season` },
+              { status: 404 },
+            )
+          }
+          const historicalLeagueKey = leagues[0].league_key
+          const { teams } = await api.getLeagueTeams(historicalLeagueKey)
+          const userTeam = teams.find((t) =>
+            t.managers?.some((m) => m.is_current_login === '1'),
+          )
+          if (!userTeam) {
+            return NextResponse.json(
+              { error: `Could not find your team in the ${season} season` },
+              { status: 404 },
+            )
+          }
+          effectiveTeamKey = userTeam.team_key
+        } catch (err: any) {
+          console.error(`Failed to resolve ${season} season team:`, err)
+          return NextResponse.json(
+            { error: `Unable to load the ${season} season — ${err.message || 'unknown error'}` },
+            { status: 500 },
+          )
+        }
       }
     }
-
-    const api = new YahooFantasyAPI()
-    api.setAccessToken(auth.accessToken)
 
     const [rosterResult, leagueSettings] = await Promise.all([
       api.getTeamRoster(effectiveTeamKey, { out: 'stats', dateRange }),

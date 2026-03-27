@@ -52,6 +52,10 @@ function buildStatsPrompt(players: RecapPlayer[], teamName: string, dateRangeLab
   return ctx
 }
 
+function hasAnyStats(players: RecapPlayer[]): boolean {
+  return players.some((p) => Object.keys(p.stats).length > 0)
+}
+
 export async function POST(request: NextRequest) {
   try {
     if (!hasOpenAIConfig()) {
@@ -63,6 +67,12 @@ export async function POST(request: NextRequest) {
 
     if (!players || players.length === 0) {
       return NextResponse.json({ summary: null })
+    }
+
+    if (!hasAnyStats(players)) {
+      return NextResponse.json({
+        summary: `No stats recorded for ${teamName} during ${dateRangeLabel}. Games may not have started yet, or no players were active during this period.`,
+      })
     }
 
     // Check cache
@@ -78,7 +88,7 @@ export async function POST(request: NextRequest) {
     const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
 
     const completion = await openai.chat.completions.create({
-      model: 'gpt-4-turbo-preview',
+      model: 'gpt-4o-mini',
       messages: [
         {
           role: 'system',
@@ -102,6 +112,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ summary })
   } catch (error: any) {
     console.error('Error generating roster recap:', error)
-    return NextResponse.json({ summary: null })
+    return NextResponse.json(
+      { summary: null, error: error.message || 'Failed to generate recap' },
+      { status: 200 },
+    )
   }
 }

@@ -142,8 +142,12 @@ export default function MyRoster({ leagueKey }: MyRosterProps) {
         body: JSON.stringify(payload),
       })
         .then((res) => res.json())
-        .then((json) => setRecapSummary(json.summary ?? null))
-        .catch(() => setRecapSummary(null))
+        .then((json) => {
+          setRecapSummary(json.summary ?? null)
+        })
+        .catch(() => {
+          setRecapSummary(null)
+        })
         .finally(() => setRecapLoading(false))
     },
     [],
@@ -189,16 +193,9 @@ export default function MyRoster({ leagueKey }: MyRosterProps) {
     )
   }
 
-  if (error) {
-    if (isAuthError(error)) return <AuthRequiredMessage />
-    return (
-      <div className="flex items-center justify-center py-16 text-red-400 text-sm">
-        {error}
-      </div>
-    )
-  }
+  if (isAuthError(error ?? '')) return <AuthRequiredMessage />
 
-  if (!userTeam) {
+  if (!userTeam && !teamsLoading) {
     return (
       <div className="flex items-center justify-center py-16 text-slate-400 text-sm">
         Could not find your team in this league
@@ -211,11 +208,11 @@ export default function MyRoster({ leagueKey }: MyRosterProps) {
       <div className="max-w-5xl mx-auto px-3 sm:px-4 py-6">
         {/* Team header */}
         <div className="flex items-center gap-3 mb-4 px-1">
-          {userTeam.logo_url && (
+          {userTeam?.logo_url && (
             <img src={userTeam.logo_url} alt="" className="w-9 h-9 rounded-lg" />
           )}
           <div>
-            <h2 className="text-lg font-bold text-white">{userTeam.name}</h2>
+            <h2 className="text-lg font-bold text-white">{userTeam?.name ?? 'My Team'}</h2>
             <p className="text-xs text-slate-400">
               {players.length} players
             </p>
@@ -231,6 +228,13 @@ export default function MyRoster({ leagueKey }: MyRosterProps) {
 
         {/* LLM recap banner */}
         <RecapBanner loading={recapLoading} summary={recapSummary} />
+
+        {/* Inline error for date-range fetch failures */}
+        {error && (
+          <div className="mb-5 rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-300">
+            {error}
+          </div>
+        )}
 
         {/* Stats tables */}
         {rosterLoading ? (
