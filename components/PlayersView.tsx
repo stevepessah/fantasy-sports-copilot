@@ -236,7 +236,7 @@ export default function PlayersView({ leagueKey, onAction }: PlayersViewProps) {
     new Set(allPlayers.map((pl: any) => (pl.team || '').toUpperCase()).filter(Boolean))
   ).sort()
 
-  const positionOptions = isPitcher ? PITCHER_POSITIONS : BATTER_POSITIONS
+  const positionOptions = positionType === 'P' ? PITCHER_POSITIONS : BATTER_POSITIONS
 
   if (!effectiveLeagueKey) {
     return (
