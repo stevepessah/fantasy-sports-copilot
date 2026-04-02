@@ -203,7 +203,7 @@ export default function MyRoster({ leagueKey }: MyRosterProps) {
 
   return (
     <div className="flex-1 overflow-auto">
-      <div className="max-w-5xl mx-auto px-3 sm:px-4 py-6">
+      <div className="max-w-7xl mx-auto px-3 sm:px-4 py-6">
         {/* Team header */}
         <div className="flex items-center gap-3 mb-4 px-1">
           {userTeam?.logo_url && (
