@@ -250,6 +250,9 @@ function MatchupCard({
         onClick={() => setExpanded((v) => !v)}
         className="w-full px-3 sm:px-4 py-3 flex items-center gap-2 hover:bg-slate-700/20 transition-colors"
       >
+        {/* Invisible spacer to balance the chevron on the right */}
+        <div className="w-4 shrink-0" />
+
         <TeamBadge team={t1} winnerKey={matchup.winnerTeamKey} side="left" />
 
         <div className="flex flex-col items-center shrink-0 px-2">
