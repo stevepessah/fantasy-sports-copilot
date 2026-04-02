@@ -6,7 +6,7 @@
  * We use it as a fallback when Yahoo doesn't provide H and AB individually.
  */
 
-const MLB_API_BASE = 'https://statsapi.mlb.com/api/v1'
+import { MLB_API_BASE, TEAM_ABBR_TO_MLB_ID, normalizeName } from './mlbShared'
 
 interface MlbPlayer {
   id: number
@@ -27,17 +27,6 @@ const PLAYER_LIST_TTL = 24 * 60 * 60 * 1000 // 24 hours
 // Cache keyed by "season|statsType|dateArgs" to separate different time ranges
 const hittingStatsCaches = new Map<string, { stats: Map<number, MlbHittingStats>; timestamp: number }>()
 const HITTING_STATS_TTL = 10 * 60 * 1000 // 10 minutes
-
-// Yahoo team abbr → MLB team ID mapping
-const TEAM_ABBR_TO_MLB_ID: Record<string, number> = {
-  ARI: 109, ATL: 144, BAL: 110, BOS: 111, CHC: 112,
-  CWS: 145, CIN: 113, CLE: 114, COL: 115, DET: 116,
-  HOU: 117, KC: 118, LAA: 108, LAD: 119, MIA: 146,
-  MIL: 158, MIN: 142, NYM: 121, NYY: 147, OAK: 133,
-  PHI: 143, PIT: 134, SD: 135, SF: 137, SEA: 136,
-  STL: 138, TB: 139, TEX: 140, TOR: 141, WSH: 120,
-  AZ: 109, CHW: 145, WAS: 120,
-}
 
 // ── Date range helpers ──────────────────────────────────────────────────────
 
@@ -173,15 +162,6 @@ async function fetchBulkHittingStats(
 }
 
 // ── Name matching ───────────────────────────────────────────────────────────
-
-function normalizeName(name: string): string {
-  return name
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[.''-]/g, '')
-    .toLowerCase()
-    .trim()
-}
 
 function findMlbId(
   playerName: string,

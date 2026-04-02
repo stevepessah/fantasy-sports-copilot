@@ -3,6 +3,7 @@ import { YahooFantasyAPI } from '@/lib/yahoo/api'
 import { withYahooAuth } from '@/lib/yahoo/auth'
 import { BATTER_STAT_IDS, PITCHER_STAT_IDS } from '@/lib/statFormatters'
 import { supplementHitsAndAtBats } from '@/lib/mlbStats'
+import { getProbableStarts, type ProbableStart } from '@/lib/mlbProbableStarters'
 
 export interface LeaguePlayerEntry {
   playerKey: string
@@ -23,6 +24,7 @@ export interface LeaguePlayerEntry {
   averageDraftPick?: number
   averageDraftRound?: number
   percentDrafted?: number
+  nextStart?: ProbableStart | null
 }
 
 const PAGE_SIZE = 25

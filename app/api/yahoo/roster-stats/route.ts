@@ -4,6 +4,7 @@ import { withYahooAuth } from '@/lib/yahoo/auth'
 import { MLB_SEASON_TO_GAME_KEY } from '@/lib/yahoo/config'
 import { BATTER_STAT_IDS, PITCHER_STAT_IDS } from '@/lib/statFormatters'
 import { supplementHitsAndAtBats } from '@/lib/mlbStats'
+import { getProbableStarts, type ProbableStart } from '@/lib/mlbProbableStarters'
 
 export const dynamic = 'force-dynamic'
 
@@ -20,6 +21,7 @@ export interface RosterPlayerEntry {
   status?: string
   injuryStatus?: string
   stats: Record<string, number | string>
+  nextStart?: ProbableStart | null
 }
 
 export interface LeagueStatCategory {
@@ -193,6 +195,21 @@ export async function GET(request: NextRequest) {
         await supplementHitsAndAtBats(batters, mlbSeason, dateRange)
       } catch (err) {
         console.error('[roster-stats] MLB supplemental stats failed:', err)
+      }
+    }
+
+    // Attach next probable start for pitchers (current season only)
+    const pitcherEntries = entries.filter((e) => e.positionType === 'P')
+    if (pitcherEntries.length > 0 && !seasonParam) {
+      try {
+        const startsMap = await getProbableStarts(
+          pitcherEntries.map((e) => ({ id: e.playerKey, name: e.name, team: e.team })),
+        )
+        for (const e of pitcherEntries) {
+          e.nextStart = startsMap.get(e.playerKey) ?? null
+        }
+      } catch (err) {
+        console.error('[roster-stats] Probable starters lookup failed:', err)
       }
     }
 
