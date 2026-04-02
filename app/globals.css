@@ -182,20 +182,8 @@ select:focus-visible {
 }
 
 /* ── Horizontal scroll hint ─────────────────────── */
-/* Subtle right-edge fade on scrollable table containers */
 .table-scroll-hint {
   position: relative;
-}
-.table-scroll-hint::after {
-  content: '';
-  position: absolute;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  width: 1.5rem;
-  background: linear-gradient(to right, transparent, rgba(var(--surface-rgb), 0.95));
-  pointer-events: none;
-  z-index: 2;
 }
 
 /* Landscape-aware compact header/footer on small-height devices */
