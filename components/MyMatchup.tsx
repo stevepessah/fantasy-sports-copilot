@@ -324,11 +324,11 @@ function MatchupCard({
                       )}
                       <tr className="border-b border-slate-700/30 last:border-0">
                         <td className={`py-1 px-1 font-mono text-left ${row.t1Val == null ? 'text-slate-600' : row.winner === 1 ? 'text-green-400 font-bold' : 'text-slate-300'}`}>
-                          {fmtStatVal(row.t1Val)}
+                          {fmtStatVal(row.t1Val, row.stat)}
                         </td>
                         <td className="py-1 px-1 text-center text-slate-400 font-medium">{row.displayStat}</td>
                         <td className={`py-1 px-1 font-mono text-right ${row.t2Val == null ? 'text-slate-600' : row.winner === 2 ? 'text-green-400 font-bold' : 'text-slate-300'}`}>
-                          {fmtStatVal(row.t2Val)}
+                          {fmtStatVal(row.t2Val, row.stat)}
                         </td>
                       </tr>
                     </Fragment>
@@ -405,10 +405,12 @@ function PointsPanel({ team, isWinner }: { team: MatchupTeamPayload; isWinner: b
   )
 }
 
-function fmtStatVal(val: number | string | null): string {
+function fmtStatVal(val: number | string | null, stat?: string): string {
   if (val == null) return '-'
   if (typeof val === 'number') {
     if (Number.isInteger(val)) return val.toString()
+    const base = stat?.replace(/\([BP]\)$/, '')
+    if (base === 'ERA' || base === 'WHIP') return val.toFixed(2)
     return val.toFixed(3).replace(/^0\./, '.')
   }
   return String(val)

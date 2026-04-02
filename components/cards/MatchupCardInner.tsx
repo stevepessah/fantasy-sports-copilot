@@ -142,11 +142,11 @@ export function MatchupCardInner({ card, runCommand }: MatchupCardProps) {
                 {catResults.rows.map((row, i) => (
                   <tr key={i} className="border-b border-slate-700/50">
                     <td className={`py-1 px-1 font-mono text-left ${row.winner === 'user' ? 'text-green-400 font-bold' : 'text-slate-300'}`}>
-                      {typeof row.userVal === 'number' ? (Number.isInteger(row.userVal) ? row.userVal : row.userVal.toFixed(3).replace(/^0\./, '.')) : row.userVal}
+                      {typeof row.userVal === 'number' ? (Number.isInteger(row.userVal) ? row.userVal : /^(ERA|WHIP)$/i.test(row.stat) ? row.userVal.toFixed(2) : row.userVal.toFixed(3).replace(/^0\./, '.')) : row.userVal}
                     </td>
                     <td className="py-1 px-1 text-center text-slate-400 font-medium">{row.stat}</td>
                     <td className={`py-1 px-1 font-mono text-right ${row.winner === 'opp' ? 'text-red-400 font-bold' : 'text-slate-300'}`}>
-                      {typeof row.oppVal === 'number' ? (Number.isInteger(row.oppVal) ? row.oppVal : row.oppVal.toFixed(3).replace(/^0\./, '.')) : row.oppVal}
+                      {typeof row.oppVal === 'number' ? (Number.isInteger(row.oppVal) ? row.oppVal : /^(ERA|WHIP)$/i.test(row.stat) ? row.oppVal.toFixed(2) : row.oppVal.toFixed(3).replace(/^0\./, '.')) : row.oppVal}
                     </td>
                   </tr>
                 ))}
