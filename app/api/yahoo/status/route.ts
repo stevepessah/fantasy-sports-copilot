@@ -7,7 +7,9 @@ export const dynamic = 'force-dynamic'
 export async function GET(request: NextRequest) {
   try {
     const cookieStore = await cookies()
-    const accessToken = cookieStore.get('yahoo_access_token')?.value
+    const accessToken =
+      cookieStore.get('yahoo_access_token')?.value ||
+      (process.env.NODE_ENV !== 'production' ? process.env.YAHOO_DEV_ACCESS_TOKEN : undefined)
     const userGuid = cookieStore.get('yahoo_user_guid')?.value
     const userNickname = cookieStore.get('yahoo_user_nickname')?.value
     

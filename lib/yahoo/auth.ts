@@ -7,15 +7,25 @@ interface TokenResult {
   refreshedTokens?: YahooOAuth2Tokens
 }
 
+function devEnvToken(name: string): string | undefined {
+  if (process.env.NODE_ENV === 'production') return undefined
+  return process.env[name] || undefined
+}
+
 /**
  * Reads the Yahoo access token from cookies. If the access token is missing
  * but a refresh token exists, performs a token refresh and returns the new
  * tokens so the caller can persist them on the response via applyTokenCookies.
+ *
+ * In development, falls back to YAHOO_DEV_ACCESS_TOKEN / YAHOO_DEV_REFRESH_TOKEN
+ * env vars so you don't need to re-authenticate through the browser.
  */
 export async function getValidYahooToken(): Promise<TokenResult | null> {
   const cookieStore = await cookies()
-  const accessToken = cookieStore.get('yahoo_access_token')?.value
-  const refreshToken = cookieStore.get('yahoo_refresh_token')?.value
+  const accessToken =
+    cookieStore.get('yahoo_access_token')?.value || devEnvToken('YAHOO_DEV_ACCESS_TOKEN')
+  const refreshToken =
+    cookieStore.get('yahoo_refresh_token')?.value || devEnvToken('YAHOO_DEV_REFRESH_TOKEN')
 
   if (accessToken) {
     return { accessToken }
@@ -97,5 +107,5 @@ export async function withYahooAuth(): Promise<{
  */
 export async function requireYahooAuth(): Promise<string | null> {
   const cookieStore = await cookies()
-  return cookieStore.get('yahoo_access_token')?.value ?? null
+  return cookieStore.get('yahoo_access_token')?.value ?? devEnvToken('YAHOO_DEV_ACCESS_TOKEN') ?? null
 }
