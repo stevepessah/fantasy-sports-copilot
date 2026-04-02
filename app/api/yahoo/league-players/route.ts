@@ -224,6 +224,22 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    // Attach next probable start for pitchers (current season only)
+    const isPitcherMode = positionType === 'P'
+    const pitcherEntries = isPitcherMode ? entries : entries.filter((e) => e.positionType === 'P')
+    if (pitcherEntries.length > 0 && !season) {
+      try {
+        const startsMap = await getProbableStarts(
+          pitcherEntries.map((e) => ({ id: e.playerKey, name: e.name, team: e.team })),
+        )
+        for (const e of pitcherEntries) {
+          e.nextStart = startsMap.get(e.playerKey) ?? null
+        }
+      } catch (err) {
+        console.error('[league-players] Probable starters lookup failed:', err)
+      }
+    }
+
     let leagueCategories: { displayName: string; positionType: string; sortOrder: string }[] | null = null
     if (leagueSettings?.settings?.statCategories) {
       leagueCategories = leagueSettings.settings.statCategories

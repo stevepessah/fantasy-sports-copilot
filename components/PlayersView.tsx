@@ -12,6 +12,35 @@ import {
   FALLBACK_BATTER_COLS,
   FALLBACK_PITCHER_COLS,
 } from '@/lib/statFormatters'
+import type { ProbableStart } from '@/lib/mlbProbableStarters'
+
+function formatNextStart(start?: ProbableStart | null): { text: string; className: string } {
+  if (!start) return { text: '\u2014', className: 'text-slate-600' }
+
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const gameDay = new Date(start.date + 'T00:00:00')
+  const diffDays = Math.round((gameDay.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
+
+  const prefix = start.homeAway === 'home' ? 'vs' : '@'
+  let label: string
+  let cls: string
+
+  if (diffDays === 0) {
+    label = `Today ${prefix} ${start.opponent}`
+    cls = 'text-emerald-400'
+  } else if (diffDays === 1) {
+    label = `Tmrw ${prefix} ${start.opponent}`
+    cls = 'text-slate-200'
+  } else {
+    const mon = gameDay.toLocaleDateString('en-US', { month: 'short' })
+    const day = gameDay.getDate()
+    label = `${mon} ${day} ${prefix} ${start.opponent}`
+    cls = 'text-slate-400'
+  }
+
+  return { text: label, className: cls }
+}
 
 interface PlayersViewProps {
   leagueKey: string | null
@@ -404,6 +433,11 @@ export default function PlayersView({ leagueKey, onAction }: PlayersViewProps) {
                       >
                         Player{sortIndicator('__name')}
                       </th>
+                      {positionType === 'P' && selectedSeason === 0 && (
+                        <th className="text-left px-[3px] sm:px-1.5 py-1.5 text-slate-500 uppercase tracking-wide font-semibold whitespace-nowrap">
+                          Next
+                        </th>
+                      )}
                       {cols.map((col) => (
                         <th
                           key={col.key}
@@ -418,7 +452,7 @@ export default function PlayersView({ leagueKey, onAction }: PlayersViewProps) {
                   <tbody className="divide-y divide-slate-700/20">
                     {pageItems.length === 0 && (
                       <tr>
-                        <td colSpan={cols.length + 2} className="text-center py-8 text-xs text-slate-500">
+                        <td colSpan={cols.length + 2 + (positionType === 'P' && selectedSeason === 0 ? 1 : 0)} className="text-center py-8 text-xs text-slate-500">
                           No players found
                         </td>
                       </tr>
@@ -473,6 +507,14 @@ export default function PlayersView({ leagueKey, onAction }: PlayersViewProps) {
                             </div>
                           </div>
                         </td>
+                        {positionType === 'P' && selectedSeason === 0 && (() => {
+                          const ns = formatNextStart(pl.nextStart)
+                          return (
+                            <td className={`px-[3px] sm:px-1.5 py-0.5 sm:py-1 whitespace-nowrap text-[9px] sm:text-[10px] ${ns.className}`}>
+                              {ns.text}
+                            </td>
+                          )
+                        })()}
                         {cols.map((col) => (
                           <td key={col.key} className="text-right px-[3px] sm:px-1.5 py-0.5 sm:py-1 text-slate-300 whitespace-nowrap tabular-nums">
                             {col.composite === 'h_ab'

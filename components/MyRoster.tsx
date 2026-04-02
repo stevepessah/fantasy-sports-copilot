@@ -15,6 +15,38 @@ import {
   FALLBACK_PITCHER_COLS,
 } from '@/lib/statFormatters'
 
+import type { ProbableStart } from '@/lib/mlbProbableStarters'
+
+// ── Next start formatting ──
+
+function formatNextStart(start?: ProbableStart | null): { text: string; className: string } {
+  if (!start) return { text: '\u2014', className: 'text-slate-600' }
+
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const gameDay = new Date(start.date + 'T00:00:00')
+  const diffDays = Math.round((gameDay.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
+
+  const prefix = start.homeAway === 'home' ? 'vs' : '@'
+  let label: string
+  let cls: string
+
+  if (diffDays === 0) {
+    label = `Today ${prefix} ${start.opponent}`
+    cls = 'text-emerald-400'
+  } else if (diffDays === 1) {
+    label = `Tmrw ${prefix} ${start.opponent}`
+    cls = 'text-slate-200'
+  } else {
+    const mon = gameDay.toLocaleDateString('en-US', { month: 'short' })
+    const day = gameDay.getDate()
+    label = `${mon} ${day} ${prefix} ${start.opponent}`
+    cls = 'text-slate-400'
+  }
+
+  return { text: label, className: cls }
+}
+
 // ── Date range options ──
 
 interface DateRangeOption {
@@ -259,6 +291,7 @@ export default function MyRoster({ leagueKey }: MyRosterProps) {
                 title="Pitchers"
                 players={pitchers}
                 cols={pitcherCols}
+                showNextStart
               />
             )}
           </div>
@@ -373,10 +406,12 @@ function RosterStatsTable({
   title,
   players,
   cols,
+  showNextStart,
 }: {
   title: string
   players: RosterPlayerEntry[]
   cols: ColDef[]
+  showNextStart?: boolean
 }) {
   const activePlayers = players.filter(
     (p) => !['BN', 'IL', 'IL+', 'DL', 'NA'].includes(p.selectedPosition),
@@ -385,6 +420,8 @@ function RosterStatsTable({
   const ilPlayers = players.filter((p) =>
     ['IL', 'IL+', 'DL', 'NA'].includes(p.selectedPosition),
   )
+
+  const totalCols = cols.length + 2 + (showNextStart ? 1 : 0)
 
   return (
     <div className="rounded-xl border border-slate-700/50 bg-slate-800/40 overflow-hidden">
@@ -399,6 +436,11 @@ function RosterStatsTable({
                 <th className="py-2 px-1 text-left font-semibold text-slate-400 sticky left-10 bg-slate-800/95 z-10 min-w-[120px] sm:min-w-[170px]">
                   {title}
                 </th>
+                {showNextStart && (
+                  <th className="py-2 px-1.5 sm:px-2 text-left font-semibold text-slate-400 whitespace-nowrap">
+                    Next
+                  </th>
+                )}
                 {cols.map((col) => (
                   <th
                     key={col.key}
@@ -411,20 +453,20 @@ function RosterStatsTable({
             </thead>
             <tbody>
               {activePlayers.map((player) => (
-                <PlayerRow key={player.playerKey} player={player} cols={cols} />
+                <PlayerRow key={player.playerKey} player={player} cols={cols} showNextStart={showNextStart} />
               ))}
               {benchPlayers.length > 0 && (
                 <>
                   <tr>
                     <td
-                      colSpan={cols.length + 2}
+                      colSpan={totalCols}
                       className="py-1.5 px-3 text-[9px] sm:text-[10px] font-semibold uppercase tracking-wider text-slate-500 bg-slate-800/30 border-t border-slate-700/50"
                     >
                       Bench
                     </td>
                   </tr>
                   {benchPlayers.map((player) => (
-                    <PlayerRow key={player.playerKey} player={player} cols={cols} dimmed />
+                    <PlayerRow key={player.playerKey} player={player} cols={cols} dimmed showNextStart={showNextStart} />
                   ))}
                 </>
               )}
@@ -432,14 +474,14 @@ function RosterStatsTable({
                 <>
                   <tr>
                     <td
-                      colSpan={cols.length + 2}
+                      colSpan={totalCols}
                       className="py-1.5 px-3 text-[9px] sm:text-[10px] font-semibold uppercase tracking-wider text-slate-500 bg-slate-800/30 border-t border-slate-700/50"
                     >
                       Injured List
                     </td>
                   </tr>
                   {ilPlayers.map((player) => (
-                    <PlayerRow key={player.playerKey} player={player} cols={cols} dimmed />
+                    <PlayerRow key={player.playerKey} player={player} cols={cols} dimmed showNextStart={showNextStart} />
                   ))}
                 </>
               )}
@@ -455,12 +497,15 @@ function PlayerRow({
   player,
   cols,
   dimmed,
+  showNextStart,
 }: {
   player: RosterPlayerEntry
   cols: ColDef[]
   dimmed?: boolean
+  showNextStart?: boolean
 }) {
   const posColor = getPositionColor(player.selectedPosition)
+  const nextStart = showNextStart ? formatNextStart(player.nextStart) : null
 
   return (
     <tr
@@ -505,6 +550,11 @@ function PlayerRow({
           </div>
         </div>
       </td>
+      {nextStart && (
+        <td className={`py-1.5 px-1.5 sm:px-2 whitespace-nowrap text-[10px] sm:text-[11px] ${nextStart.className}`}>
+          {nextStart.text}
+        </td>
+      )}
       {cols.map((col) => (
         <td
           key={col.key}
