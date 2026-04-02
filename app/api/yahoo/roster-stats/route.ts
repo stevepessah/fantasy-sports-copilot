@@ -189,7 +189,8 @@ export async function GET(request: NextRequest) {
     const batters = entries.filter((e) => e.positionType === 'B')
     if (batters.length > 0 && batters.some((b) => b.stats['H'] === undefined)) {
       try {
-        await supplementHitsAndAtBats(batters)
+        const mlbSeason = seasonParam ? parseInt(seasonParam, 10) : undefined
+        await supplementHitsAndAtBats(batters, mlbSeason, dateRange)
       } catch (err) {
         console.error('[roster-stats] MLB supplemental stats failed:', err)
       }
