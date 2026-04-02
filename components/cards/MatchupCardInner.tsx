@@ -127,10 +127,6 @@ export function MatchupCardInner({ card, runCommand }: MatchupCardProps) {
             <span className="text-green-400">{catResults.userWins}W</span>
             <span className="text-slate-400">–</span>
             <span className="text-red-400">{catResults.oppWins}L</span>
-            {catResults.ties > 0 && <>
-              <span className="text-slate-400">–</span>
-              <span className="text-yellow-400">{catResults.ties}T</span>
-            </>}
           </div>
           <div className="table-scroll-hint">
           <div className="overflow-x-auto -mx-1.5 sm:-mx-3">

@@ -263,12 +263,6 @@ function MatchupCard({
               <span className={catResults.t2Wins > catResults.t1Wins ? 'text-green-400' : 'text-slate-300'}>
                 {catResults.t2Wins}
               </span>
-              {catResults.ties > 0 && (
-                <>
-                  <span className="text-slate-500">-</span>
-                  <span className="text-yellow-400">{catResults.ties}</span>
-                </>
-              )}
             </div>
           ) : t1.points != null && t2.points != null ? (
             <div className="flex items-center gap-1.5 text-xs font-bold">
