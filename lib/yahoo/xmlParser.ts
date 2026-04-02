@@ -352,6 +352,8 @@ export function parseRosterXML(xml: string): ParsedRosterPlayer[] {
             const raw = valueMatch[1].trim()
             if (raw === '' || raw === '-') {
               statsMap[id] = 0
+            } else if (raw.includes('/')) {
+              statsMap[id] = raw
             } else {
               const num = parseFloat(raw)
               statsMap[id] = isNaN(num) ? raw : num

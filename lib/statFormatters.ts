@@ -169,6 +169,12 @@ export function buildHAB(stats: Record<string, number | string>): string {
     const abv = typeof ab === 'number' ? Math.round(ab) : ab
     return `${hv}/${abv}`
   }
+  // Fallback: stat_id 60 may arrive as a pre-formatted "H/AB" string
+  const composite = stats['H/AB']
+  if (composite !== undefined) {
+    const s = String(composite)
+    if (s.includes('/')) return s
+  }
   return '-'
 }
 

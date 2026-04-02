@@ -3,6 +3,7 @@ import { YahooFantasyAPI } from '@/lib/yahoo/api'
 import { withYahooAuth } from '@/lib/yahoo/auth'
 import { MLB_SEASON_TO_GAME_KEY } from '@/lib/yahoo/config'
 import { BATTER_STAT_IDS, PITCHER_STAT_IDS } from '@/lib/statFormatters'
+import { supplementHitsAndAtBats } from '@/lib/mlbStats'
 
 export const dynamic = 'force-dynamic'
 
@@ -183,6 +184,16 @@ export async function GET(request: NextRequest) {
         stats: remapped,
       }
     })
+
+    // Supplement H and AB from MLB Stats API if Yahoo didn't provide them
+    const batters = entries.filter((e) => e.positionType === 'B')
+    if (batters.length > 0 && batters.some((b) => b.stats['H'] === undefined)) {
+      try {
+        await supplementHitsAndAtBats(batters)
+      } catch (err) {
+        console.error('[roster-stats] MLB supplemental stats failed:', err)
+      }
+    }
 
     // Build league scoring categories if league settings were fetched
     let leagueCategories: LeagueStatCategory[] | undefined

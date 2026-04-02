@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { YahooFantasyAPI } from '@/lib/yahoo/api'
 import { withYahooAuth } from '@/lib/yahoo/auth'
 import { BATTER_STAT_IDS, PITCHER_STAT_IDS } from '@/lib/statFormatters'
+import { supplementHitsAndAtBats } from '@/lib/mlbStats'
 
 export interface LeaguePlayerEntry {
   playerKey: string
@@ -210,6 +211,16 @@ export async function GET(request: NextRequest) {
         percentDrafted: p.percent_drafted,
       }
     })
+
+    // Supplement H and AB from MLB Stats API if Yahoo didn't provide them
+    const batters = entries.filter((e) => e.positionType === 'B')
+    if (batters.length > 0 && batters.some((b) => b.stats['H'] === undefined)) {
+      try {
+        await supplementHitsAndAtBats(batters, season)
+      } catch (err) {
+        console.error('[league-players] MLB supplemental stats failed:', err)
+      }
+    }
 
     let leagueCategories: { displayName: string; positionType: string; sortOrder: string }[] | null = null
     if (leagueSettings?.settings?.statCategories) {
