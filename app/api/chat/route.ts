@@ -81,6 +81,7 @@ export async function POST(request: NextRequest) {
       league: 'League Standings',
       roster: 'My Roster',
       matchups: 'My Matchup',
+      teamstats: 'Team Stats',
       players: 'Players',
       draft: 'Draft Results',
       settings: 'League Settings',

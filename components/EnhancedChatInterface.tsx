@@ -66,6 +66,11 @@ const MyMatchup = dynamic(() => import('./MyMatchup'), {
   ssr: false,
 })
 
+const TeamStats = dynamic(() => import('./TeamStats'), {
+  loading: () => <div className="text-xs text-slate-400 py-2">Loading…</div>,
+  ssr: false,
+})
+
 // Lazy-load Players View (only when Players tab is active)
 const PlayersView = dynamic(() => import('./PlayersView'), {
   loading: () => <div className="text-xs text-slate-400 py-2">Loading…</div>,
@@ -94,7 +99,7 @@ const BASE_QUICK_ACTIONS: QuickAction[] = [
 ]
 
 // ── Top tab navigation ──
-type TopTab = 'league' | 'roster' | 'matchups' | 'players' | 'draft' | 'settings'
+type TopTab = 'league' | 'roster' | 'matchups' | 'teamstats' | 'players' | 'draft' | 'settings'
 
 interface TabDef {
   id: TopTab
@@ -610,6 +615,7 @@ export default function EnhancedChatInterface({ leagueId, userId, initialMessage
               { id: 'league' as TopTab, label: 'League', icon: '🏆' },
               { id: 'roster' as TopTab, label: 'Roster', icon: '📋' },
               { id: 'matchups' as TopTab, label: 'Matchups', icon: '⚔️' },
+              { id: 'teamstats' as TopTab, label: 'Stats', icon: '📊' },
               { id: 'players' as TopTab, label: 'Players', icon: '👥' },
               { id: 'draft' as TopTab, label: 'Draft', icon: '📝' },
               { id: 'settings' as TopTab, label: 'Settings', icon: '⚙️' },
@@ -848,6 +854,8 @@ export default function EnhancedChatInterface({ leagueId, userId, initialMessage
             <MyRoster leagueKey={selectedLeagueKey} />
           ) : activeTab === 'matchups' ? (
             <MyMatchup leagueKey={selectedLeagueKey} />
+          ) : activeTab === 'teamstats' ? (
+            <TeamStats leagueKey={selectedLeagueKey} />
           ) : activeTab === 'players' ? (
             <PlayersView leagueKey={selectedLeagueKey} onAction={handleCardAction} />
           ) : activeTab === 'draft' ? (
