@@ -223,7 +223,7 @@ export async function GET(request: NextRequest) {
           const mlbTeamId = e.team
             ? TEAM_ABBR_TO_MLB_ID[e.team.toUpperCase()]
             : undefined
-          e.matchup = (mlbTeamId && matchups.get(mlbTeamId)) ?? null
+          e.matchup = (mlbTeamId != null ? matchups.get(mlbTeamId) : undefined) ?? null
         }
       } catch (err) {
         console.error('[roster-stats] Today matchups lookup failed:', err)
