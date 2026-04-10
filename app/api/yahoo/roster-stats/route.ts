@@ -4,7 +4,8 @@ import { withYahooAuth } from '@/lib/yahoo/auth'
 import { MLB_SEASON_TO_GAME_KEY } from '@/lib/yahoo/config'
 import { BATTER_STAT_IDS, PITCHER_STAT_IDS } from '@/lib/statFormatters'
 import { supplementHitsAndAtBats } from '@/lib/mlbStats'
-import { getProbableStarts, type ProbableStart } from '@/lib/mlbProbableStarters'
+import { getProbableStarts, getTodayMatchups, type ProbableStart, type TodayMatchup } from '@/lib/mlbProbableStarters'
+import { TEAM_ABBR_TO_MLB_ID } from '@/lib/mlbShared'
 
 export const dynamic = 'force-dynamic'
 
@@ -22,6 +23,7 @@ export interface RosterPlayerEntry {
   injuryStatus?: string
   stats: Record<string, number | string>
   nextStart?: ProbableStart | null
+  matchup?: TodayMatchup | null
 }
 
 export interface LeagueStatCategory {
@@ -210,6 +212,21 @@ export async function GET(request: NextRequest) {
         }
       } catch (err) {
         console.error('[roster-stats] Probable starters lookup failed:', err)
+      }
+    }
+
+    // Attach today's opposing pitcher matchup for all players (current season only)
+    if (!seasonParam) {
+      try {
+        const matchups = await getTodayMatchups()
+        for (const e of entries) {
+          const mlbTeamId = e.team
+            ? TEAM_ABBR_TO_MLB_ID[e.team.toUpperCase()]
+            : undefined
+          e.matchup = (mlbTeamId && matchups.get(mlbTeamId)) ?? null
+        }
+      } catch (err) {
+        console.error('[roster-stats] Today matchups lookup failed:', err)
       }
     }
 

@@ -125,3 +125,82 @@ export async function getProbableStarts(
 
   return result
 }
+
+// ── Today's team-level matchups (opposing starter for every team playing today) ──
+
+export interface TodayMatchup {
+  opponent: string
+  homeAway: 'home' | 'away'
+  opposingPitcher?: string   // abbreviated, e.g. "C. Burnes"
+  opposingPitcherHand?: string // "R" or "L"
+}
+
+interface TeamMatchupCache {
+  matchups: Map<number, TodayMatchup>
+  date: string
+  timestamp: number
+}
+
+let teamMatchupCache: TeamMatchupCache | null = null
+
+function abbreviateName(fullName: string): string {
+  const parts = fullName.trim().split(/\s+/)
+  if (parts.length < 2) return fullName
+  return `${parts[0][0]}. ${parts.slice(1).join(' ')}`
+}
+
+/**
+ * Returns today's matchup for every MLB team playing, including the opposing
+ * probable starter's abbreviated name and throwing hand when available.
+ * Keyed by MLB team ID so callers can look up any player's team.
+ */
+export async function getTodayMatchups(): Promise<Map<number, TodayMatchup>> {
+  const todayDate = dateStr(0)
+
+  if (
+    teamMatchupCache &&
+    teamMatchupCache.date === todayDate &&
+    Date.now() - teamMatchupCache.timestamp < CACHE_TTL
+  ) {
+    return teamMatchupCache.matchups
+  }
+
+  const games = await fetchDaySchedule(todayDate)
+  const matchups = new Map<number, TodayMatchup>()
+
+  for (const game of games) {
+    if (game.status?.detailedState === 'Postponed') continue
+
+    const awayTeamId: number | undefined = game.teams?.away?.team?.id
+    const homeTeamId: number | undefined = game.teams?.home?.team?.id
+    if (!awayTeamId || !homeTeamId) continue
+
+    const awayPitcher = game.teams?.away?.probablePitcher
+    const homePitcher = game.teams?.home?.probablePitcher
+
+    if (!matchups.has(awayTeamId)) {
+      matchups.set(awayTeamId, {
+        opponent: MLB_ID_TO_TEAM_ABBR.get(homeTeamId) ?? '???',
+        homeAway: 'away',
+        opposingPitcher: homePitcher?.fullName
+          ? abbreviateName(homePitcher.fullName)
+          : undefined,
+        opposingPitcherHand: homePitcher?.pitchHand?.code,
+      })
+    }
+
+    if (!matchups.has(homeTeamId)) {
+      matchups.set(homeTeamId, {
+        opponent: MLB_ID_TO_TEAM_ABBR.get(awayTeamId) ?? '???',
+        homeAway: 'home',
+        opposingPitcher: awayPitcher?.fullName
+          ? abbreviateName(awayPitcher.fullName)
+          : undefined,
+        opposingPitcherHand: awayPitcher?.pitchHand?.code,
+      })
+    }
+  }
+
+  teamMatchupCache = { matchups, date: todayDate, timestamp: Date.now() }
+  return matchups
+}

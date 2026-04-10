@@ -15,7 +15,7 @@ import {
   FALLBACK_PITCHER_COLS,
 } from '@/lib/statFormatters'
 
-import type { ProbableStart } from '@/lib/mlbProbableStarters'
+import type { ProbableStart, TodayMatchup } from '@/lib/mlbProbableStarters'
 
 // ── Next start formatting ──
 
@@ -45,6 +45,24 @@ function formatNextStart(start?: ProbableStart | null): { text: string; classNam
   }
 
   return { text: label, className: cls }
+}
+
+function formatMatchup(matchup?: TodayMatchup | null): { text: string; className: string } {
+  if (!matchup) return { text: '—', className: 'text-slate-600' }
+
+  const prefix = matchup.homeAway === 'home' ? 'vs' : '@'
+
+  if (!matchup.opposingPitcher) {
+    return { text: `${prefix} TBD`, className: 'text-slate-500 italic' }
+  }
+
+  const hand = matchup.opposingPitcherHand
+    ? `${matchup.opposingPitcherHand}HP `
+    : ''
+  return {
+    text: `${prefix} ${hand}${matchup.opposingPitcher}`,
+    className: 'text-slate-200',
+  }
 }
 
 // ── Date range options ──
@@ -100,6 +118,8 @@ export default function MyRoster({ leagueKey }: MyRosterProps) {
   const [leagueCategories, setLeagueCategories] = useState<LeagueStatCategory[] | null>(null)
   const [rosterLoading, setRosterLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  const [showMatchups, setShowMatchups] = useState(false)
 
   const [recapSummary, setRecapSummary] = useState<string | null>(null)
   const [recapLoading, setRecapLoading] = useState(false)
@@ -249,12 +269,27 @@ export default function MyRoster({ leagueKey }: MyRosterProps) {
           </div>
         </div>
 
-        {/* Date range picker */}
-        <DateRangePicker
-          selected={selectedRange}
-          onChange={setSelectedRange}
-          disabled={rosterLoading}
-        />
+        {/* Date range picker + matchups toggle */}
+        <div className="flex items-center justify-between gap-2 mb-4 px-1">
+          <DateRangePicker
+            selected={selectedRange}
+            onChange={setSelectedRange}
+            disabled={rosterLoading}
+          />
+          <button
+            onClick={() => setShowMatchups((v) => !v)}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all whitespace-nowrap shrink-0 ${
+              showMatchups
+                ? 'bg-amber-500/20 text-amber-300 ring-1 ring-amber-500/40'
+                : 'bg-slate-700/50 text-slate-400 hover:bg-slate-700 hover:text-slate-200'
+            }`}
+          >
+            <span className={`inline-block w-1.5 h-1.5 rounded-full transition-colors ${
+              showMatchups ? 'bg-amber-400' : 'bg-slate-500'
+            }`} />
+            Matchups
+          </button>
+        </div>
 
         {/* LLM recap banner */}
         <RecapBanner loading={recapLoading} summary={recapSummary} />
@@ -284,6 +319,7 @@ export default function MyRoster({ leagueKey }: MyRosterProps) {
                 title="Batters"
                 players={batters}
                 cols={batterCols}
+                showMatchup={showMatchups}
               />
             )}
             {pitchers.length > 0 && (
@@ -292,6 +328,7 @@ export default function MyRoster({ leagueKey }: MyRosterProps) {
                 players={pitchers}
                 cols={pitcherCols}
                 showNextStart
+                showMatchup={showMatchups}
               />
             )}
           </div>
@@ -313,7 +350,7 @@ function DateRangePicker({
   disabled?: boolean
 }) {
   return (
-    <div className="flex flex-wrap gap-1.5 mb-4 px-1">
+    <div className="flex flex-wrap gap-1.5">
       {DATE_RANGE_OPTIONS.map((opt) => (
         <button
           key={opt.id}
@@ -407,11 +444,13 @@ function RosterStatsTable({
   players,
   cols,
   showNextStart,
+  showMatchup,
 }: {
   title: string
   players: RosterPlayerEntry[]
   cols: ColDef[]
   showNextStart?: boolean
+  showMatchup?: boolean
 }) {
   const activePlayers = players.filter(
     (p) => !['BN', 'IL', 'IL+', 'DL', 'NA'].includes(p.selectedPosition),
@@ -421,7 +460,7 @@ function RosterStatsTable({
     ['IL', 'IL+', 'DL', 'NA'].includes(p.selectedPosition),
   )
 
-  const totalCols = cols.length + 2 + (showNextStart ? 1 : 0)
+  const totalCols = cols.length + 2 + (showNextStart ? 1 : 0) + (showMatchup ? 1 : 0)
 
   return (
     <div className="rounded-xl border border-slate-700/50 bg-slate-800/40 overflow-hidden">
@@ -441,6 +480,11 @@ function RosterStatsTable({
                     Next
                   </th>
                 )}
+                {showMatchup && (
+                  <th className="py-2 px-1.5 sm:px-2 text-left font-semibold text-amber-400/80 whitespace-nowrap">
+                    {showNextStart ? 'Opp. Starter' : 'Matchup'}
+                  </th>
+                )}
                 {cols.map((col) => (
                   <th
                     key={col.key}
@@ -453,7 +497,7 @@ function RosterStatsTable({
             </thead>
             <tbody>
               {activePlayers.map((player) => (
-                <PlayerRow key={player.playerKey} player={player} cols={cols} showNextStart={showNextStart} />
+                <PlayerRow key={player.playerKey} player={player} cols={cols} showNextStart={showNextStart} showMatchup={showMatchup} />
               ))}
               {benchPlayers.length > 0 && (
                 <>
@@ -466,7 +510,7 @@ function RosterStatsTable({
                     </td>
                   </tr>
                   {benchPlayers.map((player) => (
-                    <PlayerRow key={player.playerKey} player={player} cols={cols} dimmed showNextStart={showNextStart} />
+                    <PlayerRow key={player.playerKey} player={player} cols={cols} dimmed showNextStart={showNextStart} showMatchup={showMatchup} />
                   ))}
                 </>
               )}
@@ -481,7 +525,7 @@ function RosterStatsTable({
                     </td>
                   </tr>
                   {ilPlayers.map((player) => (
-                    <PlayerRow key={player.playerKey} player={player} cols={cols} dimmed showNextStart={showNextStart} />
+                    <PlayerRow key={player.playerKey} player={player} cols={cols} dimmed showNextStart={showNextStart} showMatchup={showMatchup} />
                   ))}
                 </>
               )}
@@ -498,14 +542,17 @@ function PlayerRow({
   cols,
   dimmed,
   showNextStart,
+  showMatchup,
 }: {
   player: RosterPlayerEntry
   cols: ColDef[]
   dimmed?: boolean
   showNextStart?: boolean
+  showMatchup?: boolean
 }) {
   const posColor = getPositionColor(player.selectedPosition)
   const nextStart = showNextStart ? formatNextStart(player.nextStart) : null
+  const matchup = showMatchup ? formatMatchup(player.matchup) : null
 
   return (
     <tr
@@ -553,6 +600,11 @@ function PlayerRow({
       {nextStart && (
         <td className={`py-1.5 px-1.5 sm:px-2 whitespace-nowrap text-[10px] sm:text-[11px] ${nextStart.className}`}>
           {nextStart.text}
+        </td>
+      )}
+      {matchup && (
+        <td className={`py-1.5 px-1.5 sm:px-2 whitespace-nowrap text-[10px] sm:text-[11px] ${matchup.className}`}>
+          {matchup.text}
         </td>
       )}
       {cols.map((col) => (
