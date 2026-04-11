@@ -131,8 +131,9 @@ export async function getProbableStarts(
 export interface TodayMatchup {
   opponent: string
   homeAway: 'home' | 'away'
-  opposingPitcher?: string   // abbreviated, e.g. "C. Burnes"
-  opposingPitcherHand?: string // "R" or "L"
+  opposingPitcher?: string       // abbreviated, e.g. "C. Burnes"
+  opposingPitcherFull?: string   // full name, e.g. "Corbin Burnes"
+  opposingPitcherHand?: string   // "R" or "L"
 }
 
 interface TeamMatchupCache {
@@ -219,6 +220,7 @@ export async function getTodayMatchups(): Promise<Map<number, TodayMatchup>> {
         opposingPitcher: homePitcher?.fullName
           ? abbreviateName(homePitcher.fullName)
           : undefined,
+        opposingPitcherFull: homePitcher?.fullName ?? undefined,
         opposingPitcherHand: homePitcher?.id
           ? pitchHands.get(homePitcher.id)
           : undefined,
@@ -232,6 +234,7 @@ export async function getTodayMatchups(): Promise<Map<number, TodayMatchup>> {
         opposingPitcher: awayPitcher?.fullName
           ? abbreviateName(awayPitcher.fullName)
           : undefined,
+        opposingPitcherFull: awayPitcher?.fullName ?? undefined,
         opposingPitcherHand: awayPitcher?.id
           ? pitchHands.get(awayPitcher.id)
           : undefined,

@@ -6,6 +6,7 @@ import { BATTER_STAT_IDS, PITCHER_STAT_IDS } from '@/lib/statFormatters'
 import { supplementHitsAndAtBats } from '@/lib/mlbStats'
 import { getProbableStarts, getTodayMatchups, type ProbableStart, type TodayMatchup } from '@/lib/mlbProbableStarters'
 import { TEAM_ABBR_TO_MLB_ID } from '@/lib/mlbShared'
+import { getBatterVsPitcherStats, type BvpStats } from '@/lib/mlbBvpStats'
 
 export const dynamic = 'force-dynamic'
 
@@ -24,6 +25,7 @@ export interface RosterPlayerEntry {
   stats: Record<string, number | string>
   nextStart?: ProbableStart | null
   matchup?: TodayMatchup | null
+  bvp?: BvpStats | null
 }
 
 export interface LeagueStatCategory {
@@ -227,6 +229,30 @@ export async function GET(request: NextRequest) {
         }
       } catch (err) {
         console.error('[roster-stats] Today matchups lookup failed:', err)
+      }
+    }
+
+    // Attach career BvP stats for batters with a known opposing starter (current season only)
+    if (!seasonParam) {
+      const batterEntries = entries.filter(
+        (e) => e.positionType === 'B' && e.matchup?.opposingPitcherFull,
+      )
+      if (batterEntries.length > 0) {
+        try {
+          const bvpMap = await getBatterVsPitcherStats(
+            batterEntries.map((e) => ({
+              playerKey: e.playerKey,
+              batterName: e.name,
+              batterTeam: e.team,
+              opposingPitcherFullName: e.matchup!.opposingPitcherFull,
+            })),
+          )
+          for (const e of batterEntries) {
+            e.bvp = bvpMap.get(e.playerKey) ?? null
+          }
+        } catch (err) {
+          console.error('[roster-stats] BvP stats lookup failed:', err)
+        }
       }
     }
 
