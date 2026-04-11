@@ -89,7 +89,7 @@ async function fetchBvpForPair(
     const url =
       `${MLB_API_BASE}/people/${batterId}/stats` +
       `?stats=vsPlayer&group=hitting&opposingPlayerId=${pitcherId}` +
-      `&fields=stats,splits,stat,atBats,hits,homeRuns,baseOnBalls,strikeOuts,avg,ops,rbi`
+      `&fields=stats,type,displayName,splits,stat,atBats,hits,homeRuns,baseOnBalls,strikeOuts,avg,ops,rbi`
     const res = await fetch(url, { signal: AbortSignal.timeout(6000) })
     if (!res.ok) {
       bvpCache.set(key, { stats: null, timestamp: Date.now() })
@@ -97,7 +97,9 @@ async function fetchBvpForPair(
     }
 
     const data = await res.json()
-    const split = data.stats?.[0]?.splits?.[0]?.stat
+    const allStats = data.stats ?? []
+    const totalGroup = allStats.find((s: any) => s.type?.displayName === 'vsPlayerTotal')
+    const split = (totalGroup ?? allStats[allStats.length - 1])?.splits?.[0]?.stat
     if (!split || split.atBats === undefined) {
       bvpCache.set(key, { stats: null, timestamp: Date.now() })
       return null

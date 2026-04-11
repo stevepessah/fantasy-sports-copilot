@@ -12,6 +12,24 @@ const MOCK_PLAYER_LIST = {
 const MOCK_BVP_RESPONSE = {
   stats: [
     {
+      type: { displayName: 'vsPlayer' },
+      splits: [
+        {
+          stat: {
+            atBats: 5,
+            hits: 2,
+            homeRuns: 1,
+            baseOnBalls: 1,
+            strikeOuts: 1,
+            avg: '.400',
+            ops: '1.300',
+            rbi: 1,
+          },
+        },
+      ],
+    },
+    {
+      type: { displayName: 'vsPlayerTotal' },
       splits: [
         {
           stat: {
@@ -31,7 +49,10 @@ const MOCK_BVP_RESPONSE = {
 }
 
 const MOCK_BVP_EMPTY = {
-  stats: [{ splits: [] }],
+  stats: [
+    { type: { displayName: 'vsPlayer' }, splits: [] },
+    { type: { displayName: 'vsPlayerTotal' }, splits: [] },
+  ],
 }
 
 let fetchMock: ReturnType<typeof vi.fn>
