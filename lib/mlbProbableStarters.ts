@@ -149,9 +149,31 @@ function abbreviateName(fullName: string): string {
   return `${parts[0][0]}. ${parts.slice(1).join(' ')}`
 }
 
+async function fetchPitchHands(pitcherIds: number[]): Promise<Map<number, string>> {
+  const hands = new Map<number, string>()
+  if (pitcherIds.length === 0) return hands
+
+  try {
+    const ids = pitcherIds.join(',')
+    const url = `${MLB_API_BASE}/people?personIds=${ids}&hydrate=currentTeam`
+    const res = await fetch(url, { signal: AbortSignal.timeout(8000) })
+    if (!res.ok) return hands
+    const data = await res.json()
+    for (const person of data.people ?? []) {
+      if (person.id && person.pitchHand?.code) {
+        hands.set(person.id, person.pitchHand.code)
+      }
+    }
+  } catch (err) {
+    console.error('[probableStarters] Failed to fetch pitcher handedness:', err)
+  }
+
+  return hands
+}
+
 /**
  * Returns today's matchup for every MLB team playing, including the opposing
- * probable starter's abbreviated name and throwing hand when available.
+ * probable starter's abbreviated name and throwing hand.
  * Keyed by MLB team ID so callers can look up any player's team.
  */
 export async function getTodayMatchups(): Promise<Map<number, TodayMatchup>> {
@@ -166,6 +188,18 @@ export async function getTodayMatchups(): Promise<Map<number, TodayMatchup>> {
   }
 
   const games = await fetchDaySchedule(todayDate)
+
+  // Collect all probable pitcher IDs so we can batch-fetch handedness
+  const pitcherIdSet = new Set<number>()
+  for (const game of games) {
+    if (game.status?.detailedState === 'Postponed') continue
+    const awayId = game.teams?.away?.probablePitcher?.id
+    const homeId = game.teams?.home?.probablePitcher?.id
+    if (awayId) pitcherIdSet.add(awayId)
+    if (homeId) pitcherIdSet.add(homeId)
+  }
+
+  const pitchHands = await fetchPitchHands([...pitcherIdSet])
   const matchups = new Map<number, TodayMatchup>()
 
   for (const game of games) {
@@ -185,7 +219,9 @@ export async function getTodayMatchups(): Promise<Map<number, TodayMatchup>> {
         opposingPitcher: homePitcher?.fullName
           ? abbreviateName(homePitcher.fullName)
           : undefined,
-        opposingPitcherHand: homePitcher?.pitchHand?.code,
+        opposingPitcherHand: homePitcher?.id
+          ? pitchHands.get(homePitcher.id)
+          : undefined,
       })
     }
 
@@ -196,7 +232,9 @@ export async function getTodayMatchups(): Promise<Map<number, TodayMatchup>> {
         opposingPitcher: awayPitcher?.fullName
           ? abbreviateName(awayPitcher.fullName)
           : undefined,
-        opposingPitcherHand: awayPitcher?.pitchHand?.code,
+        opposingPitcherHand: awayPitcher?.id
+          ? pitchHands.get(awayPitcher.id)
+          : undefined,
       })
     }
   }
