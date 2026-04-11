@@ -16,6 +16,7 @@ import {
 } from '@/lib/statFormatters'
 
 import type { ProbableStart, TodayMatchup } from '@/lib/mlbProbableStarters'
+import type { BvpStats } from '@/lib/mlbBvpStats'
 
 // ── Next start formatting ──
 
@@ -62,6 +63,32 @@ function formatMatchup(matchup?: TodayMatchup | null): { text: string; className
   return {
     text: `${prefix} ${hand}${matchup.opposingPitcher}`,
     className: 'text-slate-200',
+  }
+}
+
+// ── BvP column definitions ──
+
+const BVP_COLS: ColDef[] = [
+  { key: 'bvp_ab', label: 'AB', fmt: 'int' },
+  { key: 'bvp_h', label: 'H', fmt: 'int' },
+  { key: 'bvp_hr', label: 'HR', fmt: 'int' },
+  { key: 'bvp_rbi', label: 'RBI', fmt: 'int' },
+  { key: 'bvp_bb', label: 'BB', fmt: 'int' },
+  { key: 'bvp_k', label: 'K', fmt: 'int' },
+  { key: 'bvp_avg', label: 'AVG', fmt: 'rate3' },
+  { key: 'bvp_ops', label: 'OPS', fmt: 'rate3' },
+]
+
+function buildBvpStatRecord(bvp: BvpStats): Record<string, number | string> {
+  return {
+    bvp_ab: bvp.ab,
+    bvp_h: bvp.h,
+    bvp_hr: bvp.hr,
+    bvp_rbi: bvp.rbi,
+    bvp_bb: bvp.bb,
+    bvp_k: bvp.k,
+    bvp_avg: bvp.avg,
+    bvp_ops: bvp.ops,
   }
 }
 
@@ -318,8 +345,9 @@ export default function MyRoster({ leagueKey }: MyRosterProps) {
               <RosterStatsTable
                 title="Batters"
                 players={batters}
-                cols={batterCols}
+                cols={showMatchups ? BVP_COLS : batterCols}
                 showMatchup={showMatchups}
+                bvpMode={showMatchups}
               />
             )}
             {pitchers.length > 0 && (
@@ -445,12 +473,14 @@ function RosterStatsTable({
   cols,
   showNextStart,
   showMatchup,
+  bvpMode,
 }: {
   title: string
   players: RosterPlayerEntry[]
   cols: ColDef[]
   showNextStart?: boolean
   showMatchup?: boolean
+  bvpMode?: boolean
 }) {
   const activePlayers = players.filter(
     (p) => !['BN', 'IL', 'IL+', 'DL', 'NA'].includes(p.selectedPosition),
@@ -473,7 +503,12 @@ function RosterStatsTable({
                   Pos
                 </th>
                 <th className="py-2 px-1 text-left font-semibold text-slate-400 sticky left-10 bg-slate-800/95 z-10 min-w-[120px] sm:min-w-[170px]">
-                  {title}
+                  <span>{title}</span>
+                  {bvpMode && (
+                    <span className="ml-1.5 text-[9px] sm:text-[10px] font-normal text-amber-400/70">
+                      Career vs Pitcher
+                    </span>
+                  )}
                 </th>
                 {showNextStart && (
                   <th className="py-2 px-1.5 sm:px-2 text-left font-semibold text-slate-400 whitespace-nowrap">
@@ -488,7 +523,9 @@ function RosterStatsTable({
                 {cols.map((col) => (
                   <th
                     key={col.key}
-                    className="py-2 px-1.5 sm:px-2 text-right font-semibold text-slate-400 whitespace-nowrap"
+                    className={`py-2 px-1.5 sm:px-2 text-right font-semibold whitespace-nowrap ${
+                      bvpMode ? 'text-amber-400/80' : 'text-slate-400'
+                    }`}
                   >
                     {col.label}
                   </th>
@@ -497,7 +534,7 @@ function RosterStatsTable({
             </thead>
             <tbody>
               {activePlayers.map((player) => (
-                <PlayerRow key={player.playerKey} player={player} cols={cols} showNextStart={showNextStart} showMatchup={showMatchup} />
+                <PlayerRow key={player.playerKey} player={player} cols={cols} showNextStart={showNextStart} showMatchup={showMatchup} bvpMode={bvpMode} />
               ))}
               {benchPlayers.length > 0 && (
                 <>
@@ -510,7 +547,7 @@ function RosterStatsTable({
                     </td>
                   </tr>
                   {benchPlayers.map((player) => (
-                    <PlayerRow key={player.playerKey} player={player} cols={cols} dimmed showNextStart={showNextStart} showMatchup={showMatchup} />
+                    <PlayerRow key={player.playerKey} player={player} cols={cols} dimmed showNextStart={showNextStart} showMatchup={showMatchup} bvpMode={bvpMode} />
                   ))}
                 </>
               )}
@@ -525,7 +562,7 @@ function RosterStatsTable({
                     </td>
                   </tr>
                   {ilPlayers.map((player) => (
-                    <PlayerRow key={player.playerKey} player={player} cols={cols} dimmed showNextStart={showNextStart} showMatchup={showMatchup} />
+                    <PlayerRow key={player.playerKey} player={player} cols={cols} dimmed showNextStart={showNextStart} showMatchup={showMatchup} bvpMode={bvpMode} />
                   ))}
                 </>
               )}
@@ -543,16 +580,22 @@ function PlayerRow({
   dimmed,
   showNextStart,
   showMatchup,
+  bvpMode,
 }: {
   player: RosterPlayerEntry
   cols: ColDef[]
   dimmed?: boolean
   showNextStart?: boolean
   showMatchup?: boolean
+  bvpMode?: boolean
 }) {
   const posColor = getPositionColor(player.selectedPosition)
   const nextStart = showNextStart ? formatNextStart(player.nextStart) : null
   const matchup = showMatchup ? formatMatchup(player.matchup) : null
+
+  const bvpRecord = bvpMode && player.bvp ? buildBvpStatRecord(player.bvp) : null
+  const statSource = bvpRecord ?? player.stats
+  const noBvpData = bvpMode && !player.bvp && player.matchup?.opposingPitcher
 
   return (
     <tr
@@ -607,16 +650,32 @@ function PlayerRow({
           {matchup.text}
         </td>
       )}
-      {cols.map((col) => (
+      {bvpMode && !player.matchup?.opposingPitcher ? (
         <td
-          key={col.key}
-          className="py-1.5 px-1.5 sm:px-2 text-right text-slate-300 whitespace-nowrap tabular-nums"
+          colSpan={cols.length}
+          className="py-1.5 px-1.5 sm:px-2 text-center text-slate-600 text-[10px] sm:text-[11px] italic"
         >
-          {col.composite === 'h_ab'
-            ? buildHAB(player.stats)
-            : fmtStat(player.stats[col.key], col)}
+          No game today
         </td>
-      ))}
+      ) : noBvpData ? (
+        <td
+          colSpan={cols.length}
+          className="py-1.5 px-1.5 sm:px-2 text-center text-slate-600 text-[10px] sm:text-[11px] italic"
+        >
+          No career AB vs this pitcher
+        </td>
+      ) : (
+        cols.map((col) => (
+          <td
+            key={col.key}
+            className="py-1.5 px-1.5 sm:px-2 text-right text-slate-300 whitespace-nowrap tabular-nums"
+          >
+            {col.composite === 'h_ab'
+              ? buildHAB(statSource)
+              : fmtStat(statSource[col.key], col)}
+          </td>
+        ))
+      )}
     </tr>
   )
 }
