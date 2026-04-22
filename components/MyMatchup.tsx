@@ -3,7 +3,9 @@
 import { useState, useEffect, useCallback, useMemo, Fragment } from 'react'
 import { useYahooLeagues } from '@/hooks/useYahooLeagues'
 import AuthRequiredMessage, { isAuthError } from '@/components/AuthRequiredMessage'
+import RecapBanner from '@/components/RecapBanner'
 import type { MatchupResponse, MatchupPayload, MatchupTeamPayload } from '@/app/api/yahoo/matchup/route'
+import type { MatchupRecapRequest, MatchupRecapCategoryRow } from '@/app/api/matchup-recap/route'
 
 interface MyMatchupProps {
   leagueKey: string | null
@@ -60,6 +62,86 @@ export default function MyMatchup({ leagueKey }: MyMatchupProps) {
     }
     return set
   }, [data?.leagueCategories])
+
+  const [recapSummary, setRecapSummary] = useState<string | null>(null)
+  const [recapLoading, setRecapLoading] = useState(false)
+
+  const fetchMatchupRecap = useCallback(
+    (matchup: MatchupPayload, lbs: Set<string>, cats: MatchupResponse['leagueCategories']) => {
+      const userTeam = matchup.teams.find((t) => t.isUser)
+      const oppTeam = matchup.teams.find((t) => !t.isUser)
+      if (!userTeam || !oppTeam) return
+
+      setRecapLoading(true)
+      setRecapSummary(null)
+
+      const payload: MatchupRecapRequest = {
+        userTeamName: userTeam.name,
+        opponentName: oppTeam.name,
+        week: matchup.week,
+        status: matchup.status ?? 'preevent',
+        userPoints: userTeam.points,
+        opponentPoints: oppTeam.points,
+        userWinProbability: userTeam.winProbability,
+        opponentWinProbability: oppTeam.winProbability,
+      }
+
+      const userStats = userTeam.stats || {}
+      const oppStats = oppTeam.stats || {}
+      const hasStats = Object.keys(userStats).length > 0
+
+      if (hasStats) {
+        const statEntries = cats
+          ? cats.map((c) => ({ key: c.displayName }))
+          : Object.keys(userStats).map((k) => ({ key: k }))
+
+        let userWins = 0, oppWins = 0, ties = 0
+        const rows: MatchupRecapCategoryRow[] = []
+
+        for (const { key: stat } of statEntries) {
+          const uv = stat in userStats ? userStats[stat] : null
+          const ov = stat in oppStats ? oppStats[stat] : null
+          const n1 = uv != null ? (typeof uv === 'number' ? uv : parseFloat(String(uv))) : NaN
+          const n2 = ov != null ? (typeof ov === 'number' ? ov : parseFloat(String(ov))) : NaN
+          const lowerBetter = lbs.has(stat)
+          let winner: 'user' | 'opp' | 'tie' = 'tie'
+          if (!isNaN(n1) && !isNaN(n2)) {
+            if (lowerBetter) {
+              if (n1 < n2) { winner = 'user'; userWins++ }
+              else if (n1 > n2) { winner = 'opp'; oppWins++ }
+              else ties++
+            } else {
+              if (n1 > n2) { winner = 'user'; userWins++ }
+              else if (n1 < n2) { winner = 'opp'; oppWins++ }
+              else ties++
+            }
+          }
+          rows.push({ stat, userVal: uv, oppVal: ov, winner })
+        }
+
+        payload.categoryResults = { userWins, oppWins, ties, rows }
+      }
+
+      fetch('/api/matchup-recap', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+        .then((res) => res.json())
+        .then((json) => setRecapSummary(json.summary ?? null))
+        .catch(() => setRecapSummary(null))
+        .finally(() => setRecapLoading(false))
+    },
+    [],
+  )
+
+  useEffect(() => {
+    if (data?.userMatchup) {
+      fetchMatchupRecap(data.userMatchup, lowerBetterStats, data.leagueCategories)
+    } else {
+      setRecapSummary(null)
+    }
+  }, [data?.userMatchup, data?.leagueCategories, lowerBetterStats, fetchMatchupRecap])
 
   if (!effectiveLeagueKey) {
     return (
@@ -136,6 +218,9 @@ export default function MyMatchup({ leagueKey }: MyMatchupProps) {
             <div className="w-4 h-4 border-2 border-primary-500 border-t-transparent rounded-full animate-spin" />
           </div>
         )}
+
+        {/* AI matchup recap */}
+        <RecapBanner loading={recapLoading} summary={recapSummary} />
 
         {/* User's matchup */}
         {data.userMatchup && (
