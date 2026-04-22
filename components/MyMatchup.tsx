@@ -5,7 +5,7 @@ import { useYahooLeagues } from '@/hooks/useYahooLeagues'
 import AuthRequiredMessage, { isAuthError } from '@/components/AuthRequiredMessage'
 import RecapBanner from '@/components/RecapBanner'
 import type { MatchupResponse, MatchupPayload, MatchupTeamPayload } from '@/app/api/yahoo/matchup/route'
-import type { MatchupRecapRequest, MatchupRecapCategoryRow } from '@/app/api/matchup-recap/route'
+import type { MatchupRecapRequest, MatchupRecapCategoryRow } from '@/lib/matchupRecap'
 
 interface MyMatchupProps {
   leagueKey: string | null

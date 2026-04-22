@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { buildMatchupPrompt } from '@/app/api/matchup-recap/route'
-import type { MatchupRecapRequest } from '@/app/api/matchup-recap/route'
+import { buildMatchupPrompt } from '@/lib/matchupRecap'
+import type { MatchupRecapRequest } from '@/lib/matchupRecap'
 
 describe('buildMatchupPrompt', () => {
   const baseCategoryRequest: MatchupRecapRequest = {
