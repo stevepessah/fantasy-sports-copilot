@@ -299,16 +299,6 @@ export function parseIntent(input: string): ParsedIntent {
     (m.word('teams') && (wantsToView || m.word('all', 'every', 'list'))) ||
     s === 'teams' || s === 'standings'
 
-  // Show batters
-  const isShowBatters =
-    (mentionsBatters && (wantsToView || m.word('all', 'every', 'list', 'my'))) ||
-    s === 'batters' || s === 'hitters'
-
-  // Show pitchers
-  const isShowPitchers =
-    (mentionsPitchers && (wantsToView || m.word('all', 'every', 'list', 'my'))) ||
-    s === 'pitchers'
-
   // League settings / stat categories
   const isLeagueSettings =
     m.any(SETTINGS_TOKENS, SETTINGS_PHRASES) ||
@@ -325,18 +315,37 @@ export function parseIntent(input: string): ParsedIntent {
   )
 
   // ── Archetype query ("I want power", "need speed", "give me a closer") ──
-  const hasStructuralIntent =
-    isHelp || isSetLineup || isShowLineup || isMatchup || isWaivers ||
-    isAddDrop || isTrade || isDraft || isViewTeams || isShowBatters ||
-    isShowPitchers || isLeagueSettings || isCompare
+  // Detected BEFORE isShowBatters/isShowPitchers/isWaivers because archetype
+  // is more specific. "show me power hitters on waivers" should fire the
+  // archetype intent, not the broad "show all batters" + "waivers" pair.
+  const hardStructuralIntent =
+    isHelp || isSetLineup || isShowLineup || isMatchup ||
+    isAddDrop || isTrade || isDraft || isViewTeams ||
+    isLeagueSettings || isCompare
 
-  const archetypeResult = !hasStructuralIntent ? detectArchetype(input) : undefined
+  const archetypeResult = !hardStructuralIntent ? detectArchetype(input) : undefined
   const isArchetypeQuery = Boolean(archetypeResult)
+
+  // Show batters — suppressed when a more specific archetype fires
+  const isShowBatters = !isArchetypeQuery && (
+    (mentionsBatters && (wantsToView || m.word('all', 'every', 'list', 'my'))) ||
+    s === 'batters' || s === 'hitters'
+  )
+
+  // Show pitchers — suppressed when a more specific archetype fires
+  const isShowPitchers = !isArchetypeQuery && (
+    (mentionsPitchers && (wantsToView || m.word('all', 'every', 'list', 'my'))) ||
+    s === 'pitchers'
+  )
+
+  // Waivers — suppressed when archetype fires (archetype handler shows
+  // available players filtered by the relevant stat category)
+  const isWaiversFinal = !isArchetypeQuery ? isWaivers : false
 
   // ── Player lookup (most permissive — fallback intent) ──
   const playerName = isCompare || isArchetypeQuery ? undefined : extractPlayerName(input)
   const isPlayerLookup = !isCompare && !isLeagueSettings && !isArchetypeQuery && shouldHandlePlayerLookup(s, words, {
-    isHelp, isSetLineup, isShowLineup, isMatchup, isWaivers,
+    isHelp, isSetLineup, isShowLineup, isMatchup, isWaivers: isWaiversFinal,
     isAddDrop, isTrade, isDraft, isViewTeams, isShowBatters, isShowPitchers,
   }, playerName)
 
@@ -345,7 +354,7 @@ export function parseIntent(input: string): ParsedIntent {
     isSetLineup,
     isShowLineup,
     isMatchup,
-    isWaivers,
+    isWaivers: isWaiversFinal,
     isAddDrop,
     isTrade,
     isDraft,
