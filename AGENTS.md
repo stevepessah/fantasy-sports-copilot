@@ -15,7 +15,7 @@ Fantasy Sports Copilot is a **single Next.js 14 monolith** (App Router). No Dock
 |---|---|
 | Dev server | `npm run dev` |
 | Lint | `npm run lint` |
-| Unit tests | `npm test` (Vitest, 243 tests) |
+| Unit tests | `npm test` (Vitest) |
 | Build | `npm run build` |
 | E2E tests | `npx playwright install chromium --with-deps && npm run test:e2e` |
 | Format | `npm run format` |
@@ -26,3 +26,10 @@ Fantasy Sports Copilot is a **single Next.js 14 monolith** (App Router). No Dock
 - Chat storage is in browser `localStorage`, not server-side.
 - The in-memory data store resets on dev server restart.
 - Playwright E2E tests require a separate `npx playwright install chromium --with-deps` step before first run.
+
+### Repository structure conventions
+- `docs/` — development notes, setup guides, troubleshooting (not user-facing docs).
+- `data/` — static data files (CSV/JSON player lists, etc.).
+- `scripts/` — utility scripts (Python data scrapers, shell deploy helpers, TS one-offs).
+- Root should only contain config files (`package.json`, `tsconfig.json`, `next.config.js`, etc.), `README.md`, `AGENTS.md`, and application directories (`app/`, `components/`, `lib/`, `hooks/`, `contexts/`, `types/`, `public/`, `__tests__/`, `e2e/`).
+- Do **not** add new markdown docs, scripts, or data files to the project root.

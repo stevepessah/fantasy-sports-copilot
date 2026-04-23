@@ -1,0 +1,25 @@
+---
+description: Enforces file organization conventions — where new files should be placed
+alwaysApply: true
+---
+
+# File Organization
+
+The project root should only contain config files and application directories. New files must go in the correct location:
+
+| File type | Location | Examples |
+|---|---|---|
+| Markdown docs, guides, notes | `docs/` | Setup guides, troubleshooting, design docs |
+| Static data (CSV, JSON datasets) | `data/` | Player lists, stat databases |
+| Utility scripts (Python, shell, one-off TS) | `scripts/` | Scrapers, deploy helpers, data converters |
+| React components | `components/` | UI components |
+| Library / business logic (TS) | `lib/` | AI, parsers, API clients, utilities |
+| React hooks | `hooks/` | SWR hooks, custom hooks |
+| React contexts | `contexts/` | Providers, context definitions |
+| API routes | `app/api/` | Next.js route handlers |
+| Unit / component tests | `__tests__/` | Vitest test files |
+| E2E tests | `e2e/` | Playwright specs |
+| TypeScript types | `types/` | Shared type definitions |
+| Static assets (images, icons) | `public/` | Favicons, OG images |
+
+Never place scripts, markdown docs, data files, or non-config files directly in the project root.

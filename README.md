@@ -1,186 +1,147 @@
 # Fantasy Sports Copilot
 
-A conversational fantasy sports management platform that replaces traditional click-heavy interfaces with an AI-powered chat experience.
+A conversational fantasy baseball platform that replaces traditional click-heavy interfaces with an AI-powered chat experience. Connect your Yahoo Fantasy account and manage your league through natural language.
 
-## 🎯 Vision
+## Features
 
-Instead of clicking → filtering → sorting → cross-referencing → guessing, you get:
+### Chat-First Interface
+The primary UI is a conversational chat thread. Ask questions, get recommendations, and take actions — all through natural language.
 
-**"Hey, what should I do this week?"**
+```
+"Who should I start this week?"
+"Show me the best available pitchers"
+"Compare Ohtani vs Acuna"
+"What does my matchup look like?"
+```
 
-## 🚀 MVP Features
+### Yahoo Fantasy Integration
+Connect your Yahoo Fantasy account (read-only OAuth) to pull in real league data:
+- **Roster & Lineup** — view your roster with live stats, probable starters, and BvP matchup data
+- **Matchups** — head-to-head category breakdowns for the current week
+- **Standings** — full league standings
+- **League Players** — browse the player pool with filters (free agents, position, etc.)
+- **Draft Results** — see your league's draft board
+- **Season History** — browse past seasons and league history
+- **League Settings** — scoring categories, roster positions, trade rules
 
-### Core Functionality
-- ✅ **Chat-first interface** - Primary UI is a conversational chat thread
-- ✅ **Multi-sport support** - Football 🏈 and Baseball ⚾ with easy toggle
-- ✅ **League creation** - "Create a 12-team PPR league" or "Create a 12-team roto league"
-- ✅ **Draft room** - Live snake draft with AI assistant (sport-aware)
-- ✅ **Lineup management** - "Set my best lineup" (works for both sports)
-- ✅ **Player management** - Add/drop players via chat
-- ✅ **Smart cards** - Contextual lineup/player/matchup cards
-
-### AI Capabilities
-- Conversational league setup
-- Draft recommendations with explanations
+### AI-Powered Analysis
 - Lineup optimization with reasoning
+- Player comparisons (head-to-head stat breakdowns)
 - Trade evaluation
-- Proactive injury/bye week alerts
+- Waiver wire recommendations with stat archetype filters (power hitters, aces, saves, speed, etc.)
+- AI-generated matchup and roster recaps
+- Works without an API key via a rule-based fallback system
 
-## 🛠️ Tech Stack
+### Smart Cards
+Contextual UI cards appear alongside chat responses — lineup grids, player stat cards, matchup breakdowns, standings tables, and comparison views.
 
-- **Frontend**: Next.js 14 (App Router), React, TypeScript
+## Tech Stack
+
+- **Framework**: Next.js 14 (App Router), React, TypeScript
 - **Styling**: Tailwind CSS
-- **AI**: OpenAI GPT-4 (with fallback rule-based system)
-- **Database**: In-memory store (MVP) - ready for PostgreSQL/MongoDB
+- **AI**: OpenAI GPT-4 (with rule-based fallback when no API key is set)
+- **Data**: Yahoo Fantasy API (OAuth 2.0, read-only), in-memory store for local/demo leagues
+- **Testing**: Vitest (unit), Playwright (E2E)
 
-## 📦 Getting Started
+## Getting Started
 
 ### Prerequisites
-- Node.js 18+ 
-- npm or yarn
-- OpenAI API key (optional - falls back to rule-based system)
+- Node.js 18+
+- npm
 
 ### Installation
 
-1. **Clone and install dependencies:**
 ```bash
+git clone https://github.com/stevepessah/fantasy-sports-copilot.git
 cd fantasy-sports-copilot
 npm install
 ```
 
-2. **Set up environment variables:**
-Create a `.env.local` file:
-```env
-OPENAI_API_KEY=your_openai_api_key_here
+### Environment Setup
+
+Copy the example env file:
+
+```bash
+cp .env.example .env.local
 ```
 
-3. **Run the development server:**
+The app works with **zero API keys** — AI falls back to a rule-based system and Yahoo features gracefully degrade. To enable full functionality:
+
+| Variable | Required | Purpose |
+|---|---|---|
+| `OPENAI_API_KEY` | No | Enables GPT-4 chat responses (falls back to rule-based NLP) |
+| `YAHOO_CONSUMER_KEY` | No | Yahoo Fantasy OAuth — needed for live league data |
+| `YAHOO_CONSUMER_SECRET` | No | Yahoo Fantasy OAuth — needed for live league data |
+
+For Yahoo setup details, see [docs/YAHOO_SETUP.md](docs/YAHOO_SETUP.md).
+
+### Run
+
 ```bash
 npm run dev
 ```
 
-4. **Open your browser:**
-Navigate to [http://localhost:3000](http://localhost:3000)
+Open [http://localhost:3000](http://localhost:3000).
 
-## 💬 Usage Examples
-
-### Sport Toggle
-Use the sport toggle at the top of the chat to switch between Football 🏈 and Baseball ⚾
-
-### League Creation
-**Football:**
-```
-You: "Create a 12-team PPR league"
-AI: "Got it! I'll create a 12-team PPR league for you..."
-```
-
-**Baseball:**
-```
-You: "Create a 12-team roto league"
-AI: "Got it! I'll create a 12-team roto league for you..."
-```
-
-### Lineup Management
-```
-You: "Set my best lineup"
-AI: "I'll analyze your roster and set your optimal lineup..."
-```
-
-### Draft Help
-**Football:**
-```
-You: "Who should I draft?"
-AI: "Based on your current roster, I recommend..."
-```
-
-**Baseball:**
-```
-You: "Best SP available?"
-AI: "Starting pitchers are the foundation. Let me find the best available..."
-```
-
-### Player Management
-```
-You: "Drop Player X for Player Y"
-AI: "I'll help you make that swap. Here's why this makes sense..."
-```
-
-## 📁 Project Structure
+## Project Structure
 
 ```
 fantasy-sports-copilot/
 ├── app/
-│   ├── api/              # API routes
-│   │   ├── chat/         # Chat endpoint
-│   │   ├── leagues/      # League management
-│   │   ├── draft/        # Draft operations
-│   │   └── players/      # Player data
-│   ├── page.tsx          # Main chat interface
-│   └── layout.tsx        # Root layout
-├── components/
-│   ├── ChatInterface.tsx # Main chat UI
-│   ├── DraftRoom.tsx     # Draft interface
-│   └── SmartCards.tsx    # Contextual cards
+│   ├── api/
+│   │   ├── chat/            # Main chat endpoint (intent parsing, AI, cards)
+│   │   ├── yahoo/           # Yahoo Fantasy API proxy routes (OAuth, roster, matchups, etc.)
+│   │   ├── leagues/         # Local league creation & Yahoo league hydration
+│   │   ├── lineup/          # Lineup optimization
+│   │   ├── draft/           # Draft operations
+│   │   ├── trades/          # Trade proposals
+│   │   ├── waivers/         # Add/drop operations
+│   │   ├── matchup-recap/   # AI matchup narratives
+│   │   ├── roster-recap/    # AI roster summaries
+│   │   └── players/         # Local player database
+│   ├── page.tsx             # Main app entry
+│   └── layout.tsx           # Root layout
+├── components/              # React components (chat, cards, roster, matchups, etc.)
+├── contexts/                # React contexts (league, theme, Yahoo auth)
+├── hooks/                   # SWR hooks for Yahoo API data fetching
 ├── lib/
-│   ├── ai.ts             # AI integration
-│   ├── db.ts             # Database layer
-│   └── league.ts         # League logic
-└── types/
-    └── index.ts          # TypeScript types
+│   ├── ai.ts                # AI integration (OpenAI + rule-based fallback)
+│   ├── commandParser.ts     # Natural language intent parsing
+│   ├── yahoo/               # Yahoo API client, OAuth, XML parsing
+│   ├── chat/                # Card builders for structured chat responses
+│   ├── db.ts                # In-memory data store
+│   ├── league.ts            # League management logic
+│   ├── rosterContext.ts     # Roster context builder for AI prompts
+│   └── ...                  # MLB stats, formatters, utilities
+├── data/                    # Static data files (MLB player lists)
+├── docs/                    # Development notes and setup guides
+├── scripts/                 # Utility scripts (data scraping, deployment)
+├── __tests__/               # Unit and component tests
+├── e2e/                     # Playwright E2E tests
+└── types/                   # TypeScript type definitions
 ```
 
-## 🎯 MVP Scope
+## Development
 
-### ✅ In Scope
-- **Fantasy Football** 🏈
-  - Redraft leagues (10-12 teams)
-  - Snake draft
-  - Standard/PPR/Half-PPR scoring
-  - Head-to-head matchups
-- **Fantasy Baseball** ⚾
-  - Redraft leagues (10-12 teams)
-  - Snake draft
-  - Roto/Points/Head-to-head scoring
-  - Full position set (C, 1B, 2B, 3B, SS, OF, SP, RP, UTIL)
-- Chat-based actions for both sports
-- Sport toggle for easy switching
+| Task | Command |
+|---|---|
+| Dev server | `npm run dev` |
+| Lint | `npm run lint` |
+| Unit tests | `npm test` |
+| E2E tests | `npx playwright install chromium --with-deps && npm run test:e2e` |
+| Format | `npm run format` |
+| Build | `npm run build` |
 
-### ❌ Out of Scope (for MVP)
-- Dynasty/Keeper leagues
-- Auction drafts
-- Best Ball
-- Custom scoring beyond presets
+## Contributing
 
-## 🔮 Roadmap
+Contributions are welcome. Key areas for improvement:
 
-### Phase 1 (30 days) - ✅ Current
-- League creation
-- Chat interface
-- Read-only advice
+- Persistent database (PostgreSQL/Redis)
+- Write-back to Yahoo (lineup setting, add/drops via API)
+- NFL / football support (data layer exists, UI is baseball-first)
+- Enhanced AI prompts and function calling
+- More player data sources and projections
 
-### Phase 2 (30 days) - 🚧 Next
-- Draft execution
-- Lineup setting
-- Adds/drops
-
-### Phase 3 (30 days)
-- Trades
-- Commissioner tools
-- Polish + onboarding
-
-## 🤝 Contributing
-
-This is an MVP build. Key areas for improvement:
-- Real database integration
-- Enhanced AI prompts
-- More player data
-- Better draft logic
-- Trade negotiation features
-
-## 📝 License
+## License
 
 MIT
-
----
-
-**Built with ❤️ to make fantasy sports management conversational and delightful.**

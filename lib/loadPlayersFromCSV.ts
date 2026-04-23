@@ -43,7 +43,7 @@ function generatePlayerId(name: string, index: number): string {
 
 export function loadMLBPlayersFromCSV(): Player[] {
   try {
-    const csvPath = join(process.cwd(), 'mlb_players.csv')
+    const csvPath = join(process.cwd(), 'data', 'mlb_players.csv')
     const csvContent = readFileSync(csvPath, 'utf-8')
     const lines = csvContent.split('\n').filter(line => line.trim())
     
