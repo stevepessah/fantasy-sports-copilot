@@ -1,6 +1,7 @@
 // AI integration layer for conversational fantasy sports
 
 import { AIResponse, League, Team, Player, Roster, Sport } from '@/types'
+import { detectArchetype } from '@/lib/statArchetypes'
 
 export interface AIContext {
   userId?: string
@@ -496,6 +497,15 @@ IMPORTANT RULES:
   private processWithRules(userMessage: string, context: AIContext): AIResponse {
     const lowerMessage = userMessage.toLowerCase()
 
+    // ── Archetype query — checked early so "power hitter" doesn't fall through ──
+    const archetype = detectArchetype(userMessage)
+    if (archetype) {
+      const { label, description } = archetype.archetype
+      return {
+        message: `You're looking for ${label.toLowerCase()} — ${description}. Connect your Yahoo account so I can recommend specific players from your league's available pool, or ask me about any player and I'll tell you if they fit.`,
+      }
+    }
+
     // League creation
     if (lowerMessage.includes('create') && lowerMessage.includes('league')) {
       return this.handleLeagueCreation(userMessage, context)
@@ -520,13 +530,13 @@ IMPORTANT RULES:
       return this.handleLineupManagement(userMessage, context)
     }
 
-    // Draft help
-    if (lowerMessage.includes('draft') || lowerMessage.includes('pick')) {
+    // Draft help — "pick" alone is too broad ("pick up" = waivers, not draft)
+    if (lowerMessage.includes('draft') || (lowerMessage.includes('pick') && !lowerMessage.includes('pick up'))) {
       return this.handleDraftHelp(userMessage, context)
     }
 
-    // Add/drop
-    if (lowerMessage.includes('drop') || lowerMessage.includes('add') || lowerMessage.includes('waiver')) {
+    // Add/drop / waivers — includes "pick up"
+    if (lowerMessage.includes('drop') || lowerMessage.includes('add') || lowerMessage.includes('waiver') || lowerMessage.includes('pick up')) {
       return this.handleAddDrop(userMessage, context)
     }
 
