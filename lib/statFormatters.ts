@@ -102,12 +102,9 @@ export function formatStatValue(
 
 const PINNED_FIRST_COLS: Record<'B' | 'P', ColDef[]> = {
   B: [
-    { key: 'GP', label: 'GP', fmt: 'int' },
     { key: 'H/AB', label: 'H/AB', composite: 'h_ab' },
   ],
-  P: [
-    { key: 'GP', label: 'GP', fmt: 'int' },
-  ],
+  P: [],
 }
 
 const PINNED_KEYS: Record<'B' | 'P', Set<string>> = {
@@ -136,7 +133,6 @@ export function buildColsFromCategories(
 }
 
 export const FALLBACK_BATTER_COLS: ColDef[] = [
-  { key: 'GP', label: 'GP', fmt: 'int' },
   { key: 'H/AB', label: 'H/AB', composite: 'h_ab' },
   { key: 'R', label: 'R', fmt: 'int' },
   { key: 'HR', label: 'HR', fmt: 'int' },
@@ -148,7 +144,6 @@ export const FALLBACK_BATTER_COLS: ColDef[] = [
 ]
 
 export const FALLBACK_PITCHER_COLS: ColDef[] = [
-  { key: 'GP', label: 'GP', fmt: 'int' },
   { key: 'IP', label: 'IP', fmt: 'ip' },
   { key: 'L', label: 'L', fmt: 'int' },
   { key: 'SV', label: 'SV', fmt: 'int' },

@@ -269,11 +269,24 @@ export default function MyRoster({ leagueKey }: MyRosterProps) {
     [],
   )
 
+  const isFutureDay = useMemo(() => {
+    if (selectedRange !== 'day') return false
+    const now = new Date()
+    now.setHours(0, 0, 0, 0)
+    const sel = new Date(selectedDate)
+    sel.setHours(0, 0, 0, 0)
+    return sel.getTime() > now.getTime()
+  }, [selectedRange, selectedDate])
+
   useEffect(() => {
+    if (isFutureDay) {
+      setRecapSummary(null)
+      return
+    }
     if (players.length > 0 && userTeam?.name) {
       fetchRecap(players, userTeam.name, selectedRange)
     }
-  }, [players, userTeam?.name, selectedRange, fetchRecap])
+  }, [players, userTeam?.name, selectedRange, fetchRecap, isFutureDay])
 
   const batterCols = useMemo(
     () => leagueCategories ? buildColsFromCategories(leagueCategories, 'B') : FALLBACK_BATTER_COLS,
