@@ -141,7 +141,7 @@ const COMPARE_TOKENS = ['compare', 'comparison']
 const COMPARE_PHRASES = [
   'compare', 'head to head', 'h2h between', 'stack up against',
   'stacks up against', 'stack up to', 'stacks up to',
-  "who's better", 'whos better', 'who is better',
+  "who's better", "who;s better", 'whos better', 'who is better',
   'better between', 'better of',
   'side by side', 'side-by-side',
 ]
@@ -171,9 +171,12 @@ function extractCompareNames(input: string): [string, string] | undefined {
   // Strip leading compare-related verbs/phrases to get to the names
   let stripped = s
     .replace(/^(?:compare|comparison of|can you compare|could you compare|please compare)\s+/i, '')
-    .replace(/^(?:who's better|whos better|who is better)\s*[,:]?\s*/i, '')
+    .replace(/^(?:who['';]s better|whos better|who is better)\s*[,:\-–—]?\s*/i, '')
     .replace(/^(?:better between|better of)\s*/i, '')
     .replace(/^(?:head to head|h2h|side by side|side-by-side)\s*(?:between|of|for|with|:)?\s*/i, '')
+
+  // Strip leading separator punctuation between the phrase and player names
+  stripped = stripped.replace(/^[\s\-–—:;,]+/, '')
 
   // Strip trailing comparison-related phrases that aren't part of names
   stripped = stripped
@@ -603,8 +606,8 @@ function stripTrailingNoise(words: string[]): string[] {
 function cleanupName(name: string): string {
   const cleaned = name.replace(/[?.!,]/g, '').trim()
   const tokens = cleaned.split(/\s+/).filter(Boolean)
-  const strippedLeading = stripLeadingFiller(tokens)
-  // If ALL words were filler, there's no name here — return empty
+  const withoutPunctuation = tokens.filter(t => !/^[\-–—:;]+$/.test(t))
+  const strippedLeading = stripLeadingFiller(withoutPunctuation)
   if (strippedLeading.length === 0) return ''
   const trimmedTokens = stripTrailingNoise(strippedLeading)
   return trimmedTokens.join(' ').trim()

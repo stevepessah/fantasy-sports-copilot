@@ -323,6 +323,27 @@ describe('parseIntent — compare', () => {
     expect(r.comparePlayerB).toBe('Acuna')
   })
 
+  it('handles dash separator: "who\'s better - trout or judge?"', () => {
+    const r = parseIntent("who's better - trout or judge?")
+    expect(r.isCompare).toBe(true)
+    expect(r.comparePlayerA?.toLowerCase()).toBe('trout')
+    expect(r.comparePlayerB?.toLowerCase()).toBe('judge')
+  })
+
+  it('handles semicolon typo: "who;s better - trout or judge?"', () => {
+    const r = parseIntent('who;s better - trout or judge?')
+    expect(r.isCompare).toBe(true)
+    expect(r.comparePlayerA?.toLowerCase()).toBe('trout')
+    expect(r.comparePlayerB?.toLowerCase()).toBe('judge')
+  })
+
+  it('handles em-dash separator: "who\'s better — Soto or Acuna"', () => {
+    const r = parseIntent("who's better — Soto or Acuna")
+    expect(r.isCompare).toBe(true)
+    expect(r.comparePlayerA).toBe('Soto')
+    expect(r.comparePlayerB).toBe('Acuna')
+  })
+
   it('does not trigger player lookup when compare fires', () => {
     const r = parseIntent('compare Trout vs Judge')
     expect(r.isPlayerLookup).toBe(false)
