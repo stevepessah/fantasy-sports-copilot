@@ -582,9 +582,17 @@ export async function POST(request: NextRequest) {
     }
 
     // ─── Archetype query ("I want power", "need speed", etc.) ──────────────
+    // Only show a player-list card when the user explicitly wants to browse
+    // (e.g. "show me power hitters", "find me speed on waivers"). For
+    // conversational questions ("who is a good power hitter to get?"), let the
+    // LLM answer with its own recommendations — no data dump.
     if (intent.isArchetypeQuery && intent.archetypeKey) {
       const arch = STAT_ARCHETYPES[intent.archetypeKey]
-      if (arch && yahooAccessToken && context.yahooLeagueKey) {
+      const lower = cleanMessage.toLowerCase()
+      const wantsList =
+        /\b(show|list|browse|find|see|view|pull up|bring up|available|waiver|wire|free agent)\b/.test(lower)
+
+      if (arch && wantsList && yahooAccessToken && context.yahooLeagueKey) {
         try {
           const api = new YahooFantasyAPI()
           api.setAccessToken(yahooAccessToken)
