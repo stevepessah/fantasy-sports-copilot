@@ -125,6 +125,14 @@ const DATE_RANGE_DISPLAY: Record<string, string> = {
   '2024': 'the 2024 season',
 }
 
+function formatDayLabel(d: Date): string {
+  return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
+}
+
+function formatDayDisplay(d: Date): string {
+  return d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })
+}
+
 // ── Component ──
 
 interface MyRosterProps {
@@ -142,6 +150,7 @@ export default function MyRoster({ leagueKey }: MyRosterProps) {
   )
 
   const [selectedRange, setSelectedRange] = useState<string>('today')
+  const [selectedDate, setSelectedDate] = useState<Date>(() => new Date())
   const [players, setPlayers] = useState<RosterPlayerEntry[]>([])
   const [leagueCategories, setLeagueCategories] = useState<LeagueStatCategory[] | null>(null)
   const [rosterLoading, setRosterLoading] = useState(false)
@@ -152,10 +161,37 @@ export default function MyRoster({ leagueKey }: MyRosterProps) {
   const [recapSummary, setRecapSummary] = useState<string | null>(null)
   const [recapLoading, setRecapLoading] = useState(false)
 
-  const activeRange = useMemo(
-    () => DATE_RANGE_OPTIONS.find((o) => o.id === selectedRange) ?? DATE_RANGE_OPTIONS[0],
-    [selectedRange],
-  )
+  const handleRangeChange = useCallback((id: string) => {
+    setSelectedRange(id)
+    if (id === 'today') setSelectedDate(new Date())
+  }, [])
+
+  const handlePrevDay = useCallback(() => {
+    setSelectedDate(prev => {
+      const d = new Date(prev)
+      d.setDate(d.getDate() - 1)
+      return d
+    })
+    setSelectedRange('day')
+  }, [])
+
+  const handleNextDay = useCallback(() => {
+    setSelectedDate(prev => {
+      const d = new Date(prev)
+      d.setDate(d.getDate() + 1)
+      return d
+    })
+    setSelectedRange('day')
+  }, [])
+
+  const activeRange = useMemo(() => {
+    if (selectedRange === 'day') {
+      const d = selectedDate
+      const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+      return { id: 'day', label: formatDayLabel(d), dateRange: `date=${dateStr}` }
+    }
+    return DATE_RANGE_OPTIONS.find((o) => o.id === selectedRange) ?? DATE_RANGE_OPTIONS[0]
+  }, [selectedRange, selectedDate])
 
   // Fetch roster stats whenever team, league, or date range changes
   useEffect(() => {
@@ -211,7 +247,9 @@ export default function MyRoster({ leagueKey }: MyRosterProps) {
           injuryStatus: p.injuryStatus,
         })),
         teamName,
-        dateRangeLabel: DATE_RANGE_DISPLAY[rangeId] ?? rangeId,
+        dateRangeLabel: rangeId === 'day'
+          ? formatDayDisplay(selectedDate)
+          : (DATE_RANGE_DISPLAY[rangeId] ?? rangeId),
       }
 
       fetch('/api/roster-recap', {
@@ -301,8 +339,11 @@ export default function MyRoster({ leagueKey }: MyRosterProps) {
         <div className="flex items-center justify-between gap-2 mb-4 px-1">
           <DateRangePicker
             selected={selectedRange}
-            onChange={setSelectedRange}
+            onChange={handleRangeChange}
             disabled={rosterLoading}
+            selectedDate={selectedDate}
+            onPrevDay={handlePrevDay}
+            onNextDay={handleNextDay}
           />
           <button
             onClick={() => setShowMatchups((v) => !v)}
@@ -373,13 +414,67 @@ function DateRangePicker({
   selected,
   onChange,
   disabled,
+  selectedDate,
+  onPrevDay,
+  onNextDay,
 }: {
   selected: string
   onChange: (id: string) => void
   disabled?: boolean
+  selectedDate: Date
+  onPrevDay: () => void
+  onNextDay: () => void
 }) {
+  const dayLabel = formatDayLabel(selectedDate)
+  const isDayMode = selected === 'day'
+  const btnDisabled = disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
+
   return (
-    <div className="flex flex-wrap gap-1.5">
+    <div className="flex flex-wrap items-center gap-1.5">
+      {/* Day navigator */}
+      <div
+        className={`inline-flex items-center rounded-full transition-all ${
+          isDayMode
+            ? 'bg-blue-600 shadow-md shadow-blue-600/25'
+            : 'bg-slate-700/50'
+        }`}
+      >
+        <button
+          onClick={onPrevDay}
+          disabled={disabled}
+          aria-label="Previous day"
+          className={`flex items-center justify-center w-7 h-7 rounded-full text-sm transition-colors ${
+            isDayMode
+              ? 'text-blue-100 hover:text-white hover:bg-blue-500/50'
+              : 'text-slate-400 hover:text-slate-200 hover:bg-slate-600/50'
+          } ${btnDisabled}`}
+        >
+          ‹
+        </button>
+        <span
+          className={`px-1.5 text-xs font-medium select-none whitespace-nowrap ${
+            isDayMode ? 'text-white' : 'text-slate-300'
+          }`}
+        >
+          {dayLabel}
+        </span>
+        <button
+          onClick={onNextDay}
+          disabled={disabled}
+          aria-label="Next day"
+          className={`flex items-center justify-center w-7 h-7 rounded-full text-sm transition-colors ${
+            isDayMode
+              ? 'text-blue-100 hover:text-white hover:bg-blue-500/50'
+              : 'text-slate-400 hover:text-slate-200 hover:bg-slate-600/50'
+          } ${btnDisabled}`}
+        >
+          ›
+        </button>
+      </div>
+
+      <div className="w-px h-5 bg-slate-600/50 mx-0.5" />
+
+      {/* Range pills */}
       {DATE_RANGE_OPTIONS.map((opt) => (
         <button
           key={opt.id}
