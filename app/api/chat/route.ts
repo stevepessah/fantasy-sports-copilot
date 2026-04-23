@@ -13,6 +13,23 @@ import { cookies } from 'next/headers'
 import { League, Sport } from '@/types'
 import { buildCardsForIntent, getStatCategoriesForCompare, remapStatsForCompare, isPitcherPosition } from '@/lib/chat/cardBuilder'
 import { buildMatchupCards } from '@/lib/chat/matchupCards'
+import { STAT_ARCHETYPES } from '@/lib/statArchetypes'
+
+/**
+ * Returns true when the LLM's response is empty, generic, or a canned menu —
+ * i.e. safe to replace with a data-driven message.
+ */
+function isGenericResponse(msg: string | undefined): boolean {
+  if (!msg || msg.trim().length === 0) return true
+  const lower = msg.toLowerCase()
+  return (
+    lower.includes('can ask me to') ||
+    lower.includes('what would you like') ||
+    lower.includes("i'm here to help!") ||
+    lower.includes('here are some things') ||
+    lower.includes('feel free to ask')
+  )
+}
 
 const rosterContextCache: Record<string, { context: string; timestamp: number }> = {}
 const ROSTER_CACHE_TTL = 5 * 60 * 1000
@@ -214,6 +231,12 @@ export async function POST(request: NextRequest) {
     // Parse intent for better card generation
     const intent = parseIntent(cleanMessage)
 
+    // Inject archetype context so the LLM knows what the user is asking for
+    if (intent.isArchetypeQuery && intent.archetypeKey && STAT_ARCHETYPES[intent.archetypeKey]) {
+      const arch = STAT_ARCHETYPES[intent.archetypeKey]
+      context.archetypeContext = `The user is looking for: **${arch.label}** (${arch.description}).\nRelevant stats: ${arch.stats.join(', ')}.\nPosition type: ${arch.positionType === 'B' ? 'Batter' : arch.positionType === 'P' ? 'Pitcher' : 'Any'}.`
+    }
+
     // ─── STREAMING PATH ──────────────────────────────────────────────────────
     if (wantStream) {
       const encoder = new TextEncoder()
@@ -340,7 +363,9 @@ export async function POST(request: NextRequest) {
                 projectedTotal: null,
               },
             })
-            response.message = `Here's your current roster for **${userTeam.name}**:`
+            if (isGenericResponse(response.message)) {
+              response.message = `Here's your current roster for **${userTeam.name}**:`
+            }
           }
         }
       } catch {
@@ -400,7 +425,9 @@ export async function POST(request: NextRequest) {
                   })),
                 },
               })
-              response.message = `Here are the current standings for **${context.yahooLeagueName || 'your league'}**:`
+              if (isGenericResponse(response.message)) {
+                response.message = `Here's where things stand in **${context.yahooLeagueName || 'your league'}**:`
+              }
               standingsHandled = true
             }
           }
@@ -464,7 +491,9 @@ export async function POST(request: NextRequest) {
                 })),
               },
             })
-            response.message = `Here are all ${allTeams.length} teams in your league:`
+            if (isGenericResponse(response.message)) {
+              response.message = `Here are all ${allTeams.length} teams in your league:`
+            }
           } else {
             response.message = "No teams found in this league."
           }
@@ -476,11 +505,8 @@ export async function POST(request: NextRequest) {
 
     // League settings / stat categories
     if (intent.isLeagueSettings && yahooAccessToken && context.yahooLeagueKey) {
-      if (context.yahooLeagueSettingsContext) {
-        // If the LLM didn't already give a good answer, provide the settings directly
-        if (response.message.includes("can ask me to") || response.message.includes("What would you like")) {
-          response.message = `Here are your league's scoring categories and settings:\n\n${context.yahooLeagueSettingsContext}`
-        }
+      if (context.yahooLeagueSettingsContext && isGenericResponse(response.message)) {
+        response.message = `Here's what your league is tracking:\n\n${context.yahooLeagueSettingsContext}`
       }
     }
 
@@ -510,12 +536,14 @@ export async function POST(request: NextRequest) {
               leagueKey: context.yahooLeagueKey,
             },
           })
-          response.message = `Here are all ${data.total} ${label.toLowerCase()} across every team in your league:`
+          if (isGenericResponse(response.message)) {
+            response.message = `Here are all ${data.total} ${label.toLowerCase()} across every team in your league:`
+          }
         } catch {
-          response.message = "Sorry, I couldn't fetch the player list. Please make sure you're connected to Yahoo Fantasy."
+          response.message = "Sorry, I couldn't fetch the player list. Make sure you're connected to Yahoo Fantasy."
         }
       } else {
-        response.message = 'Please connect your Yahoo Fantasy account first to view league players.'
+        response.message = 'Connect your Yahoo Fantasy account first to view league players.'
       }
     }
 
@@ -542,12 +570,49 @@ export async function POST(request: NextRequest) {
               defaultStatus: 'A',
             },
           })
-          response.message = `There are ${data.total} available players on the waiver wire. Here are the top available players ranked by average draft position:`
+          if (isGenericResponse(response.message)) {
+            response.message = `There are ${data.total} available players on the wire. Here are the top options:`
+          }
         } catch {
-          response.message = "Sorry, I couldn't fetch the waiver wire. Please make sure you're connected to Yahoo Fantasy."
+          response.message = "Sorry, I couldn't pull up the waiver wire. Make sure you're connected to Yahoo Fantasy."
         }
       } else {
-        response.message = 'Please connect your Yahoo Fantasy account first to view available players.'
+        response.message = 'Connect your Yahoo Fantasy account first to see available players.'
+      }
+    }
+
+    // ─── Archetype query ("I want power", "need speed", etc.) ──────────────
+    if (intent.isArchetypeQuery && intent.archetypeKey) {
+      const arch = STAT_ARCHETYPES[intent.archetypeKey]
+      if (arch && yahooAccessToken && context.yahooLeagueKey) {
+        try {
+          const api = new YahooFantasyAPI()
+          api.setAccessToken(yahooAccessToken)
+
+          const positionType = arch.positionType === 'both' ? undefined : arch.positionType
+          const data = await fetchLeaguePlayers(api, {
+            leagueKey: context.yahooLeagueKey,
+            status: 'A',
+            ...(positionType ? { positionType } : {}),
+          })
+
+          if (data.players.length > 0) {
+            response.cards.push({
+              type: 'roster_list',
+              title: `${arch.label} — Available Players`,
+              payload: {
+                players: data.players,
+                total: data.total,
+                positionType: positionType || undefined,
+                label: arch.label,
+                leagueKey: context.yahooLeagueKey,
+                defaultStatus: 'A',
+              },
+            })
+          }
+        } catch {
+          // Archetype card is supplementary — the LLM text response still goes through
+        }
       }
     }
 
@@ -639,11 +704,11 @@ export async function POST(request: NextRequest) {
               },
             })
 
-            if (!response.message || response.message.includes('can ask me to')) {
+            if (isGenericResponse(response.message)) {
               if (isMixed) {
-                response.message = `Here's the comparison between ${nameA} (${posTypeA === 'P' ? 'Pitcher' : 'Batter'}) and ${nameB} (${posTypeB === 'P' ? 'Pitcher' : 'Batter'}). Since they play different positions, I'm showing all available stats for a broader view.`
+                response.message = `Here's ${nameA} (${posTypeA === 'P' ? 'Pitcher' : 'Batter'}) vs ${nameB} (${posTypeB === 'P' ? 'Pitcher' : 'Batter'}) — different positions, so I'm showing all available stats for context.`
               } else {
-                response.message = `Here's the head-to-head comparison between ${nameA} and ${nameB}:`
+                response.message = `Here's ${nameA} vs ${nameB} head-to-head:`
               }
             }
           } else {

@@ -8,6 +8,7 @@ function activeIntents(result: ReturnType<typeof parseIntent>): string[] {
     'isHelp', 'isSetLineup', 'isShowLineup', 'isMatchup', 'isWaivers',
     'isAddDrop', 'isTrade', 'isDraft', 'isPlayerLookup', 'isCompare',
     'isViewTeams', 'isShowBatters', 'isShowPitchers', 'isLeagueSettings',
+    'isArchetypeQuery',
   ] as const
   return flags.filter((f) => result[f])
 }

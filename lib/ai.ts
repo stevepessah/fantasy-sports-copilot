@@ -21,6 +21,8 @@ export interface AIContext {
   hasYahooConnection?: boolean
   // Which tab the user was viewing when they started the chat
   originTab?: string
+  // Detected stat archetype for the current message (e.g. "power", "speed")
+  archetypeContext?: string
 }
 
 // ─── Deep Fantasy Baseball Knowledge ────────────────────────────────────────
@@ -141,6 +143,21 @@ ALWAYS apply these principles when evaluating or suggesting trades:
 - **Schedule Awareness:** Players with more games in a week are more valuable in H2H. 
   Check the weekly schedule before setting lineups.
 
+### Understanding User Intent — Stat Archetypes
+When users use casual baseball language, you KNOW what they mean. Translate immediately:
+- "power" / "power hitter" / "I need power" / "slugger" / "masher" → HR, SLG, OPS, extra-base hits
+- "speed" / "fast guy" / "steals" / "stolen bases" → SB, R, sprint speed
+- "contact hitter" / "high average" / "need average" → AVG, OBP, low K%
+- "ace" / "top arm" / "elite pitcher" / "frontline starter" → K, low ERA, low WHIP, Stuff+, QS
+- "closer" / "saves" → SV, HLD, late-inning relief
+- "strikeout pitcher" / "swing and miss" → K rate, SwStr%, whiff rate
+- "ratios" / "low ERA" / "low WHIP" → ERA, WHIP, FIP
+- "all-around" / "five-category" / "five-tool" → OPS, HR, SB, R, RBI balance
+
+NEVER ask "what do you mean by power?" — just recommend players who hit home runs and slug.
+When recommending based on archetypes, name SPECIFIC PLAYERS and cite their relevant stats.
+If the user has roster data, identify which players on their team or on waivers fit the archetype.
+
 ### Communication Style for Recommendations
 - Always state your recommendation clearly first, then explain WHY
 - Reference specific stats to justify your reasoning
@@ -201,17 +218,23 @@ win their leagues through natural conversation.
 - When the user's roster is available, personalize ALL advice to their specific team needs
 - Understand user intent from natural language — be flexible, not rigid
 - Be conversational and confident, but acknowledge uncertainty when projecting
+- Talk like a knowledgeable fantasy baseball friend, not a customer service bot or textbook
+- If a user's message is vague or casual, make your best guess and run with it — never punt to a menu
+- Short, punchy responses for simple questions; go deep only when the user asks for detail
+- Mirror the user's energy and language ("you want power? here's who's mashing right now...")
 
 ## CRITICAL RESPONSE RULES
-- NEVER give a canned "I'm here to help! You can ask me to:" bullet-point menu. This is lazy and unhelpful.
+- NEVER give a canned "I'm here to help! You can ask me to:" bullet-point menu. This is the #1 thing to avoid.
+- NEVER list your capabilities or suggest example prompts. Just answer the question.
 - NEVER say "Give me a moment..." or "Let me analyze..." and then stop. Actually DO the analysis inline.
 - ALWAYS attempt to answer the user's actual question, even if you need to make reasonable assumptions.
 - If you have league settings data below, USE IT to answer questions about stats, categories, scoring, etc.
 - If you have roster data below, USE IT to give personalized analysis rather than generic advice.
 - If you genuinely don't have the data to answer, say specifically what data is missing — don't redirect to a menu.
-- Be conversational. Respond naturally to conversational messages. If someone says "hey" or "what's up", respond warmly.
+- Be conversational and natural. If someone says "hey" or "what's up", respond warmly. If they say "power", recommend power hitters.
 - When the user asks about their league (stats, categories, format, settings), look at the League Settings section below for the actual answer.
 - You can and should answer general fantasy baseball knowledge questions directly, without needing league-specific data.
+- If the user asks for a type of player (power, speed, etc.), give concrete player names and stats — not a definition of what power means.
 
 ## LINEUP & ACTION REQUESTS — ALWAYS GIVE REAL ANALYSIS
 When the user asks to "set my lineup", "optimize lineup", "who should I start", "best lineup", etc.:
@@ -268,6 +291,12 @@ ${FANTASY_BASEBALL_EXPERTISE}
       prompt += `\n`
     }
 
+    if (context.archetypeContext) {
+      prompt += `\n## User's Current Request — Stat Archetype\n`
+      prompt += context.archetypeContext
+      prompt += `\nGive concrete player recommendations that fit this archetype. Name specific players and cite their relevant stats.\n`
+    }
+
     prompt += `
 ## Available Actions (understand flexibly from natural language)
 - View teams/standings: "show teams", "standings", "who's in my league"
@@ -286,9 +315,10 @@ IMPORTANT RULES:
 - Be flexible with user intent. Don't require exact phrases.
 - When roster data is available, ALWAYS reference it in your analysis.
 - For trade questions, evaluate using replacement level, positional scarcity, and category need.
-- NEVER respond with a generic capabilities menu. Always try to answer the actual question.
+- NEVER respond with a generic capabilities menu or a list of things the user "can ask about". Always try to answer the actual question.
 - If the user asks about league stats/categories/settings, look at the League Settings section above.
-- Answer conversationally — you're a knowledgeable friend, not a robotic menu system.`
+- Answer conversationally — you're a knowledgeable friend, not a robotic menu system.
+- When the user asks for a type of player ("power hitter", "speed guy", "closer"), give real player recommendations with stats, not a definition.`
 
     return prompt
   }
@@ -400,7 +430,7 @@ IMPORTANT RULES:
         }
 
         return {
-          message: responseText || 'Let me look into that for you.',
+          message: responseText || 'On it — give me a sec to pull that together.',
           action,
         }
       }
@@ -518,8 +548,8 @@ IMPORTANT RULES:
     ) {
       return {
         message: context.league
-          ? `Here are the current standings for **${context.league.name}**:`
-          : "Here are your league standings:",
+          ? `Here's where things stand in **${context.league.name}**:`
+          : "Pulling up your league standings now.",
         action: { type: 'view_teams' },
       }
     }
@@ -549,43 +579,35 @@ IMPORTANT RULES:
   private handleLeagueSettings(_message: string, context: AIContext): AIResponse {
     if (context.yahooLeagueSettingsContext) {
       return {
-        message: `Here are your league's settings and scoring categories:\n\n${context.yahooLeagueSettingsContext}`,
+        message: `Here's what your league is tracking:\n\n${context.yahooLeagueSettingsContext}`,
       }
     }
 
     if (context.league) {
       return {
-        message: `Your league **${context.league.name}** uses **${context.league.scoringType}** scoring with ${context.league.numTeams} teams. Connect your Yahoo account for full scoring category details.`,
+        message: `Your league **${context.league.name}** is a ${context.league.numTeams}-team **${context.league.scoringType}** league. Connect your Yahoo account and I can show you the full breakdown of scoring categories.`,
       }
     }
 
     return {
-      message: "I'd love to show you your league settings, but I don't have your league data loaded yet. Make sure your Yahoo Fantasy account is connected so I can pull in your league's scoring categories and roster positions.",
+      message: "I don't have your league data loaded yet — connect your Yahoo Fantasy account and I'll be able to tell you exactly which stats and categories your league uses.",
     }
   }
 
   private buildContextAwareDefault(userMessage: string, context: AIContext): AIResponse {
-    const parts: string[] = []
-
-    // Try to be helpful based on what we know
     if (context.yahooRosterContext || context.yahooLeagueSettingsContext) {
-      parts.push(`I'm not sure I understood that. I have your league data loaded, so feel free to ask me things like:`)
-      parts.push('')
-      parts.push('- "What stats does my league count?"')
-      parts.push('- "Who should I start this week?"')
-      parts.push('- "Show my matchup"')
-      parts.push('- "Who should I pick up on waivers?"')
-      parts.push('- "Compare Player A vs Player B"')
-      parts.push('- Or ask about any specific player by name')
-    } else if (context.hasYahooConnection) {
-      parts.push("I'm having trouble loading your league data right now, but I'm still here to help with general fantasy baseball questions. Try asking again in a moment, or ask me about strategy, player analysis, or draft advice.")
-    } else {
-      parts.push("I'm your fantasy baseball assistant! Connect your Yahoo Fantasy account to get personalized advice about your team, league settings, and roster moves.")
-      parts.push('')
-      parts.push("In the meantime, I can help with general fantasy baseball strategy, player evaluations, and draft advice. What would you like to know?")
+      return {
+        message: "Hmm, I'm not quite sure what you're after there. Could you give me a bit more to work with — are you looking for a player recommendation, lineup help, or something about your matchup?",
+      }
     }
-
-    return { message: parts.join('\n') }
+    if (context.hasYahooConnection) {
+      return {
+        message: "I'm having a little trouble pulling your league data right now, but I can still talk strategy, player analysis, or draft advice. What's on your mind?",
+      }
+    }
+    return {
+      message: "Hey! I'm your fantasy baseball copilot. Connect your Yahoo Fantasy account and I can give you personalized advice on your roster, matchups, and trades. In the meantime, ask me anything about fantasy baseball strategy or player evaluations.",
+    }
   }
 
   private handleLeagueCreation(message: string, context: AIContext): AIResponse {
@@ -633,140 +655,116 @@ IMPORTANT RULES:
     const actionType = isSet ? 'set_lineup' : 'show_lineup'
 
     if (context.yahooRosterContext) {
+      const msg = isSet
+        ? "Alright, I've optimized your lineup based on today's matchups and your league format. Here's what I'm rolling with:"
+        : "Here's your current roster — let me know if you want me to shuffle anything around."
       return {
-        message: `Here's your current roster. ${isSet ? 'I\'ve highlighted the optimal starters based on your league format.' : 'Take a look and let me know if you want lineup advice.'}`,
-        action: {
-          type: actionType,
-          data: { teamId: context.teamId },
-        },
+        message: msg,
+        action: { type: actionType, data: { teamId: context.teamId } },
       }
     }
 
     if (!context.roster && !context.hasYahooConnection) {
       return {
-        message: "I don't see your roster yet. Connect your Yahoo Fantasy account so I can pull in your team and help you set the best lineup.",
+        message: "I'd need to see your roster first to help with lineups. Hook up your Yahoo Fantasy account and I'll be able to pull your team in.",
       }
     }
 
     if (!context.roster) {
       return {
-        message: "I'm having trouble loading your roster right now. Let me try to pull it up.",
-        action: {
-          type: 'show_lineup',
-          data: { teamId: context.teamId },
-        },
+        message: "Having a little trouble grabbing your roster right now — pulling it up.",
+        action: { type: 'show_lineup', data: { teamId: context.teamId } },
       }
     }
 
+    const msg = isSet
+      ? "Done — I've set your lineup to what I think gives you the best shot this week."
+      : "Here's your lineup. Want me to optimize it for you?"
     return {
-      message: `Here's your lineup. ${isSet ? 'I\'ve set it to the optimal configuration based on matchups and projections.' : 'Let me know if you\'d like me to optimize it.'}`,
-      action: {
-        type: actionType,
-        data: { teamId: context.teamId },
-      },
+      message: msg,
+      action: { type: actionType, data: { teamId: context.teamId } },
     }
   }
 
   private handleDraftHelp(message: string, context: AIContext): AIResponse {
     const lowerMessage = message.toLowerCase()
-    
+
     if (lowerMessage.includes('sp') || lowerMessage.includes('starting pitcher') || lowerMessage.includes('pitcher')) {
       return {
-        message: "Starting pitchers are the foundation of fantasy baseball. They provide wins, strikeouts, ERA, and WHIP. Let me find the best available SPs...",
-        action: {
-          type: 'draft_pick',
-        },
+        message: "Good call focusing on pitching — aces are tough to replace. Let me pull up the top arms available.",
+        action: { type: 'draft_pick' },
       }
     }
-    
+
     if (lowerMessage.includes('hitter') || lowerMessage.includes('batter') || lowerMessage.includes('position player')) {
       return {
-        message: "Hitters provide the offensive categories: average, home runs, RBIs, runs, and stolen bases. Let me check the best available hitters...",
-        action: {
-          type: 'draft_pick',
-        },
+        message: "Let's find you some bats. I'll pull up the best hitters still on the board.",
+        action: { type: 'draft_pick' },
       }
     }
-    
+
     return {
-      message: "I'll help you with your baseball draft! Based on your current roster and available players, here are my recommendations...",
-      action: {
-        type: 'draft_pick',
-      },
+      message: "Let's figure out your best pick. What does your roster need most right now — pitching, hitting, or a specific category?",
+      action: { type: 'draft_pick' },
     }
   }
 
   private handleAddDrop(message: string, context: AIContext): AIResponse {
     const lowerMessage = message.toLowerCase()
-    
-    // Try to extract player names
+
     const dropMatch = lowerMessage.match(/drop\s+([^for]+?)(?:\s+for|\s*$)/i)
-    const addMatch = lowerMessage.match(/(?:add|pick\s+up|get)\s+([^?]+?)(?:\s*\?|$)/i) || 
+    const addMatch = lowerMessage.match(/(?:add|pick\s+up|get)\s+([^?]+?)(?:\s*\?|$)/i) ||
                      lowerMessage.match(/for\s+([^?]+?)(?:\s*\?|$)/i)
 
     if (dropMatch && addMatch) {
       return {
-        message: `I'll help you drop ${dropMatch[1].trim()} and add ${addMatch[1].trim()}. Let me check if this makes sense for your roster...`,
+        message: `Dropping ${dropMatch[1].trim()} for ${addMatch[1].trim()} — let me check how that shakes out for your roster.`,
         action: {
           type: 'add_player',
-          data: {
-            dropPlayer: dropMatch[1].trim(),
-            addPlayer: addMatch[1].trim(),
-          },
+          data: { dropPlayer: dropMatch[1].trim(), addPlayer: addMatch[1].trim() },
         },
       }
     }
 
     if (lowerMessage.includes('waiver') || lowerMessage.includes('available')) {
       return {
-        message: "I'll help you find the best available players. Let me check the waiver wire...",
-        action: {
-          type: 'add_player',
-        },
+        message: "Let's see who's out there. Pulling up the best available players for you.",
+        action: { type: 'add_player' },
       }
     }
 
     return {
-      message: "I'll help you find the best available players and suggest who to drop. Let me check the waiver wire...",
-      action: {
-        type: 'add_player',
-      },
+      message: "Let's scan the wire and see who could help your team. Pulling up available players now.",
+      action: { type: 'add_player' },
     }
   }
 
   private handleTrade(message: string, context: AIContext): AIResponse {
     const lowerMessage = message.toLowerCase()
-    
-    // Try to extract trade details
+
     const tradeMatch = lowerMessage.match(/(?:trade|give)\s+([^for]+?)\s+for\s+([^?]+?)(?:\s*\?|$)/i)
-    
+
     if (tradeMatch) {
       const player1 = tradeMatch[1].trim()
       const player2 = tradeMatch[2].trim()
-      
       return {
-        message: `I'll evaluate trading ${player1} for ${player2}. Let me analyze the value, roster impact, and long-term implications...`,
+        message: `${player1} for ${player2} — interesting. Let me break down the value on both sides and how it fits your roster.`,
         action: {
           type: 'propose_trade',
-          data: {
-            player1,
-            player2,
-          },
+          data: { player1, player2 },
         },
       }
     }
 
     if (lowerMessage.includes('fair') || lowerMessage.includes('evaluate')) {
       return {
-        message: "I'll evaluate this trade for you. Let me analyze the value, roster impact, and long-term implications...",
-        action: {
-          type: 'propose_trade',
-        },
+        message: "Sure, walk me through the trade and I'll tell you who's getting the better end of it.",
+        action: { type: 'propose_trade' },
       }
     }
 
     return {
-      message: "I'll help you with trades. You can ask me to evaluate a trade or suggest one. What would you like to do?",
+      message: "I'm always down to talk trades. What's the deal — who's involved?",
     }
   }
 

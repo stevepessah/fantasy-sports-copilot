@@ -1,3 +1,5 @@
+import { detectArchetype } from './statArchetypes'
+
 // ── Flexible intent parser ──────────────────────────────────────────────────
 //
 // Instead of rigid exact-phrase matching, this uses CONCEPT VOCABULARIES:
@@ -27,6 +29,8 @@ export interface ParsedIntent {
   isShowBatters: boolean
   isShowPitchers: boolean
   isLeagueSettings: boolean
+  isArchetypeQuery: boolean
+  archetypeKey?: string
   playerName?: string
   comparePlayerA?: string
   comparePlayerB?: string
@@ -320,9 +324,18 @@ export function parseIntent(input: string): ParsedIntent {
     Boolean(compareNames)
   )
 
+  // ── Archetype query ("I want power", "need speed", "give me a closer") ──
+  const hasStructuralIntent =
+    isHelp || isSetLineup || isShowLineup || isMatchup || isWaivers ||
+    isAddDrop || isTrade || isDraft || isViewTeams || isShowBatters ||
+    isShowPitchers || isLeagueSettings || isCompare
+
+  const archetypeResult = !hasStructuralIntent ? detectArchetype(input) : undefined
+  const isArchetypeQuery = Boolean(archetypeResult)
+
   // ── Player lookup (most permissive — fallback intent) ──
-  const playerName = isCompare ? undefined : extractPlayerName(input)
-  const isPlayerLookup = !isCompare && !isLeagueSettings && shouldHandlePlayerLookup(s, words, {
+  const playerName = isCompare || isArchetypeQuery ? undefined : extractPlayerName(input)
+  const isPlayerLookup = !isCompare && !isLeagueSettings && !isArchetypeQuery && shouldHandlePlayerLookup(s, words, {
     isHelp, isSetLineup, isShowLineup, isMatchup, isWaivers,
     isAddDrop, isTrade, isDraft, isViewTeams, isShowBatters, isShowPitchers,
   }, playerName)
@@ -341,6 +354,8 @@ export function parseIntent(input: string): ParsedIntent {
     isShowPitchers,
     isLeagueSettings,
     isCompare,
+    isArchetypeQuery,
+    archetypeKey: archetypeResult?.key,
     isPlayerLookup,
     playerName,
     comparePlayerA: compareNames?.[0],
@@ -358,6 +373,7 @@ function emptyIntent(): ParsedIntent {
     isTrade: false, isDraft: false, isPlayerLookup: false,
     isCompare: false, isLeagueSettings: false,
     isViewTeams: false, isShowBatters: false, isShowPitchers: false,
+    isArchetypeQuery: false,
   }
 }
 
