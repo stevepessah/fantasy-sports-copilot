@@ -11,6 +11,7 @@ import {
   PITCHER_DISPLAY_STATS,
   formatStatValue as baseFormatStatValue,
 } from '@/lib/statFormatters'
+import { reportError } from '@/lib/errors'
 
 interface RosterContextResult {
   contextString: string
@@ -61,6 +62,7 @@ export async function buildRosterContext(
         const { stats } = await api.getPlayerStats(player.player_key, leagueKey)
         return { playerKey: player.player_key, stats }
       } catch (err) {
+        reportError(err, { source: 'rosterContext.playerStats', metadata: { player: player.name.full } }, 'warning')
         console.error(`Failed to fetch stats for ${player.name.full}:`, err)
         return { playerKey: player.player_key, stats: null }
       }
@@ -103,6 +105,7 @@ export async function buildRosterContext(
       pitcherCount: pitchers.length,
     }
   } catch (error) {
+    reportError(error, { source: 'rosterContext.build' })
     console.error('Error building roster context:', error)
     return {
       contextString: 'Error loading roster data.\n',
@@ -296,6 +299,7 @@ export async function buildRosterSummary(
 
     return summary
   } catch (error) {
+    reportError(error, { source: 'rosterContext.summary' })
     console.error('Error building roster summary:', error)
     return 'Could not load roster.\n'
   }

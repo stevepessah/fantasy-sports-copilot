@@ -1,5 +1,6 @@
 import { YahooFantasyAPI } from '@/lib/yahoo/api'
 import { STAT_ID_MAP } from '@/lib/statFormatters'
+import { reportError } from '@/lib/errors'
 
 export async function buildMatchupCards(
   api: YahooFantasyAPI,
@@ -27,7 +28,7 @@ export async function buildMatchupCards(
       if (league.current_week) currentWeek = parseInt(league.current_week, 10)
       if (league.end_week) totalWeeks = parseInt(league.end_week, 10)
     }
-  } catch { /* non-critical */ }
+  } catch (error) { reportError(error, { source: 'matchupCards.leagueInfo' }, 'warning') }
 
   const scoringStatIds = new Set<string>()
   const displayNameCounts = new Map<string, number>()
@@ -50,7 +51,7 @@ export async function buildMatchupCards(
     for (const [id, cat] of Object.entries(categories)) {
       statIdMap[id] = cat.displayName || cat.name
     }
-  } catch { /* use fallback */ }
+  } catch (error) { reportError(error, { source: 'matchupCards.statCategories' }, 'warning') }
 
   const mapStats = (raw?: Record<string, number | string>): Record<string, number | string> => {
     if (!raw) return {}

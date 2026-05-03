@@ -5,6 +5,7 @@
 import { League, Team, Player, Roster, DraftPick, Trade, Matchup } from '@/types'
 import Redis from 'ioredis'
 import { loadMLBPlayersFromCSV } from './loadPlayersFromCSV'
+import { reportError } from '@/lib/errors'
 
 // ── Redis client (lazy, singleton) ──────────────────────────────────────────
 
@@ -22,7 +23,7 @@ function getRedis(): Redis | null {
   })
   _redis.on('ready', () => { _redisReady = true })
   _redis.on('error', (err) => { console.warn('[redis] connection error:', err.message) })
-  _redis.connect().catch(() => {})
+  _redis.connect().catch((error) => { reportError(error, { source: 'db.redisConnect' }, 'warning') })
   return null // not ready yet on first call; next call will return it
 }
 
@@ -46,7 +47,8 @@ async function kvGet<T>(collection: string, id: string, fallback: Map<string, T>
     const raw = await redis.hget(`db:${collection}`, id)
     if (raw == null) return fallback.get(id)
     return JSON.parse(raw) as T
-  } catch {
+  } catch (error) {
+    reportError(error, { source: 'db.kvGet', metadata: { collection, id } }, 'warning')
     return fallback.get(id)
   }
 }
@@ -57,7 +59,7 @@ async function kvSet<T>(collection: string, id: string, value: T, fallback: Map<
   if (!redis) return
   try {
     await redis.hset(`db:${collection}`, id, JSON.stringify(value))
-  } catch { /* write-through: memory is already updated */ }
+  } catch (error) { reportError(error, { source: 'db.kvSet', metadata: { collection, id } }, 'warning') }
 }
 
 async function kvDel(collection: string, id: string, fallback: Map<string, unknown>): Promise<boolean> {
@@ -67,7 +69,8 @@ async function kvDel(collection: string, id: string, fallback: Map<string, unkno
   try {
     const removed = await redis.hdel(`db:${collection}`, id)
     return removed > 0 || had
-  } catch {
+  } catch (error) {
+    reportError(error, { source: 'db.kvDel', metadata: { collection, id } }, 'warning')
     return had
   }
 }
@@ -79,7 +82,8 @@ async function kvGetAll<T>(collection: string, fallback: Map<string, T>): Promis
     const hash = await redis.hgetall(`db:${collection}`)
     if (!hash || Object.keys(hash).length === 0) return Array.from(fallback.values())
     return Object.values(hash).map((v) => JSON.parse(v) as T)
-  } catch {
+  } catch (error) {
+    reportError(error, { source: 'db.kvGetAll', metadata: { collection } }, 'warning')
     return Array.from(fallback.values())
   }
 }

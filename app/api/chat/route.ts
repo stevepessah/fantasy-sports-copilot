@@ -14,6 +14,7 @@ import { League, Sport } from '@/types'
 import { buildCardsForIntent, getStatCategoriesForCompare, remapStatsForCompare, isPitcherPosition } from '@/lib/chat/cardBuilder'
 import { buildMatchupCards } from '@/lib/chat/matchupCards'
 import { STAT_ARCHETYPES } from '@/lib/statArchetypes'
+import { reportError } from '@/lib/errors'
 
 /**
  * Returns true when the LLM's response is empty, generic, or a canned menu —
@@ -183,8 +184,8 @@ export async function POST(request: NextRequest) {
                 context: settingsContext,
                 timestamp: Date.now(),
               }
-            } catch {
-              // Non-critical — league settings are nice-to-have
+            } catch (error) {
+              reportError(error, { source: 'chat.leagueSettings' }, 'warning')
             }
           }
 
@@ -223,8 +224,8 @@ export async function POST(request: NextRequest) {
             }
           }
         }
-      } catch {
-        // Don't fail the whole chat if context fetch fails — just skip it
+      } catch (error) {
+        reportError(error, { source: 'chat.yahooContext' }, 'warning')
       }
     }
 
@@ -269,7 +270,8 @@ export async function POST(request: NextRequest) {
             // Send final event with cards + action
             controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'done', cards, action })}\n\n`))
             controller.close()
-          } catch (err) {
+          } catch (error) {
+            reportError(error, { source: 'chat.streamHandler' })
             controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'error', message: 'Something went wrong.' })}\n\n`))
             controller.close()
           }
@@ -326,8 +328,8 @@ export async function POST(request: NextRequest) {
             },
           })
         }
-      } catch {
-        // silently skip
+      } catch (error) {
+        reportError(error, { source: 'chat.lineupCard' }, 'warning')
       }
     }
 
@@ -368,8 +370,8 @@ export async function POST(request: NextRequest) {
             }
           }
         }
-      } catch {
-        // silently skip — AI text response still goes through
+      } catch (error) {
+        reportError(error, { source: 'chat.yahooRosterCard' }, 'warning')
       }
     }
 
@@ -386,8 +388,8 @@ export async function POST(request: NextRequest) {
           const matchupCards = await buildMatchupCards(api, context.yahooLeagueKey, userTeam.team_key, requestedWeek)
           response.cards.push(...matchupCards)
         }
-      } catch {
-        // silently skip
+      } catch (error) {
+        reportError(error, { source: 'chat.matchupCard' }, 'warning')
       }
     }
 
@@ -431,8 +433,8 @@ export async function POST(request: NextRequest) {
               standingsHandled = true
             }
           }
-        } catch {
-          // Fall through to local DB
+        } catch (error) {
+          reportError(error, { source: 'chat.yahooStandings' }, 'warning')
         }
       }
 
@@ -453,7 +455,8 @@ export async function POST(request: NextRequest) {
                 leagueIdToUse = setupResult.league.id
                 context.leagueId = leagueIdToUse
                 context.league = setupResult.league
-              } catch {
+              } catch (error) {
+                reportError(error, { source: 'chat.setupBaseballLeague' }, 'warning')
                 response.message = "No league found. Please connect your Yahoo account and make sure you have an active Fantasy Baseball league."
                 return NextResponse.json(response)
               }
@@ -497,8 +500,8 @@ export async function POST(request: NextRequest) {
           } else {
             response.message = "No teams found in this league."
           }
-        } catch {
-          // silently skip
+        } catch (error) {
+          reportError(error, { source: 'chat.localStandings' }, 'warning')
         }
       }
     }
@@ -539,7 +542,8 @@ export async function POST(request: NextRequest) {
           if (isGenericResponse(response.message)) {
             response.message = `Here are all ${data.total} ${label.toLowerCase()} across every team in your league:`
           }
-        } catch {
+        } catch (error) {
+          reportError(error, { source: 'chat.playerList' }, 'warning')
           response.message = "Sorry, I couldn't fetch the player list. Make sure you're connected to Yahoo Fantasy."
         }
       } else {
@@ -573,7 +577,8 @@ export async function POST(request: NextRequest) {
           if (isGenericResponse(response.message)) {
             response.message = `There are ${data.total} available players on the wire. Here are the top options:`
           }
-        } catch {
+        } catch (error) {
+          reportError(error, { source: 'chat.waivers' }, 'warning')
           response.message = "Sorry, I couldn't pull up the waiver wire. Make sure you're connected to Yahoo Fantasy."
         }
       } else {
@@ -618,8 +623,8 @@ export async function POST(request: NextRequest) {
               },
             })
           }
-        } catch {
-          // Archetype card is supplementary — the LLM text response still goes through
+        } catch (error) {
+          reportError(error, { source: 'chat.archetypeCard' }, 'warning')
         }
       }
     }
@@ -725,8 +730,8 @@ export async function POST(request: NextRequest) {
             if (!ownershipB) notFound.push(intent.comparePlayerB)
             response.message = `Sorry, I couldn't find ${notFound.join(' or ')} in your league. Make sure the names are correct.`
           }
-        } catch (e) {
-          console.error('Compare handler error:', e)
+        } catch (error) {
+          reportError(error, { source: 'chat.compareHandler' }, 'warning')
           response.message = `Sorry, I had trouble comparing those players. Please try again.`
         }
       } else {
@@ -789,8 +794,8 @@ export async function POST(request: NextRequest) {
                   }
                 }
               }
-            } catch {
-              // Fall through to name-based search
+            } catch (error) {
+              reportError(error, { source: 'chat.playerKeyLookup' }, 'warning')
             }
           }
           
@@ -817,8 +822,8 @@ export async function POST(request: NextRequest) {
               }
             }
           }
-        } catch {
-          // Fall through to mock database
+        } catch (error) {
+          reportError(error, { source: 'chat.playerLookup' }, 'warning')
         }
       }
       
@@ -838,8 +843,8 @@ export async function POST(request: NextRequest) {
                 ownershipStatus = ownership.ownershipStatus
                 owningTeamName = ownership.owningTeam?.name
               }
-            } catch {
-              // silently skip
+            } catch (error) {
+              reportError(error, { source: 'chat.playerOwnership' }, 'warning')
             }
           }
         }
@@ -881,8 +886,8 @@ export async function POST(request: NextRequest) {
           const newLeague = await createLeague(response.action.data, currentSport, context.userId)
           response.message += `\n\n✅ League created! Your league ID is: ${newLeague.id}`
           response.action.data = { ...response.action.data, leagueId: newLeague.id }
-        } catch {
-          // silently skip
+        } catch (error) {
+          reportError(error, { source: 'chat.createLeague' }, 'warning')
         }
       } else if (response.action.type === 'set_lineup' && context.teamId && context.league) {
         try {
@@ -892,7 +897,8 @@ export async function POST(request: NextRequest) {
           } else {
             response.message += '\n\n⚠️ Could not set lineup. Make sure you have players on your roster.'
           }
-        } catch {
+        } catch (error) {
+          reportError(error, { source: 'chat.setLineup' }, 'warning')
           response.message += '\n\n⚠️ Could not set lineup. Make sure you have players on your roster.'
         }
       } else if (response.action.type === 'add_player' && context.teamId) {
@@ -927,8 +933,8 @@ export async function POST(request: NextRequest) {
               },
             })
           }
-        } catch {
-          // silently skip
+        } catch (error) {
+          reportError(error, { source: 'chat.showLineupAction' }, 'warning')
         }
       } else if (response.action.type === 'show_matchup' && context.teamId && context.league) {
         try {
@@ -956,8 +962,8 @@ export async function POST(request: NextRequest) {
               },
             })
           }
-        } catch {
-          // silently skip
+        } catch (error) {
+          reportError(error, { source: 'chat.showMatchupAction' }, 'warning')
         }
       } else if (response.action.type === 'show_waivers') {
         // Waivers card is already generated via intent parsing above
@@ -965,7 +971,8 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json(response)
-  } catch {
+  } catch (error) {
+    reportError(error, { source: 'chat.handler' })
     return NextResponse.json(
       { error: 'Internal server error', message: 'Sorry, something went wrong.' },
       { status: 500 }

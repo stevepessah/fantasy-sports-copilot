@@ -2,6 +2,7 @@
 
 import { YahooFantasyAPI } from './api'
 import { ParsedRosterPlayer, parseRosterXML, ParsedTeam } from './xmlParser'
+import { reportError } from '@/lib/errors'
 
 export interface PlayerOwnership {
   player: ParsedRosterPlayer
@@ -76,6 +77,7 @@ export async function getPlayerOwnership(
     
     return null
   } catch (error) {
+    reportError(error, { source: 'playerSearch.ownership' }, 'warning')
     console.error('Error getting player ownership:', error)
     return null
   }
@@ -148,6 +150,7 @@ export async function getPlayerOwnershipPair(
       if (fb) resultB = { player: fb, ownershipStatus: 'free_agent' }
     }
   } catch (error) {
+    reportError(error, { source: 'playerSearch.ownershipPair' }, 'warning')
     console.error('Error in getPlayerOwnershipPair:', error)
   }
 
@@ -208,6 +211,7 @@ export async function searchPlayerInLeague(
     
     return null
   } catch (error) {
+    reportError(error, { source: 'playerSearch.inLeague' }, 'warning')
     console.error('Error searching for player in league:', error)
     return null
   }
@@ -276,6 +280,7 @@ export async function searchPlayerInFreeAgents(
     
     return null
   } catch (error) {
+    reportError(error, { source: 'playerSearch.freeAgents' }, 'warning')
     console.error('Error searching for player in free agents:', error)
     return null
   }

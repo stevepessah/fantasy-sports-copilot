@@ -2,6 +2,7 @@
 
 import { AIResponse, League, Team, Player, Roster, Sport } from '@/types'
 import { detectArchetype } from '@/lib/statArchetypes'
+import { reportError } from '@/lib/errors'
 
 export interface AIContext {
   userId?: string
@@ -201,6 +202,7 @@ export class FantasyAI {
         return this.processWithRules(userMessage, context)
       }
     } catch (error) {
+      reportError(error, { source: 'ai.processMessage' })
       console.error('AI processing error:', error)
       return this.processWithRules(userMessage, context)
     }
@@ -412,7 +414,7 @@ IMPORTANT RULES:
         let functionArgs: any = {}
         try {
           functionArgs = JSON.parse(responseMessage.function_call.arguments || '{}')
-        } catch { /* ignore parse errors */ }
+        } catch (error) { reportError(error, { source: 'ai.functionArgs' }, 'warning') }
 
         const action = this.mapFunctionToAction(functionName, context, functionArgs)
         
@@ -444,6 +446,7 @@ IMPORTANT RULES:
         action,
       }
     } catch (error) {
+      reportError(error, { source: 'ai.openai' })
       console.error('OpenAI API error:', error)
       return this.processWithRules(userMessage, context)
     }
@@ -826,6 +829,7 @@ IMPORTANT RULES:
       const action = this.extractAction(userMessage, fullText, context)
       return action
     } catch (error) {
+      reportError(error, { source: 'ai.streaming' })
       console.error('Streaming error, falling back to rules:', error)
       const result = this.processWithRules(userMessage, context)
       yield result.message

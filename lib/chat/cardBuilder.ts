@@ -6,6 +6,7 @@ import { setupBaseballLeague } from '@/lib/setupBaseballLeague'
 import { fetchLeaguePlayers } from '@/lib/yahoo/leaguePlayers'
 import { getPlayerOwnership } from '@/lib/yahoo/playerSearch'
 import { buildMatchupCards } from './matchupCards'
+import { reportError } from '@/lib/errors'
 
 async function getOptimalLineup(teamId: string, leagueId: string) {
   const league = await leagueDB.get(leagueId)
@@ -60,7 +61,9 @@ export async function buildCardsForIntent(
           const matchupCards = await buildMatchupCards(api, context.yahooLeagueKey, userTeam.team_key, requestedWeek)
           cards.push(...matchupCards)
         }
-      } catch { /* skip */ }
+      } catch (error) {
+        reportError(error, { source: 'cardBuilder.matchup' }, 'warning')
+      }
     }
 
     if (intent.isViewTeams) {
@@ -92,7 +95,9 @@ export async function buildCardsForIntent(
               standingsDone = true
             }
           }
-        } catch { /* fall through */ }
+        } catch (error) {
+          reportError(error, { source: 'cardBuilder.standings' }, 'warning')
+        }
       }
       if (!standingsDone) {
         let leagueIdToUse = context.leagueId
@@ -104,7 +109,9 @@ export async function buildCardsForIntent(
             try {
               const setupResult = await setupBaseballLeague(yahooAccessToken)
               leagueIdToUse = setupResult.league.id
-            } catch { /* skip */ }
+            } catch (error) {
+              reportError(error, { source: 'cardBuilder.setupLeague' }, 'warning')
+            }
           }
         }
         if (leagueIdToUse) {
@@ -148,7 +155,9 @@ export async function buildCardsForIntent(
             payload: { players: data.players, total: data.total, positionType, label, leagueKey: yahooLeague.league_key },
           })
         }
-      } catch { /* skip */ }
+      } catch (error) {
+        reportError(error, { source: 'cardBuilder.batters' }, 'warning')
+      }
     }
 
     if (intent.isWaivers && yahooAccessToken) {
@@ -165,7 +174,9 @@ export async function buildCardsForIntent(
             payload: { players: data.players, total: data.total, label: 'Available', leagueKey: yahooLeague.league_key, defaultStatus: 'A' },
           })
         }
-      } catch { /* skip */ }
+      } catch (error) {
+        reportError(error, { source: 'cardBuilder.waivers' }, 'warning')
+      }
     }
 
     if ((intent.isPlayerLookup || embeddedPlayerKey) && yahooAccessToken) {
@@ -233,7 +244,9 @@ export async function buildCardsForIntent(
                   foundPlayer = true
                 }
               }
-            } catch { /* fall through to name search */ }
+            } catch (error) {
+              reportError(error, { source: 'cardBuilder.playerLookup.embedded' }, 'warning')
+            }
           }
 
           if (!foundPlayer) {
@@ -265,9 +278,13 @@ export async function buildCardsForIntent(
             }
           }
         }
-      } catch { /* skip */ }
+      } catch (error) {
+        reportError(error, { source: 'cardBuilder.playerLookup' }, 'warning')
+      }
     }
-  } catch { /* fail gracefully */ }
+  } catch (error) {
+    reportError(error, { source: 'cardBuilder.outer' }, 'warning')
+  }
 
   return cards
 }
@@ -289,7 +306,8 @@ export async function getStatCategoriesForCompare(
     const result = await api.getStatCategories(gameKey)
     compareCategoriesCache[gameKey] = { categories: result.categories, timestamp: Date.now() }
     return result.categories
-  } catch {
+  } catch (error) {
+    reportError(error, { source: 'cardBuilder.statCategories' }, 'warning')
     return {}
   }
 }

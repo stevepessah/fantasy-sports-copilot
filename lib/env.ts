@@ -6,6 +6,8 @@ const envSchema = z.object({
   YAHOO_CALLBACK_URL: z.string().default('http://localhost:3000/api/yahoo/callback'),
   OPENAI_API_KEY: z.string().min(1).optional(),
   REDIS_URL: z.string().min(1).optional(),
+  SENTRY_DSN: z.string().min(1).optional(),
+  NEXT_PUBLIC_SENTRY_DSN: z.string().min(1).optional(),
 })
 
 export type Env = z.infer<typeof envSchema>
