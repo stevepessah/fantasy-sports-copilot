@@ -6,7 +6,7 @@ import YahooTeams from './YahooTeams'
 
 export default function YahooAuth() {
   const { isAuthenticated, isLoading, mutate } = useYahooAuth()
-  const { leagues, isLoading: leaguesLoading, selectedLeagueKey, setSelectedLeagueKey } = useLeague()
+  const { leagues, isLoading: leaguesLoading, error: leaguesError, selectedLeagueKey, setSelectedLeagueKey } = useLeague()
 
   const handleConnect = () => {
     window.location.href = '/api/yahoo/auth'
@@ -48,6 +48,18 @@ export default function YahooAuth() {
           
           {leaguesLoading ? (
             <div className="text-xs text-slate-400">Loading leagues...</div>
+          ) : leaguesError ? (
+            <div className="space-y-1">
+              <div className="text-xs text-red-400">
+                Couldn&apos;t load your leagues. Your Yahoo session may have expired.
+              </div>
+              <button
+                onClick={handleConnect}
+                className="text-xs text-purple-400 hover:text-purple-300 underline"
+              >
+                Reconnect Yahoo
+              </button>
+            </div>
           ) : leagues.length > 0 ? (
             <div className="space-y-2">
               <label className="text-xs text-slate-400 block">Select League:</label>
