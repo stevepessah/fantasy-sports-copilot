@@ -120,20 +120,31 @@ npm run smoke -- <printed-url>
 
 ---
 
-## Deployment Protection
+## Deployment Protection (required setup for private previews)
 
-New Vercel projects often protect preview deployments behind "Vercel
-Authentication", which returns `401` to unauthenticated requests (including our
-tests). Two options:
+By default Vercel protects preview deployments behind "Vercel Authentication".
+Unauthenticated requests are **redirected (`302`) to `https://vercel.com/sso-api...`**
+(sometimes `401`/`403`), so CI cannot reach the app and the **E2E against
+preview** job fails fast with an error pointing here.
 
-1. **Recommended:** Vercel → Project → Settings → Deployment Protection →
-   **Protection Bypass for Automation**. Copy the secret and add it as a GitHub
-   Actions repository secret named `VERCEL_AUTOMATION_BYPASS_SECRET`. Both the
-   workflow and `playwright.config.ts` automatically send the bypass header when
-   this is set. Locally, export the same variable before running the scripts.
-2. Or disable Deployment Protection for the Preview environment.
+Fix with ONE of these:
 
-If the workflow logs a `401` warning during the reachability check, this is why.
+1. **Recommended — keep previews private, let CI in:** Vercel → Project →
+   Settings → Deployment Protection → **Protection Bypass for Automation**.
+   Generate the secret, then add it as a GitHub Actions repository secret named
+   `VERCEL_AUTOMATION_BYPASS_SECRET` (repo → Settings → Secrets and variables →
+   Actions). Both the workflow and `playwright.config.ts` automatically send the
+   `x-vercel-protection-bypass` header when it's set. Locally, export the same
+   variable before running the scripts.
+2. **Or make previews public:** disable Deployment Protection for the Preview
+   environment.
+
+You can confirm the symptom yourself:
+
+```bash
+curl -sS -o /dev/null -D - https://<your-preview>.vercel.app/api/health | grep -i '^location'
+# location: https://vercel.com/sso-api?url=...   <-- protection is on
+```
 
 ---
 

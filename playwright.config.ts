@@ -15,12 +15,15 @@ const isRemoteTarget = !!(process.env.PLAYWRIGHT_BASE_URL || process.env.BASE_UR
 
 // Vercel Deployment Protection: when previews are behind the auth wall, a
 // "Protection Bypass for Automation" secret lets the test runner through.
+// Send only the bypass header — it authorizes each request inline. We do NOT
+// set `x-vercel-set-bypass-cookie`, because that makes Vercel intercept the
+// first request, set a cookie, and 302 back to the SAME path — which breaks
+// tests that inspect a redirect with `maxRedirects: 0` (they'd see Vercel's
+// redirect instead of the app's). Every request already carries this header via
+// `extraHTTPHeaders`, so the cookie is unnecessary.
 const bypassSecret = process.env.VERCEL_AUTOMATION_BYPASS_SECRET
 const extraHTTPHeaders = bypassSecret
-  ? {
-      'x-vercel-protection-bypass': bypassSecret,
-      'x-vercel-set-bypass-cookie': 'true',
-    }
+  ? { 'x-vercel-protection-bypass': bypassSecret }
   : undefined
 
 export default defineConfig({

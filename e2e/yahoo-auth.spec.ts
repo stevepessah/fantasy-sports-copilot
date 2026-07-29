@@ -12,9 +12,22 @@ import { test, expect } from '@playwright/test'
  * The second half (real user consent) is a manual step — see
  * docs/YAHOO_PREVIEW_TESTING.md.
  */
+const YAHOO_AUTH_BASE = 'https://api.login.yahoo.com/oauth2/request_auth'
+
 test.describe('@smoke @auth Yahoo OAuth entry point', () => {
-  test('authorize endpoint redirects to Yahoo with correct params', async ({ request }) => {
-    const res = await request.get('/api/yahoo/auth', { maxRedirects: 0 })
+  test('authorize endpoint redirects to Yahoo with correct params', async ({ request, baseURL }) => {
+    let res = await request.get('/api/yahoo/auth', { maxRedirects: 0 })
+    let location = res.headers()['location']
+
+    // A platform layer (e.g. Vercel Deployment Protection setting a bypass
+    // cookie) may 3xx back to an app-relative path before the app's own OAuth
+    // redirect. Follow one such intermediate hop so we assert against the real
+    // app response, not the platform's.
+    if (location && !location.startsWith('https://api.login.yahoo.com')) {
+      const next = new URL(location, baseURL ?? undefined).toString()
+      res = await request.get(next, { maxRedirects: 0 })
+      location = res.headers()['location']
+    }
 
     // If this fails with 500, the deployment is missing YAHOO_CONSUMER_KEY /
     // YAHOO_CONSUMER_SECRET.
@@ -23,9 +36,8 @@ test.describe('@smoke @auth Yahoo OAuth entry point', () => {
       `expected a redirect but got ${res.status()} (are Yahoo credentials set on this deployment?)`,
     ).toContain(res.status())
 
-    const location = res.headers()['location']
     expect(location, 'redirect Location header should be present').toBeTruthy()
-    expect(location).toContain('https://api.login.yahoo.com/oauth2/request_auth')
+    expect(location).toContain(YAHOO_AUTH_BASE)
 
     const authUrl = new URL(location)
     expect(authUrl.searchParams.get('response_type')).toBe('code')
