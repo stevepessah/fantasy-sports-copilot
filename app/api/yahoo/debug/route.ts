@@ -1,11 +1,12 @@
 // Debug endpoint to check Yahoo OAuth configuration (development / preview only)
 import { NextRequest, NextResponse } from 'next/server'
 import { getYahooRedirectUri } from '@/lib/yahoo/oauth2'
+import { isNonProdEnvironment } from '@/lib/env'
 
 export const dynamic = 'force-dynamic'
 
 export async function GET(request: NextRequest) {
-  if (process.env.NODE_ENV === 'production' && process.env.VERCEL_ENV === 'production') {
+  if (!isNonProdEnvironment()) {
     return NextResponse.json({ error: 'Not found' }, { status: 404 })
   }
 
