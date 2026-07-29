@@ -12,6 +12,26 @@ export interface YahooOAuth2Tokens {
 }
 
 /**
+ * Error thrown when a Yahoo Fantasy API request returns a non-2xx response.
+ * Carries the HTTP status and (when present) Yahoo's <description> so callers
+ * can distinguish e.g. a 403 app-authorization gate from a 401 expired token.
+ */
+export class YahooApiError extends Error {
+  readonly status: number
+  readonly description?: string
+  readonly body: string
+
+  constructor(status: number, body: string) {
+    const description = body.match(/<description>([\s\S]*?)<\/description>/)?.[1]?.trim()
+    super(`Yahoo API request failed: ${status} ${body}`)
+    this.name = 'YahooApiError'
+    this.status = status
+    this.description = description
+    this.body = body
+  }
+}
+
+/**
  * Minimal shape needed to derive the OAuth redirect URI from an incoming
  * request. `NextRequest` satisfies this structurally.
  */
@@ -214,7 +234,7 @@ export class YahooOAuth2 {
 
     if (!response.ok) {
       const text = await response.text()
-      throw new Error(`Yahoo API request failed: ${response.status} ${text}`)
+      throw new YahooApiError(response.status, text)
     }
 
     const xmlText = await response.text()

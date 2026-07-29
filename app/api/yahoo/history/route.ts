@@ -3,6 +3,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { YahooFantasyAPI } from '@/lib/yahoo/api'
 import { MLB_SEASON_TO_GAME_KEY } from '@/lib/yahoo/config'
 import { withYahooAuth } from '@/lib/yahoo/auth'
+import { classifyYahooError } from '@/lib/yahoo/errors'
+import { reportError } from '@/lib/errors'
 
 export const dynamic = 'force-dynamic'
 
@@ -98,10 +100,17 @@ export async function GET(request: NextRequest) {
       headers: { 'Cache-Control': 's-maxage=300, stale-while-revalidate=3600' },
     })
   } catch (error) {
-    console.error('Error fetching Yahoo history:', error)
+    const classified = classifyYahooError(error)
+    reportError(error, { source: 'yahoo.history', metadata: { code: classified.code } },
+      classified.code === 'yahoo_not_authorized' ? 'warning' : 'error')
     return NextResponse.json(
-      { error: 'Failed to fetch historical data', details: error instanceof Error ? error.message : 'Unknown error' },
-      { status: 500 }
+      {
+        error: 'Failed to fetch historical data',
+        code: classified.code,
+        message: classified.message,
+        details: classified.details,
+      },
+      { status: classified.httpStatus },
     )
   }
 }

@@ -180,16 +180,22 @@ export class YahooFantasyAPI {
 
     // Fallback: a current-season sport query came back empty. Re-query across
     // every season of that sport the user has played so we still surface their
-    // leagues (the frontend prefers the active, non-finished one).
+    // leagues (the frontend prefers the active, non-finished one). The primary
+    // call succeeded here, so never let a fallback failure turn a legitimately
+    // empty result into an error — just keep the empty primary result.
     if (leagues.length === 0 && sportCode) {
-      const fallback = await this.oauth2.makeRequest(
-        'GET',
-        `/users;use_login=1/games;game_codes=${sportCode}/leagues`,
-        this.accessToken,
-      )
-      const fallbackLeagues = fallback.raw ? parseLeaguesXML(fallback.raw) : []
-      if (fallbackLeagues.length > 0) {
-        return { leagues: fallbackLeagues, raw: fallback.raw }
+      try {
+        const fallback = await this.oauth2.makeRequest(
+          'GET',
+          `/users;use_login=1/games;game_codes=${sportCode}/leagues`,
+          this.accessToken,
+        )
+        const fallbackLeagues = fallback.raw ? parseLeaguesXML(fallback.raw) : []
+        if (fallbackLeagues.length > 0) {
+          return { leagues: fallbackLeagues, raw: fallback.raw }
+        }
+      } catch {
+        // Ignore fallback failures; return the (empty) primary result below.
       }
     }
 
