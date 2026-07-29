@@ -35,9 +35,15 @@ export function useYahooLeagues(gameKey?: string) {
     dedupingInterval: 60_000, // 1 min dedup
   })
 
+  // The fetcher attaches the parsed JSON body as `error.info`, which carries
+  // the structured `code`/`message` from the API so the UI can show accurate,
+  // actionable guidance (e.g. a 403 app-approval gate vs an expired session).
+  const info = error?.info as { code?: string; message?: string } | undefined
+
   return {
     leagues: data?.leagues ?? [],
     isLoading,
-    error: error?.message ?? null,
+    error: error ? info?.message ?? error.message ?? 'Failed to load leagues' : null,
+    errorCode: error ? info?.code ?? 'yahoo_error' : null,
   }
 }

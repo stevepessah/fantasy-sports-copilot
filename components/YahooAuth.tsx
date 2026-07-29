@@ -6,7 +6,7 @@ import YahooTeams from './YahooTeams'
 
 export default function YahooAuth() {
   const { isAuthenticated, isLoading, mutate } = useYahooAuth()
-  const { leagues, isLoading: leaguesLoading, error: leaguesError, selectedLeagueKey, setSelectedLeagueKey } = useLeague()
+  const { leagues, isLoading: leaguesLoading, error: leaguesError, errorCode: leaguesErrorCode, selectedLeagueKey, setSelectedLeagueKey } = useLeague()
 
   const handleConnect = () => {
     window.location.href = '/api/yahoo/auth'
@@ -49,17 +49,36 @@ export default function YahooAuth() {
           {leaguesLoading ? (
             <div className="text-xs text-slate-400">Loading leagues...</div>
           ) : leaguesError ? (
-            <div className="space-y-1">
-              <div className="text-xs text-red-400">
-                Couldn&apos;t load your leagues. Your Yahoo session may have expired.
+            leaguesErrorCode === 'yahoo_not_authorized' ? (
+              // App-level Yahoo approval gate: reconnecting cannot fix this.
+              <div className="space-y-1">
+                <div className="text-xs text-amber-400">
+                  Yahoo hasn&apos;t approved this app for Fantasy API access, so league
+                  data can&apos;t load. This is an app approval issue with Yahoo, not your
+                  login &mdash; reconnecting won&apos;t help.
+                </div>
+                <a
+                  href="https://sports.yahoo.com/developer/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs text-purple-400 hover:text-purple-300 underline"
+                >
+                  Request Fantasy API access
+                </a>
               </div>
-              <button
-                onClick={handleConnect}
-                className="text-xs text-purple-400 hover:text-purple-300 underline"
-              >
-                Reconnect Yahoo
-              </button>
-            </div>
+            ) : (
+              <div className="space-y-1">
+                <div className="text-xs text-red-400">
+                  {leaguesError || "Couldn't load your leagues."}
+                </div>
+                <button
+                  onClick={handleConnect}
+                  className="text-xs text-purple-400 hover:text-purple-300 underline"
+                >
+                  Reconnect Yahoo
+                </button>
+              </div>
+            )
           ) : leagues.length > 0 ? (
             <div className="space-y-2">
               <label className="text-xs text-slate-400 block">Select League:</label>

@@ -13,6 +13,8 @@ interface LeagueState {
   isLoading: boolean
   /** Error message if the leagues request failed, otherwise null */
   error: string | null
+  /** Stable error code (e.g. 'yahoo_not_authorized') if the request failed */
+  errorCode: string | null
   /** The full league object for the currently selected key */
   selectedLeague: YahooLeague | undefined
 }
@@ -23,12 +25,13 @@ const LeagueContext = createContext<LeagueState>({
   leagues: [],
   isLoading: true,
   error: null,
+  errorCode: null,
   selectedLeague: undefined,
 })
 
 export function LeagueProvider({ children }: { children: ReactNode }) {
   const { isAuthenticated } = useYahooAuth()
-  const { leagues, isLoading, error } = useYahooLeagues('mlb')
+  const { leagues, isLoading, error, errorCode } = useYahooLeagues('mlb')
   const [selectedLeagueKey, setKeyRaw] = useState<string | null>(null)
   const [hydrated, setHydrated] = useState(false)
 
@@ -61,7 +64,7 @@ export function LeagueProvider({ children }: { children: ReactNode }) {
 
   return (
     <LeagueContext.Provider
-      value={{ selectedLeagueKey, setSelectedLeagueKey, leagues, isLoading, error, selectedLeague }}
+      value={{ selectedLeagueKey, setSelectedLeagueKey, leagues, isLoading, error, errorCode, selectedLeague }}
     >
       {children}
     </LeagueContext.Provider>

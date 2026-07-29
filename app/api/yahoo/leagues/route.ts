@@ -2,6 +2,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { YahooFantasyAPI } from '@/lib/yahoo/api'
 import { withYahooAuth } from '@/lib/yahoo/auth'
+import { classifyYahooError } from '@/lib/yahoo/errors'
+import { reportError } from '@/lib/errors'
 
 export const dynamic = 'force-dynamic'
 
@@ -36,9 +38,17 @@ export async function GET(request: NextRequest) {
       { headers: { 'Cache-Control': 'private, s-maxage=60, stale-while-revalidate=300' } },
     )
   } catch (error) {
+    const classified = classifyYahooError(error)
+    reportError(error, { source: 'yahoo.leagues', metadata: { code: classified.code } },
+      classified.code === 'yahoo_not_authorized' ? 'warning' : 'error')
     return NextResponse.json(
-      { error: 'Failed to fetch leagues', details: error instanceof Error ? error.message : 'Unknown error' },
-      { status: 500 }
+      {
+        error: 'Failed to fetch leagues',
+        code: classified.code,
+        message: classified.message,
+        details: classified.details,
+      },
+      { status: classified.httpStatus },
     )
   }
 }

@@ -96,6 +96,28 @@ describe('YahooFantasyAPI.getLeagues', () => {
     expect(leagues[0].league_key).toBe('469.l.222')
   })
 
+  it('keeps the empty primary result when the fallback query throws', async () => {
+    vi.spyOn(YahooOAuth2.prototype, 'makeRequest').mockImplementation(
+      async (_method: string, endpoint: string) => {
+        requests.push(endpoint)
+        if (endpoint.includes('game_codes=mlb')) {
+          throw new Error('Yahoo API request failed: 400 invalid game_codes')
+        }
+        return { raw: '<fantasy_content></fantasy_content>' } // primary: empty, 200
+      },
+    )
+
+    const api = new YahooFantasyAPI()
+    api.setAccessToken('token')
+    const { leagues } = await api.getLeagues('mlb')
+
+    expect(requests).toEqual([
+      '/users;use_login=1/games;game_keys=mlb/leagues',
+      '/users;use_login=1/games;game_codes=mlb/leagues',
+    ])
+    expect(leagues).toEqual([])
+  })
+
   it('does not run the fallback for explicit numeric (past-season) game ids', async () => {
     mockYahoo(() => '') // no leagues for this past season
 
