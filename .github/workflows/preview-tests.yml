@@ -1,0 +1,127 @@
+name: Preview Tests
+
+# Validate changes against a live, production-like Vercel Preview deployment so
+# you never have to ship to prod just to check something works.
+#
+# How it fires:
+#  - `deployment_status`: Vercel (via its GitHub integration) reports a preview
+#    deployment. We filter for successful, non-production deploys and run the
+#    full E2E suite against the exact preview URL.
+#  - `workflow_dispatch`: manually point the suite at any URL on demand.
+#
+# NOTE: `deployment_status` workflows run the copy of this file on the default
+# branch (main), so this must be merged before it triggers automatically.
+on:
+  deployment_status:
+  workflow_dispatch:
+    inputs:
+      base_url:
+        description: 'Deployment URL to test (e.g. https://your-app-git-branch.vercel.app)'
+        required: true
+        type: string
+      suite:
+        description: 'Which suite to run'
+        required: true
+        default: smoke
+        type: choice
+        options:
+          - smoke
+          - e2e
+
+concurrency:
+  group: >-
+    preview-tests-${{ github.event.deployment_status.target_url ||
+    github.event.inputs.base_url || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  preview-e2e:
+    name: E2E against preview
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    # For deployment_status: only successful, non-production preview deploys.
+    # For workflow_dispatch: always run.
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'deployment_status' &&
+       github.event.deployment_status.state == 'success' &&
+       github.event.deployment_status.environment != 'Production' &&
+       github.event.deployment_status.environment != 'production')
+    steps:
+      - name: Checkout deployed commit
+        uses: actions/checkout@v4
+        with:
+          # Test against the exact commit that was deployed when available.
+          ref: ${{ github.event.deployment.sha || github.sha }}
+
+      - name: Resolve target URL
+        id: target
+        env:
+          ENVIRONMENT_URL: ${{ github.event.deployment_status.environment_url }}
+          TARGET_URL: ${{ github.event.deployment_status.target_url }}
+          INPUT_URL: ${{ github.event.inputs.base_url }}
+        run: |
+          # Prefer manual input, then the modern environment_url, then target_url.
+          URL="${INPUT_URL:-${ENVIRONMENT_URL:-$TARGET_URL}}"
+          if [ -z "$URL" ]; then
+            echo "::error::No deployment URL found (input/environment_url/target_url all empty)."
+            exit 1
+          fi
+          URL="${URL%/}"
+          echo "Resolved target URL: $URL"
+          echo "url=$URL" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - name: Install Playwright browser
+        run: npx playwright install chromium --with-deps
+
+      - name: Wait for deployment to be reachable
+        env:
+          BASE_URL: ${{ steps.target.outputs.url }}
+          VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+        run: |
+          for i in $(seq 1 30); do
+            code=$(curl -sS -m 20 -o /dev/null -w '%{http_code}' \
+              ${VERCEL_AUTOMATION_BYPASS_SECRET:+-H "x-vercel-protection-bypass: $VERCEL_AUTOMATION_BYPASS_SECRET"} \
+              "$BASE_URL/api/health" 2>/dev/null || echo "000")
+            echo "Attempt $i: $BASE_URL/api/health -> $code"
+            if [ "$code" = "200" ] || [ "$code" = "503" ]; then
+              exit 0
+            fi
+            if [ "$code" = "401" ]; then
+              echo "::warning::Got 401 — preview is likely behind Vercel Deployment Protection."
+              echo "::warning::Set the VERCEL_AUTOMATION_BYPASS_SECRET repo secret, or disable protection for previews."
+            fi
+            sleep 5
+          done
+          echo "::error::Deployment did not become reachable at $BASE_URL"
+          exit 1
+
+      - name: Run preview tests
+        env:
+          PLAYWRIGHT_BASE_URL: ${{ steps.target.outputs.url }}
+          VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+        run: |
+          # Manual runs honor the chosen suite; auto (deployment_status) runs full E2E.
+          SUITE="${{ github.event.inputs.suite }}"
+          SUITE="${SUITE:-e2e}"
+          echo "Running '$SUITE' suite against $PLAYWRIGHT_BASE_URL"
+          if [ "$SUITE" = "smoke" ]; then
+            npm run test:smoke
+          else
+            npm run test:e2e
+          fi
+
+      - name: Upload Playwright report
+        uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        with:
+          name: preview-playwright-report
+          path: playwright-report/
+          retention-days: 14
