@@ -161,3 +161,13 @@ test.describe('@smoke my critical flow', () => {
 
 Keep `@smoke` tests credential-free and fast so they run reliably against fresh
 preview deployments.
+
+---
+
+## Testing Yahoo login on a preview
+
+Real Yahoo OAuth needs its `redirect_uri` registered in the Yahoo Developer app,
+which is why previews need a small one-time setup. The `@auth` E2E test
+(`e2e/yahoo-auth.spec.ts`) validates the login entry point automatically on every
+preview, and the full manual login flow is documented in
+[`docs/YAHOO_PREVIEW_TESTING.md`](./YAHOO_PREVIEW_TESTING.md).
