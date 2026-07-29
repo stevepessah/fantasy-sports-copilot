@@ -1,0 +1,50 @@
+{
+  // Guardrails for Auto-review Run Mode. To take effect, set
+  // Cursor Settings > Agents > Approvals & Execution > Run Mode to "Auto-review".
+  // Committed to the repo so both accounts and cloud agents share the same rules.
+
+  // MCP tools that run without a prompt (server:tool, "*" = wildcard).
+  // Playwright is local browser automation; GitHub is limited to read-only tools here.
+  "mcpAllowlist": [
+    "playwright:*",
+    "github:get_*",
+    "github:list_*",
+    "github:search_*"
+  ],
+
+  // Terminal commands that run without a prompt (prefix match).
+  // NOTE: while this file is present, it replaces the in-app terminal allowlist.
+  "terminalAllowlist": [
+    "npm run lint",
+    "npm test",
+    "npm run test:coverage",
+    "npm run build",
+    "npm run format",
+    "npm run format:check",
+    "npm run test:e2e",
+    "npx playwright install",
+    "git status",
+    "git diff",
+    "git log",
+    "git add",
+    "git commit",
+    "git branch",
+    "git checkout"
+  ],
+
+  // Natural-language steering for the Auto-review classifier on everything else.
+  "autoRun": {
+    "allow_instructions": [
+      "Read-only project inspection is fine: listing files, reading files, and git status/diff/log.",
+      "Running this project's own scripts is fine: lint, Vitest unit tests, Playwright E2E tests, the Next.js production build, and Prettier formatting.",
+      "Requests to the local dev server on localhost:3000 are fine."
+    ],
+    "block_instructions": [
+      "Always ask before force-pushing, rewriting history, amending commits, or deleting branches (git push --force, git reset --hard, git rebase, git push --delete).",
+      "Always ask before deleting files or directories (rm, rmdir) or moving files outside the workspace.",
+      "Always ask before creating, reading, or editing secret or environment files such as .env, .env.local, or anything containing credentials.",
+      "Always ask before installing or upgrading dependencies (npm install <pkg>, npm update) or otherwise modifying package.json or package-lock.json via a package manager.",
+      "Always ask before any GitHub write operation such as creating or merging pull requests, pushing to protected branches, or closing issues."
+    ]
+  }
+}
