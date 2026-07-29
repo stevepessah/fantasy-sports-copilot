@@ -96,10 +96,14 @@ jobs:
           }
 
           for i in $(seq 1 30); do
-            read -r code redirect < <(curl -sS -m 20 -o /dev/null \
+            # Command substitution (not `read`) so a curl `-w` line without a
+            # trailing newline doesn't trip `bash -e` and abort the step.
+            resp=$(curl -sS -m 20 -o /dev/null \
               -w '%{http_code} %{redirect_url}' \
               ${BYPASS:+-H "x-vercel-protection-bypass: $BYPASS"} \
               "$BASE_URL/api/health" 2>/dev/null || echo "000 -")
+            code=${resp%% *}
+            redirect=${resp#* }
             echo "Attempt $i: /api/health -> $code ${redirect:-}"
 
             case "$code" in
