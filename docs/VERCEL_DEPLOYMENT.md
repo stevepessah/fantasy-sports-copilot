@@ -91,6 +91,10 @@ Once connected to GitHub:
 - **Preview deployments** for pull requests
 - **Instant rollbacks** if needed
 
+> **Validate in preview before prod:** every PR's preview deployment is
+> automatically tested end-to-end by the **Preview Tests** GitHub Action. See
+> [`docs/PREVIEW_TESTING.md`](./PREVIEW_TESTING.md) for the full workflow.
+
 ## 📊 Monitoring
 
 Vercel provides:
