@@ -20,9 +20,7 @@ export function validateEnv() {
   const parsed = envSchema.safeParse(process.env)
 
   if (!parsed.success) {
-    const errors = parsed.error.issues.map(
-      (i) => `${i.path.join('.')}: ${i.message}`,
-    )
+    const errors = parsed.error.issues.map((i) => `${i.path.join('.')}: ${i.message}`)
     console.warn('[env] Missing or invalid environment variables:')
     errors.forEach((e) => console.warn(`  - ${e}`))
     _result = { success: false, errors }
@@ -43,4 +41,17 @@ export function hasOpenAIConfig(): boolean {
 
 export function hasRedisConfig(): boolean {
   return !!process.env.REDIS_URL
+}
+
+/**
+ * True for local development and Vercel Preview deployments, but NOT real
+ * production. Use this to gate dev-only helpers (e.g. the debug endpoint and
+ * token injection) that are safe to expose on preview for testing.
+ *
+ * Note: on Vercel, `NODE_ENV` is `'production'` for BOTH preview and production
+ * deployments, so we must consult `VERCEL_ENV` to tell them apart.
+ */
+export function isNonProdEnvironment(): boolean {
+  if (process.env.VERCEL_ENV) return process.env.VERCEL_ENV !== 'production'
+  return process.env.NODE_ENV !== 'production'
 }
