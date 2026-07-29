@@ -115,54 +115,85 @@ export class YahooFantasyAPI {
   }
 
   /**
-   * Get all leagues for the logged-in user
-   * @param gameKey - Yahoo game key: '414' for NFL, '423' for MLB, etc.
-   *                  If 'all' or empty, queries all available games
+   * Get all leagues for the logged-in user.
+   *
+   * @param gameKey - One of:
+   *   - A sport alias: 'mlb' | 'baseball' | 'nfl' | 'football' | 'nba' |
+   *     'basketball' | 'nhl' | 'hockey'. These are resolved to a Yahoo game
+   *     CODE (e.g. 'mlb') and passed to Yahoo directly, so Yahoo returns the
+   *     *current* season automatically. This avoids hardcoding per-season
+   *     numeric game IDs, which change every year and silently break league
+   *     discovery when stale.
+   *   - A specific numeric game id (e.g. '458' for MLB 2025) — used for
+   *     historical/past-season lookups. Passed through unchanged.
+   *   - 'all' or '' — queries every game the user has played.
+   *
+   * If a sport-alias query returns no leagues (e.g. the current-season game id
+   * hasn't propagated to the account yet, or the league is a keeper/renewed
+   * league under a different game id), it transparently retries against all of
+   * the user's games for that sport code so their leagues still surface.
    */
-  async getLeagues(gameKey: string = '469'): Promise<{ leagues: ParsedLeague[]; raw?: string }> {
+  async getLeagues(gameKey: string = 'mlb'): Promise<{ leagues: ParsedLeague[]; raw?: string }> {
     if (!this.accessToken) {
       throw new Error('Access token not set. Please authenticate first.')
     }
 
-    let endpoint: string
-    let allLeagues: ParsedLeague[] = []
+    const key = gameKey.trim().toLowerCase()
 
-    // If 'all', query all games without filtering
-    if (gameKey === 'all' || gameKey === '') {
-      endpoint = `/users;use_login=1/games/leagues`
-    } else {
-      // Convert sport names to game keys
-      // Note: Game keys change by season/year
-      // 469 = MLB (baseball) - 2026 season (current)
-      // 458 = MLB (baseball) - 2025 season
-      // 431 = MLB (baseball) - 2024 season
-      // 422 = MLB (baseball) - 2023 season
-      // 461 = NFL (football) - 2025 season (current)
-      // 449 = NFL (football) - 2024 season
-      // 414 = NFL (football) - 2022 season
-      const gameKeyMap: Record<string, string> = {
-        'mlb': '469', // 2026 season (current)
-        'baseball': '469',
-        'nfl': '461', // 2025 season (current)
-        'football': '461',
+    // Query every game the user has played, across all seasons.
+    if (key === 'all' || key === '') {
+      const response = await this.oauth2.makeRequest(
+        'GET',
+        `/users;use_login=1/games/leagues`,
+        this.accessToken,
+      )
+      return {
+        leagues: response.raw ? parseLeaguesXML(response.raw) : [],
+        raw: response.raw,
       }
-      const yahooGameKey = gameKeyMap[gameKey.toLowerCase()] || gameKey
-      
-      endpoint = `/users;use_login=1/games;game_keys=${yahooGameKey}/leagues`
     }
-    
+
+    // Map sport aliases to Yahoo game codes. Passing the game CODE (not a
+    // numeric game id) lets Yahoo resolve the current season for us.
+    const SPORT_TO_GAME_CODE: Record<string, string> = {
+      mlb: 'mlb',
+      baseball: 'mlb',
+      nfl: 'nfl',
+      football: 'nfl',
+      nba: 'nba',
+      basketball: 'nba',
+      nhl: 'nhl',
+      hockey: 'nhl',
+    }
+    const sportCode = SPORT_TO_GAME_CODE[key]
+
+    // For a known sport, filter by its game code (current season). Otherwise
+    // treat the input as an explicit numeric game id (past-season lookup).
+    const filterKey = sportCode ?? gameKey
+
     const response = await this.oauth2.makeRequest(
       'GET',
-      endpoint,
-      this.accessToken
+      `/users;use_login=1/games;game_keys=${filterKey}/leagues`,
+      this.accessToken,
     )
+    let leagues = response.raw ? parseLeaguesXML(response.raw) : []
 
-    // Parse XML response
-    if (response.raw) {
-      allLeagues = parseLeaguesXML(response.raw)
+    // Fallback: a current-season sport query came back empty. Re-query across
+    // every season of that sport the user has played so we still surface their
+    // leagues (the frontend prefers the active, non-finished one).
+    if (leagues.length === 0 && sportCode) {
+      const fallback = await this.oauth2.makeRequest(
+        'GET',
+        `/users;use_login=1/games;game_codes=${sportCode}/leagues`,
+        this.accessToken,
+      )
+      const fallbackLeagues = fallback.raw ? parseLeaguesXML(fallback.raw) : []
+      if (fallbackLeagues.length > 0) {
+        return { leagues: fallbackLeagues, raw: fallback.raw }
+      }
     }
 
-    return { leagues: allLeagues, raw: response.raw }
+    return { leagues, raw: response.raw }
   }
 
   /**
