@@ -1,10 +1,11 @@
-// Debug endpoint to check Yahoo OAuth configuration (development only)
+// Debug endpoint to check Yahoo OAuth configuration (development / preview only)
 import { NextRequest, NextResponse } from 'next/server'
+import { getYahooRedirectUri } from '@/lib/yahoo/oauth2'
 
 export const dynamic = 'force-dynamic'
 
 export async function GET(request: NextRequest) {
-  if (process.env.NODE_ENV === 'production') {
+  if (process.env.NODE_ENV === 'production' && process.env.VERCEL_ENV === 'production') {
     return NextResponse.json({ error: 'Not found' }, { status: 404 })
   }
 
@@ -14,8 +15,12 @@ export async function GET(request: NextRequest) {
 
   return NextResponse.json({
     environment: process.env.NODE_ENV,
+    vercelEnv: process.env.VERCEL_ENV || null,
     hasConsumerKey: !!consumerKey,
     hasConsumerSecret: !!consumerSecret,
-    callbackUrl: callbackUrl || 'NOT SET',
+    callbackUrlOverride: callbackUrl || 'NOT SET',
+    // The exact redirect_uri this deployment will send to Yahoo. Register this
+    // value in the Yahoo Developer app to complete real login on this URL.
+    resolvedRedirectUri: getYahooRedirectUri(request),
   })
 }
