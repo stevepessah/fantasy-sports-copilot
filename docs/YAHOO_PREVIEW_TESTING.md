@@ -96,13 +96,27 @@ If login fails, check `/api/yahoo/debug` `resolvedRedirectUri` matches a
 registered Yahoo Redirect URI exactly (protocol, host, and `/api/yahoo/callback`
 path).
 
-## Local alternative (skip the browser)
+## Skip the browser: inject a saved token
 
-For fast local iteration you can reuse tokens instead of logging in each time:
-do the real OAuth once, copy `yahoo_access_token` / `yahoo_refresh_token` from
-browser devtools (Application → Cookies), and set `YAHOO_DEV_ACCESS_TOKEN` /
-`YAHOO_DEV_REFRESH_TOKEN` in `.env.local`. These dev env tokens are ignored in
-production. See `.env.example`.
+To test the **authenticated** app state without clicking through Yahoo every
+time, inject tokens directly as cookies via `/api/dev/set-auth`. This works on
+local dev **and Vercel Preview** (it is blocked on production, and only sets
+cookies in your own browser using tokens you supply):
+
+```
+GET /api/dev/set-auth?access_token=<token>&refresh_token=<token>
+```
+
+It sets the `yahoo_access_token` / `yahoo_refresh_token` cookies and redirects to
+`/`, after which `/api/yahoo/status` reports `authenticated: true` and Yahoo data
+features load. Grab a token by doing the real OAuth once and copying the cookies
+from browser devtools (Application → Cookies), or from a local login.
+
+For local iteration you can instead set `YAHOO_DEV_ACCESS_TOKEN` /
+`YAHOO_DEV_REFRESH_TOKEN` in `.env.local` — but note these are **local/dev only**
+(ignored on preview and production) because they would authenticate every
+visitor to the deployment. Use `/api/dev/set-auth` for preview. See
+`.env.example`.
 
 ## Troubleshooting
 
