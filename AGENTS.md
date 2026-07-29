@@ -27,6 +27,13 @@ Fantasy Sports Copilot is a **single Next.js 14 monolith** (App Router). No Dock
 - The in-memory data store resets on dev server restart.
 - Playwright E2E tests require a separate `npx playwright install chromium --with-deps` step before first run.
 
+### Agent config in this repo
+- `.cursor/skills/run-and-test/` — how to run, lint, test, and build; consult before running commands or verifying changes.
+- `.cursor/skills/add-feature/` — where each piece of a feature goes; consult when adding code.
+- `.cursor/permissions.json` — Auto-review allowlists and guardrails (requires Run Mode = Auto-review in Cursor Settings).
+- `.cursor/mcp.json` — project MCP servers (Playwright for E2E, GitHub via OAuth; no secrets committed).
+- `.cursor/rules/file-organization.mdc` — enforced file-placement rules.
+
 ### Repository structure conventions
 - `docs/` — development notes, setup guides, troubleshooting (not user-facing docs).
 - `data/` — static data files (CSV/JSON player lists, etc.).

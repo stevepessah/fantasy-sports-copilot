@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    // Local browser automation. Lets the agent drive the existing e2e/ Playwright suite.
+    "playwright": {
+      "command": "npx",
+      "args": ["-y", "@playwright/mcp@latest"]
+    },
+    // GitHub's official remote MCP server (Streamable HTTP + OAuth).
+    // No token is committed: each account authenticates individually via
+    // "Add to Cursor" / OAuth, so this works for both of your accounts.
+    "github": {
+      "url": "https://api.githubcopilot.com/mcp/"
+    }
+  }
+}
