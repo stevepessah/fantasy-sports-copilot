@@ -84,23 +84,49 @@ jobs:
       - name: Wait for deployment to be reachable
         env:
           BASE_URL: ${{ steps.target.outputs.url }}
-          VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+          BYPASS: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
         run: |
+          protection_error() {
+            echo "::error::Preview is behind Vercel Deployment Protection (got HTTP $1 -> Vercel SSO)."
+            echo "::error::CI can't reach it without a bypass. Fix with ONE of:"
+            echo "::error::  A) Vercel > Project > Settings > Deployment Protection > 'Protection Bypass for"
+            echo "::error::     Automation': generate the secret, then add it as the GitHub Actions repo secret"
+            echo "::error::     VERCEL_AUTOMATION_BYPASS_SECRET (Settings > Secrets and variables > Actions)."
+            echo "::error::  B) Or disable Deployment Protection for the Preview environment (makes previews public)."
+          }
+
           for i in $(seq 1 30); do
-            code=$(curl -sS -m 20 -o /dev/null -w '%{http_code}' \
-              ${VERCEL_AUTOMATION_BYPASS_SECRET:+-H "x-vercel-protection-bypass: $VERCEL_AUTOMATION_BYPASS_SECRET"} \
-              "$BASE_URL/api/health" 2>/dev/null || echo "000")
-            echo "Attempt $i: $BASE_URL/api/health -> $code"
-            if [ "$code" = "200" ] || [ "$code" = "503" ]; then
-              exit 0
-            fi
-            if [ "$code" = "401" ]; then
-              echo "::warning::Got 401 — preview is likely behind Vercel Deployment Protection."
-              echo "::warning::Set the VERCEL_AUTOMATION_BYPASS_SECRET repo secret, or disable protection for previews."
-            fi
+            read -r code redirect < <(curl -sS -m 20 -o /dev/null \
+              -w '%{http_code} %{redirect_url}' \
+              ${BYPASS:+-H "x-vercel-protection-bypass: $BYPASS"} \
+              "$BASE_URL/api/health" 2>/dev/null || echo "000 -")
+            echo "Attempt $i: /api/health -> $code ${redirect:-}"
+
+            case "$code" in
+              200|503)
+                echo "Deployment is reachable."
+                exit 0
+                ;;
+              301|302|303|307|308)
+                # Vercel Deployment Protection bounces unauthenticated traffic to SSO.
+                if printf '%s' "$redirect" | grep -q 'vercel.com/sso'; then
+                  if [ -z "$BYPASS" ]; then
+                    protection_error "$code"
+                    exit 1
+                  fi
+                  echo "::warning::Still hitting SSO despite VERCEL_AUTOMATION_BYPASS_SECRET — the secret may be invalid or expired."
+                fi
+                ;;
+              401|403)
+                if [ -z "$BYPASS" ]; then
+                  protection_error "$code"
+                  exit 1
+                fi
+                ;;
+            esac
             sleep 5
           done
-          echo "::error::Deployment did not become reachable at $BASE_URL"
+          echo "::error::Deployment did not become reachable at $BASE_URL (last status: ${code:-unknown})."
           exit 1
 
       - name: Run preview tests
